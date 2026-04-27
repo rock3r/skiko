@@ -49,7 +49,7 @@ object JbrSkiaInterop {
                 .getMethod(ACQUIRE_CANVAS_METHOD, Graphics2D::class.java)
                 .invoke(service, graphics)
                 ?: return fallback(FallbackReason.CANVAS_UNAVAILABLE)
-            logScopeAcquiredOnce(discovery)
+            logScopeAcquiredOnce(discovery, scope)
             ReflectiveScopedCanvas(scope)
         } catch (e: NoSuchMethodException) {
             fallback(FallbackReason.PUBLIC_API_MISSING, e)
@@ -110,11 +110,22 @@ object JbrSkiaInterop {
         }
     }
 
-    private fun logScopeAcquiredOnce(discovery: Discovery) {
-        val marker = "$SCOPE_ACQUIRED_MARKER abi=${discovery.abiId} build=${discovery.buildId}"
+    private fun logScopeAcquiredOnce(discovery: Discovery, scope: Any) {
+        val marker = "$SCOPE_ACQUIRED_MARKER abi=${discovery.abiId} build=${discovery.buildId} metalTexture=${scope.metalTexturePtrHex()}"
         if (loggedFallbackMarkers.add(marker)) {
             Logger.info { marker }
         }
+    }
+
+    private fun Any.metalTexturePtrHex(): String {
+        val value = try {
+            javaClass.getMethod("getMetalTexturePtr").invoke(this) as? Long
+        } catch (_: ReflectiveOperationException) {
+            null
+        } catch (_: LinkageError) {
+            null
+        } ?: return "unavailable"
+        return "0x${value.toString(16)}"
     }
 
     internal interface ClassResolver {
