@@ -1,0 +1,129 @@
+package org.jetbrains.skiko.jbr
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
+import java.awt.image.BufferedImage
+
+class JbrSkiaInteropTest {
+    @Test
+    fun discoversCompatibleService() {
+        val discovery = JbrSkiaInterop.discover(resolver(
+            jbrSkiaClass = CompatibleJbrSkia::class.java,
+            jbrAccessorClass = CompatibleJbr::class.java,
+        ))
+
+        assertTrue(discovery.isAvailable)
+        assertSame(CompatibleJbr.service, discovery.service)
+        assertEquals(1, discovery.abiId)
+        assertEquals("test-build", discovery.buildId)
+    }
+
+    @Test
+    fun rejectsAbiMismatchWithStructuredMarker() {
+        val discovery = JbrSkiaInterop.discover(resolver(
+            jbrSkiaClass = IncompatibleJbrSkia::class.java,
+            jbrAccessorClass = CompatibleJbr::class.java,
+        ))
+
+        assertFalse(discovery.isAvailable)
+        assertEquals(JbrSkiaInterop.FallbackReason.ABI_MISMATCH, discovery.fallbackReason)
+        assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch", discovery.fallbackMarker)
+    }
+
+    @Test
+    fun missingPublicApiFallsBack() {
+        val discovery = JbrSkiaInterop.discover(resolver())
+
+        assertFalse(discovery.isAvailable)
+        assertEquals(JbrSkiaInterop.FallbackReason.PUBLIC_API_MISSING, discovery.fallbackReason)
+        assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=public-api-missing", discovery.fallbackMarker)
+    }
+
+    @Test
+    fun nullServiceFallsBack() {
+        val discovery = JbrSkiaInterop.discover(resolver(
+            jbrSkiaClass = CompatibleJbrSkia::class.java,
+            jbrAccessorClass = NullServiceJbr::class.java,
+        ))
+
+        assertFalse(discovery.isAvailable)
+        assertEquals(JbrSkiaInterop.FallbackReason.SERVICE_UNAVAILABLE, discovery.fallbackReason)
+        assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=service-unavailable", discovery.fallbackMarker)
+    }
+
+    @Test
+    fun acquireCanvasReturnsScopedCanvasFromService() {
+        val scopedCanvas = JbrSkiaInterop.acquireCanvas(testGraphics(), resolver(
+            jbrSkiaClass = CompatibleJbrSkia::class.java,
+            jbrAccessorClass = CompatibleJbr::class.java,
+        ))
+
+        assertNotNull(scopedCanvas)
+        scopedCanvas.close()
+        assertEquals(1, CompatibleJbr.service.scope.closeCount)
+    }
+
+    private fun testGraphics() = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics()
+
+    private fun resolver(
+        jbrSkiaClass: Class<*>? = null,
+        jbrAccessorClass: Class<*>? = null,
+    ) = object : JbrSkiaInterop.ClassResolver {
+        override fun loadClass(name: String): Class<*> = when (name) {
+            "com.jetbrains.desktop.JBRSkia" -> jbrSkiaClass
+            "com.jetbrains.JBR" -> jbrAccessorClass
+            else -> null
+        } ?: throw ClassNotFoundException(name)
+    }
+
+    class CompatibleJbrSkia {
+        companion object {
+            @JvmField
+            val ABI_ID: Int = "1".toInt()
+
+            @JvmField
+            val BUILD_ID: String = buildString { append("test-build") }
+        }
+    }
+
+    class IncompatibleJbrSkia {
+        companion object {
+            @JvmField
+            val ABI_ID: Int = "2".toInt()
+
+            @JvmField
+            val BUILD_ID: String = buildString { append("test-build") }
+        }
+    }
+
+    object CompatibleJbr {
+        val service = FakeJbrSkiaService()
+
+        @JvmStatic
+        fun getJBRSkia(): FakeJbrSkiaService = service
+    }
+
+    object NullServiceJbr {
+        @JvmStatic
+        fun getJBRSkia(): Any? = null
+    }
+
+    class FakeJbrSkiaService {
+        val scope = FakeScopedCanvas()
+
+        @Suppress("UNUSED_PARAMETER")
+        fun acquireCanvas(graphics: java.awt.Graphics2D): FakeScopedCanvas = scope
+    }
+
+    class FakeScopedCanvas : AutoCloseable {
+        var closeCount = 0
+
+        override fun close() {
+            closeCount++
+        }
+    }
+}
