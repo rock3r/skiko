@@ -57,9 +57,9 @@ internal object JbrSkiaDebugOverlay {
             val height = metrics.height + 6
             val x = 8
             val y = 8
-            g.color = Color(0, 96, 72, 210)
+            g.color = if (acquiredJbrScope) Color(255, 192, 0, 235) else Color(0, 96, 72, 210)
             g.fillRoundRect(x, y, width, height, 8, 8)
-            g.color = Color(216, 255, 239)
+            g.color = if (acquiredJbrScope) Color(32, 24, 0) else Color(216, 255, 239)
             g.drawString(text, x + 6, y + metrics.ascent + 3)
         } finally {
             g.color = previousColor
