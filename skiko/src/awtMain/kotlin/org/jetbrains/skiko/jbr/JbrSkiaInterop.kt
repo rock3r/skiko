@@ -9,7 +9,7 @@ object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
     private const val EXPECTED_ABI_ID = 1
-    private const val JBR_SKIA_CLASS = "com.jetbrains.desktop.JBRSkia"
+    private val JBR_SKIA_CLASSES = arrayOf("com.jetbrains.JBRSkia", "com.jetbrains.desktop.JBRSkia")
     private const val JBR_ACCESSOR_CLASS = "com.jetbrains.JBR"
     private const val JBR_ACCESSOR_METHOD = "getJBRSkia"
     private const val ACQUIRE_CANVAS_METHOD = "acquireCanvas"
@@ -64,7 +64,7 @@ object JbrSkiaInterop {
 
     internal fun discover(classResolver: ClassResolver): Discovery {
         return try {
-            val jbrSkiaClass = classResolver.loadClass(JBR_SKIA_CLASS)
+            val jbrSkiaClass = classResolver.loadFirstClass(JBR_SKIA_CLASSES)
             val abiId = jbrSkiaClass.getDeclaredField("ABI_ID").get(null) as Int
             val buildId = jbrSkiaClass.getDeclaredField("BUILD_ID").get(null) as String
             if (abiId != EXPECTED_ABI_ID) {
@@ -130,6 +130,20 @@ object JbrSkiaInterop {
 
     internal interface ClassResolver {
         fun loadClass(name: String): Class<*>
+    }
+
+    private fun ClassResolver.loadFirstClass(names: Array<String>): Class<*> {
+        var firstFailure: ClassNotFoundException? = null
+        for (name in names) {
+            try {
+                return loadClass(name)
+            } catch (e: ClassNotFoundException) {
+                if (firstFailure == null) {
+                    firstFailure = e
+                }
+            }
+        }
+        throw firstFailure ?: ClassNotFoundException(names.joinToString())
     }
 
     private object DefaultClassResolver : ClassResolver {
