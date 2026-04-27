@@ -111,22 +111,13 @@ object JbrSkiaInterop {
     }
 
     private fun logScopeAcquiredOnce(discovery: Discovery, scope: Any) {
-        val marker = "$SCOPE_ACQUIRED_MARKER abi=${discovery.abiId} build=${discovery.buildId} metalTexture=${scope.metalTexturePtrHex()}"
+            val marker = "$SCOPE_ACQUIRED_MARKER abi=${discovery.abiId} build=${discovery.buildId} metalTexture=${scope.metalTexturePtr().toHexString()}"
         if (loggedFallbackMarkers.add(marker)) {
             Logger.info { marker }
         }
     }
 
-    private fun Any.metalTexturePtrHex(): String {
-        val value = try {
-            javaClass.getMethod("getMetalTexturePtr").invoke(this) as? Long
-        } catch (_: ReflectiveOperationException) {
-            null
-        } catch (_: LinkageError) {
-            null
-        } ?: return "unavailable"
-        return "0x${value.toString(16)}"
-    }
+    private fun Long?.toHexString(): String = this?.let { "0x${it.toString(16)}" } ?: "unavailable"
 
     internal interface ClassResolver {
         fun loadClass(name: String): Class<*>
@@ -184,9 +175,20 @@ object JbrSkiaInterop {
         CANVAS_UNAVAILABLE("canvas-unavailable"),
     }
 
-    internal interface ScopedCanvas : AutoCloseable
+    internal interface ScopedCanvas : AutoCloseable {
+        val metalTexturePtr: Long
+
+        fun flush()
+    }
 
     private class ReflectiveScopedCanvas(private val scope: Any) : ScopedCanvas {
+        override val metalTexturePtr: Long
+            get() = scope.metalTexturePtr() ?: 0L
+
+        override fun flush() {
+            scope.invokeScopeMethod("flush")
+        }
+
         override fun close() {
             if (scope is AutoCloseable) {
                 scope.close()
@@ -195,4 +197,28 @@ object JbrSkiaInterop {
             }
         }
     }
+
+    private fun Any.metalTexturePtr(): Long? {
+        return try {
+            invokeScopeMethod("getMetalTexturePtr") as? Long
+        } catch (_: ReflectiveOperationException) {
+            null
+        } catch (_: LinkageError) {
+            null
+        }
+    }
+
+    private fun Any.invokeScopeMethod(name: String): Any? {
+        val method = scopePublicTypes()
+            .firstNotNullOfOrNull { type ->
+                runCatching { type.getMethod(name) }.getOrNull()
+            }
+            ?: javaClass.getMethod(name)
+        return method.invoke(this)
+    }
+
+    private fun Any.scopePublicTypes(): Sequence<Class<*>> =
+        generateSequence(javaClass) { it.superclass }
+            .flatMap { type -> sequenceOf(type) + type.interfaces.asSequence() }
+            .filter { type -> java.lang.reflect.Modifier.isPublic(type.modifiers) }
 }
