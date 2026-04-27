@@ -12,7 +12,7 @@ class JbrSkiaInteropTest {
     @Test
     fun discoversCompatibleService() {
         val discovery = JbrSkiaInterop.discover(resolver(
-            jbrSkiaClass = CompatibleJbrSkia::class.java,
+            publicJbrSkiaClass = CompatibleJbrSkia::class.java,
             jbrAccessorClass = CompatibleJbr::class.java,
         ))
 
@@ -25,7 +25,7 @@ class JbrSkiaInteropTest {
     @Test
     fun rejectsAbiMismatchWithStructuredMarker() {
         val discovery = JbrSkiaInterop.discover(resolver(
-            jbrSkiaClass = IncompatibleJbrSkia::class.java,
+            publicJbrSkiaClass = IncompatibleJbrSkia::class.java,
             jbrAccessorClass = CompatibleJbr::class.java,
         ))
 
@@ -46,7 +46,7 @@ class JbrSkiaInteropTest {
     @Test
     fun nullServiceFallsBack() {
         val discovery = JbrSkiaInterop.discover(resolver(
-            jbrSkiaClass = CompatibleJbrSkia::class.java,
+            publicJbrSkiaClass = CompatibleJbrSkia::class.java,
             jbrAccessorClass = NullServiceJbr::class.java,
         ))
 
@@ -58,7 +58,7 @@ class JbrSkiaInteropTest {
     @Test
     fun acquireCanvasReturnsScopedCanvasFromService() {
         val scopedCanvas = JbrSkiaInterop.acquireCanvas(testGraphics(), resolver(
-            jbrSkiaClass = CompatibleJbrSkia::class.java,
+            publicJbrSkiaClass = CompatibleJbrSkia::class.java,
             jbrAccessorClass = CompatibleJbr::class.java,
         ))
 
@@ -67,14 +67,28 @@ class JbrSkiaInteropTest {
         assertEquals(1, CompatibleJbr.service.scope.closeCount)
     }
 
+    @Test
+    fun discoversLegacyDesktopMirrorClass() {
+        val discovery = JbrSkiaInterop.discover(resolver(
+            desktopJbrSkiaClass = CompatibleJbrSkia::class.java,
+            jbrAccessorClass = CompatibleJbr::class.java,
+        ))
+
+        assertTrue(discovery.isAvailable)
+        assertEquals(1, discovery.abiId)
+        assertEquals("test-build", discovery.buildId)
+    }
+
     private fun testGraphics() = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics()
 
     private fun resolver(
-        jbrSkiaClass: Class<*>? = null,
+        publicJbrSkiaClass: Class<*>? = null,
+        desktopJbrSkiaClass: Class<*>? = null,
         jbrAccessorClass: Class<*>? = null,
     ) = object : JbrSkiaInterop.ClassResolver {
         override fun loadClass(name: String): Class<*> = when (name) {
-            "com.jetbrains.desktop.JBRSkia" -> jbrSkiaClass
+            "com.jetbrains.JBRSkia" -> publicJbrSkiaClass
+            "com.jetbrains.desktop.JBRSkia" -> desktopJbrSkiaClass
             "com.jetbrains.JBR" -> jbrAccessorClass
             else -> null
         } ?: throw ClassNotFoundException(name)
