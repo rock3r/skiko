@@ -5,7 +5,9 @@ import org.jetbrains.skiko.SkiaLayerAnalytics
 import org.jetbrains.skiko.SkiaLayerProperties
 import org.jetbrains.skiko.SkikoRenderDelegate
 import org.jetbrains.skiko.swing.SkiaSwingLayer
+import java.awt.Color
 import java.awt.Component
+import java.awt.Font
 import java.awt.Graphics
 import java.awt.Graphics2D
 import javax.accessibility.AccessibleContext
@@ -31,5 +33,35 @@ class JbrSkiaSwingLayer(
             // Native direct-canvas rendering is wired in the next slice.
         }
         super.paint(g)
+        if (g is Graphics2D) {
+            JbrSkiaDebugOverlay.paint(g)
+        }
+    }
+}
+
+internal object JbrSkiaDebugOverlay {
+    private const val DEBUG_OVERLAY_PROPERTY = "skiko.jbr.interop.debugOverlay"
+
+    fun paint(g: Graphics2D) {
+        if (!java.lang.Boolean.getBoolean(DEBUG_OVERLAY_PROPERTY)) return
+
+        val previousColor = g.color
+        val previousFont = g.font
+        try {
+            val text = "JBR Skia path"
+            g.font = Font(Font.SANS_SERIF, Font.BOLD, 11)
+            val metrics = g.fontMetrics
+            val width = metrics.stringWidth(text) + 12
+            val height = metrics.height + 6
+            val x = 8
+            val y = 8
+            g.color = Color(0, 96, 72, 210)
+            g.fillRoundRect(x, y, width, height, 8, 8)
+            g.color = Color(216, 255, 239)
+            g.drawString(text, x + 6, y + metrics.ascent + 3)
+        } finally {
+            g.color = previousColor
+            g.font = previousFont
+        }
     }
 }
