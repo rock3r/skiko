@@ -41,7 +41,9 @@ class JbrSkiaSwingLayer(
 
     override fun paint(g: Graphics) {
         var renderedWithJbrTexture = false
-        if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_TO_TEXTURE_PROPERTY)) {
+        if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_DIAGNOSTIC_PROPERTY)) {
+            renderedWithJbrTexture = renderJbrDiagnosticFrame(g)
+        } else if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_TO_TEXTURE_PROPERTY)) {
             renderedWithJbrTexture = renderIntoJbrTexture(g)
         } else if (g is Graphics2D) {
             JbrSkiaInterop.acquireCanvas(g)?.close()
@@ -99,7 +101,23 @@ class JbrSkiaSwingLayer(
         }
     }
 
+    private fun renderJbrDiagnosticFrame(g: Graphics2D): Boolean {
+        val scope = JbrSkiaInterop.acquireCanvas(g) ?: return false
+        return try {
+            scope.renderDiagnosticFrame(width, height, System.nanoTime()).also { rendered ->
+                if (rendered) {
+                    scope.flush()
+                }
+            }
+        } catch (_: Throwable) {
+            false
+        } finally {
+            scope.close()
+        }
+    }
+
     private companion object {
+        const val RENDER_DIAGNOSTIC_PROPERTY = "skiko.jbr.interop.renderDiagnostic"
         const val RENDER_TO_TEXTURE_PROPERTY = "skiko.jbr.interop.renderToTexture"
     }
 }

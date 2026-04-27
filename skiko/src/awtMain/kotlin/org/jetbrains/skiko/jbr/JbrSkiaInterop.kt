@@ -178,12 +178,17 @@ object JbrSkiaInterop {
     internal interface ScopedCanvas : AutoCloseable {
         val metalTexturePtr: Long
 
+        fun renderDiagnosticFrame(width: Int, height: Int, frameTimeNanos: Long): Boolean
+
         fun flush()
     }
 
     private class ReflectiveScopedCanvas(private val scope: Any) : ScopedCanvas {
         override val metalTexturePtr: Long
             get() = scope.metalTexturePtr() ?: 0L
+
+        override fun renderDiagnosticFrame(width: Int, height: Int, frameTimeNanos: Long): Boolean =
+            scope.invokeScopeMethod("renderDiagnosticFrame", width, height, frameTimeNanos) as? Boolean ?: false
 
         override fun flush() {
             scope.invokeScopeMethod("flush")
@@ -208,13 +213,20 @@ object JbrSkiaInterop {
         }
     }
 
-    private fun Any.invokeScopeMethod(name: String): Any? {
+    private fun Any.invokeScopeMethod(name: String, vararg args: Any): Any? {
+        val parameterTypes = args.map { arg ->
+            when (arg) {
+                is Int -> Integer.TYPE
+                is Long -> java.lang.Long.TYPE
+                else -> arg.javaClass
+            }
+        }.toTypedArray()
         val method = scopePublicTypes()
             .firstNotNullOfOrNull { type ->
-                runCatching { type.getMethod(name) }.getOrNull()
+                runCatching { type.getMethod(name, *parameterTypes) }.getOrNull()
             }
-            ?: javaClass.getMethod(name)
-        return method.invoke(this)
+            ?: javaClass.getMethod(name, *parameterTypes)
+        return method.invoke(this, *args)
     }
 
     private fun Any.scopePublicTypes(): Sequence<Class<*>> =
