@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
+    const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
     private const val EXPECTED_ABI_ID = 1
     private const val JBR_SKIA_CLASS = "com.jetbrains.desktop.JBRSkia"
     private const val JBR_ACCESSOR_CLASS = "com.jetbrains.JBR"
@@ -48,6 +49,7 @@ object JbrSkiaInterop {
                 .getMethod(ACQUIRE_CANVAS_METHOD, Graphics2D::class.java)
                 .invoke(service, graphics)
                 ?: return fallback(FallbackReason.CANVAS_UNAVAILABLE)
+            logScopeAcquiredOnce(discovery)
             ReflectiveScopedCanvas(scope)
         } catch (e: NoSuchMethodException) {
             fallback(FallbackReason.PUBLIC_API_MISSING, e)
@@ -105,6 +107,13 @@ object JbrSkiaInterop {
     private fun logFallbackOnce(marker: String) {
         if (loggedFallbackMarkers.add(marker)) {
             Logger.warn { marker }
+        }
+    }
+
+    private fun logScopeAcquiredOnce(discovery: Discovery) {
+        val marker = "$SCOPE_ACQUIRED_MARKER abi=${discovery.abiId} build=${discovery.buildId}"
+        if (loggedFallbackMarkers.add(marker)) {
+            Logger.info { marker }
         }
     }
 
