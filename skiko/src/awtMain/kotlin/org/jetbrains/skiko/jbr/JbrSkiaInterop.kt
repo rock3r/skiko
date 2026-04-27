@@ -154,7 +154,11 @@ object JbrSkiaInterop {
 
     private class ReflectiveScopedCanvas(private val scope: Any) : ScopedCanvas {
         override fun close() {
-            scope.javaClass.getMethod("close").invoke(scope)
+            if (scope is AutoCloseable) {
+                scope.close()
+            } else {
+                scope.javaClass.getMethod("close").invoke(scope)
+            }
         }
     }
 }
