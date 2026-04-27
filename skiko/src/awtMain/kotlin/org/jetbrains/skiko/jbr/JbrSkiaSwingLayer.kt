@@ -27,14 +27,16 @@ class JbrSkiaSwingLayer(
     properties: SkiaLayerProperties = SkiaLayerProperties(),
 ) : SkiaSwingLayer(renderDelegate, analytics, accessibleContextProvider, properties) {
     override fun paint(g: Graphics) {
+        var acquiredJbrScope = false
         val scopedCanvas = (g as? Graphics2D)?.let(JbrSkiaInterop::acquireCanvasOrNull)
         if (scopedCanvas != null) {
+            acquiredJbrScope = true
             scopedCanvas.close()
             // Native direct-canvas rendering is wired in the next slice.
         }
         super.paint(g)
         if (g is Graphics2D) {
-            JbrSkiaDebugOverlay.paint(g)
+            JbrSkiaDebugOverlay.paint(g, acquiredJbrScope)
         }
     }
 }
@@ -42,13 +44,13 @@ class JbrSkiaSwingLayer(
 internal object JbrSkiaDebugOverlay {
     private const val DEBUG_OVERLAY_PROPERTY = "skiko.jbr.interop.debugOverlay"
 
-    fun paint(g: Graphics2D) {
+    fun paint(g: Graphics2D, acquiredJbrScope: Boolean = false) {
         if (!java.lang.Boolean.getBoolean(DEBUG_OVERLAY_PROPERTY)) return
 
         val previousColor = g.color
         val previousFont = g.font
         try {
-            val text = "JBR Skia path"
+            val text = if (acquiredJbrScope) "JBR Skia scope" else "JBR Skia path"
             g.font = Font(Font.SANS_SERIF, Font.BOLD, 11)
             val metrics = g.fontMetrics
             val width = metrics.stringWidth(text) + 12
