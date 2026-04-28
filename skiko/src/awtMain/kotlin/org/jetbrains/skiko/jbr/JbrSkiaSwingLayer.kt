@@ -239,12 +239,13 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
         private const val COMMAND_STREAM_MAGIC = 1246972723
-        private const val COMMAND_STREAM_ABI_ID = 7
+        private const val COMMAND_STREAM_ABI_ID = 8
         private const val COMMAND_STREAM_HEADER_SIZE = 6
         private const val COMMAND_STREAM_FLAGS_NONE = 0
         private const val COMMAND_COORDINATE_SPACE_SWING_USER = 1
         private const val COMMAND_PAINT_FORMAT_SOLID_ARGB = 1
         private const val COMMAND_RECORD_FLAGS_NONE = 0
+        private const val COMMAND_RECORD_FLAG_ANTIALIAS = 1
         private val loggedRenderMode = java.util.concurrent.atomic.AtomicBoolean(false)
 
         private fun logRenderModeOnce(renderDelegate: SkikoRenderDelegate) {
@@ -263,19 +264,19 @@ class JbrSkiaSwingLayer(
             val stripeHeight = height / 5
             val commands = CommandStreamWriter(512)
 
-            commands.addCommand(COMMAND_FILL_RECT, 0xff2da44e.toInt(), 0, 0, width, stripeHeight * 2, 0)
-            commands.addCommand(COMMAND_FILL_RECT, 0xff0969da.toInt(), 0, stripeHeight * 2, width, height - stripeHeight * 2, 0)
-            commands.addCommand(COMMAND_FILL_RECT, 0xff824edf.toInt(), 96, 112, 440, 240, 0)
-            commands.addCommand(COMMAND_FILL_OVAL, 0xffffd33d.toInt(), width - 308, 108, 168, 168)
+            commands.addCommand(COMMAND_FILL_RECT, COMMAND_RECORD_FLAGS_NONE, 0xff2da44e.toInt(), 0, 0, width, stripeHeight * 2, 0)
+            commands.addCommand(COMMAND_FILL_RECT, COMMAND_RECORD_FLAGS_NONE, 0xff0969da.toInt(), 0, stripeHeight * 2, width, height - stripeHeight * 2, 0)
+            commands.addCommand(COMMAND_FILL_RECT, COMMAND_RECORD_FLAG_ANTIALIAS, 0xff824edf.toInt(), 96, 112, 440, 240, 0)
+            commands.addCommand(COMMAND_FILL_OVAL, COMMAND_RECORD_FLAG_ANTIALIAS, 0xffffd33d.toInt(), width - 308, 108, 168, 168)
 
             val progressWidth = (width * 0.24f).toInt().coerceAtLeast(120)
             val progressX = ((phase * width).toInt() % width) - progressWidth
-            commands.addCommand(COMMAND_FILL_RECT, 0xffffa657.toInt(), progressX, 24, progressWidth, 36, 0)
+            commands.addCommand(COMMAND_FILL_RECT, COMMAND_RECORD_FLAG_ANTIALIAS, 0xffffa657.toInt(), progressX, 24, progressWidth, 36, 0)
 
             val lineStep = 86
             val linePhase = (phase * 172f).toInt()
             for (lineX in -120 + linePhase until width + 160 step lineStep) {
-                commands.addCommand(COMMAND_STROKE_LINE, 0x52ffffff, lineX, 76, lineX + 144, height - 36, 6)
+                commands.addCommand(COMMAND_STROKE_LINE, COMMAND_RECORD_FLAG_ANTIALIAS, 0x52ffffff, lineX, 76, lineX + 144, height - 36, 6)
             }
 
             val centerX = (width * 0.52f).toInt()
@@ -287,20 +288,20 @@ class JbrSkiaSwingLayer(
                 val angle = spokePhase + index * (PI * 2.0 / 18.0)
                 val outerX = centerX + (cos(angle) * radiusX).toInt()
                 val outerY = centerY + (sin(angle) * radiusY).toInt()
-                commands.addCommand(COMMAND_STROKE_LINE, 0xffffa657.toInt(), centerX, centerY, outerX, outerY, 12)
-                commands.addCommand(COMMAND_FILL_OVAL, 0xffffffff.toInt(), outerX - 20, outerY - 20, 40, 40)
+                commands.addCommand(COMMAND_STROKE_LINE, COMMAND_RECORD_FLAG_ANTIALIAS, 0xffffa657.toInt(), centerX, centerY, outerX, outerY, 12)
+                commands.addCommand(COMMAND_FILL_OVAL, COMMAND_RECORD_FLAG_ANTIALIAS, 0xffffffff.toInt(), outerX - 20, outerY - 20, 40, 40)
             }
-            commands.addCommand(COMMAND_STROKE_OVAL, 0x8cffffff.toInt(), centerX - 380, centerY - 380, 760, 760, 10)
+            commands.addCommand(COMMAND_STROKE_OVAL, COMMAND_RECORD_FLAG_ANTIALIAS, 0x8cffffff.toInt(), centerX - 380, centerY - 380, 760, 760, 10)
             return commands.toIntArray()
         }
 
         private class CommandStreamWriter(initialCapacity: Int) {
             private val payload = ArrayList<Int>(initialCapacity)
 
-            fun addCommand(op: Int, vararg args: Int) {
+            fun addCommand(op: Int, recordFlags: Int = COMMAND_RECORD_FLAGS_NONE, vararg args: Int) {
                 payload.add(op)
                 payload.add((args.size + 3) * Int.SIZE_BYTES)
-                payload.add(COMMAND_RECORD_FLAGS_NONE)
+                payload.add(recordFlags)
                 args.forEach(payload::add)
             }
 
