@@ -176,7 +176,8 @@ class JbrSkiaSwingLayer(
         }
         return try {
             val commandStream = commands.corruptForTestingIfRequested()
-            scope.renderCommandFrame(renderWidth, renderHeight, frameTime, commandStream).also { rendered ->
+            val commandBuffer = commandStream.toLittleEndianByteArray()
+            scope.renderCommandBufferFrame(renderWidth, renderHeight, frameTime, commandBuffer).also { rendered ->
                 Logger.info {
                     commandFrameMarker(renderWidth, renderHeight, commandStream.size, rendered)
                 }
@@ -321,6 +322,17 @@ class JbrSkiaSwingLayer(
                 }
             }
         }
+
+        private fun IntArray.toLittleEndianByteArray(): ByteArray =
+            ByteArray(size * Int.SIZE_BYTES).also { encoded ->
+                forEachIndexed { index, value ->
+                    val offset = index * Int.SIZE_BYTES
+                    encoded[offset] = value.toByte()
+                    encoded[offset + 1] = (value ushr 8).toByte()
+                    encoded[offset + 2] = (value ushr 16).toByte()
+                    encoded[offset + 3] = (value ushr 24).toByte()
+                }
+            }
     }
 
     private fun recordPictureFrame(width: Int, height: Int, frameTimeNanos: Long): ByteArray {
