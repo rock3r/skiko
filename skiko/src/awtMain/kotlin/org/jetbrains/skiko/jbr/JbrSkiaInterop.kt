@@ -3,6 +3,7 @@ package org.jetbrains.skiko.jbr
 import org.jetbrains.skiko.Logger
 import java.awt.Graphics2D
 import java.lang.reflect.InvocationTargetException
+import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 
 object JbrSkiaInterop {
@@ -234,6 +235,8 @@ object JbrSkiaInterop {
 
         fun renderCommandBufferFrame(width: Int, height: Int, frameTimeNanos: Long, commands: ByteArray): Boolean
 
+        fun renderCommandDirectFrame(width: Int, height: Int, frameTimeNanos: Long, commands: ByteBuffer): Boolean
+
         fun renderPictureFrame(width: Int, height: Int, frameTimeNanos: Long, pictureData: ByteArray): Boolean
 
         fun flush()
@@ -251,6 +254,9 @@ object JbrSkiaInterop {
 
         override fun renderCommandBufferFrame(width: Int, height: Int, frameTimeNanos: Long, commands: ByteArray): Boolean =
             scope.invokeScopeMethod("renderCommandBufferFrame", width, height, frameTimeNanos, commands) as? Boolean ?: false
+
+        override fun renderCommandDirectFrame(width: Int, height: Int, frameTimeNanos: Long, commands: ByteBuffer): Boolean =
+            scope.invokeScopeMethod("renderCommandDirectFrame", width, height, frameTimeNanos, commands) as? Boolean ?: false
 
         override fun renderPictureFrame(width: Int, height: Int, frameTimeNanos: Long, pictureData: ByteArray): Boolean =
             scope.invokeScopeMethod("renderPictureFrame", width, height, frameTimeNanos, pictureData) as? Boolean ?: false
@@ -283,6 +289,7 @@ object JbrSkiaInterop {
             when (arg) {
                 is Int -> Integer.TYPE
                 is Long -> java.lang.Long.TYPE
+                is ByteBuffer -> ByteBuffer::class.java
                 else -> arg.javaClass
             }
         }.toTypedArray()

@@ -24,6 +24,8 @@ import java.awt.Font
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.Color as AwtColor
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import javax.accessibility.AccessibleContext
 import kotlin.math.PI
 import kotlin.math.cos
@@ -176,8 +178,8 @@ class JbrSkiaSwingLayer(
         }
         return try {
             val commandStream = commands.corruptForTestingIfRequested()
-            val commandBuffer = commandStream.toLittleEndianByteArray()
-            scope.renderCommandBufferFrame(renderWidth, renderHeight, frameTime, commandBuffer).also { rendered ->
+            val commandBuffer = commandStream.toDirectLittleEndianByteBuffer()
+            scope.renderCommandDirectFrame(renderWidth, renderHeight, frameTime, commandBuffer).also { rendered ->
                 Logger.info {
                     commandFrameMarker(renderWidth, renderHeight, commandStream.size, rendered)
                 }
@@ -323,15 +325,10 @@ class JbrSkiaSwingLayer(
             }
         }
 
-        private fun IntArray.toLittleEndianByteArray(): ByteArray =
-            ByteArray(size * Int.SIZE_BYTES).also { encoded ->
-                forEachIndexed { index, value ->
-                    val offset = index * Int.SIZE_BYTES
-                    encoded[offset] = value.toByte()
-                    encoded[offset + 1] = (value ushr 8).toByte()
-                    encoded[offset + 2] = (value ushr 16).toByte()
-                    encoded[offset + 3] = (value ushr 24).toByte()
-                }
+        private fun IntArray.toDirectLittleEndianByteBuffer(): ByteBuffer =
+            ByteBuffer.allocateDirect(size * Int.SIZE_BYTES).order(ByteOrder.LITTLE_ENDIAN).also { encoded ->
+                forEach(encoded::putInt)
+                encoded.flip()
             }
     }
 
