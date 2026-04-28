@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
 object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
-    private const val EXPECTED_ABI_ID = 8
+    private const val EXPECTED_ABI_ID = 9
     private const val COMMAND_CAP_CLEAR = 1
     private const val COMMAND_CAP_FILL_RECT = 2
     private const val COMMAND_CAP_STROKE_LINE = 4
@@ -20,6 +20,7 @@ object JbrSkiaInterop {
     private const val COMMAND_CAP_CLIP_RECT = 128
     private const val COMMAND_CAP_USER_SPACE_COORDINATES = 256
     private const val COMMAND_CAP_RECORD_ANTIALIAS = 512
+    private const val COMMAND_CAP_STROKE_METADATA = 1024
     private const val REQUIRED_COMMAND_CAPABILITIES =
         COMMAND_CAP_CLEAR or
             COMMAND_CAP_FILL_RECT or
@@ -30,7 +31,8 @@ object JbrSkiaInterop {
             COMMAND_CAP_SAVE_RESTORE or
             COMMAND_CAP_CLIP_RECT or
             COMMAND_CAP_USER_SPACE_COORDINATES or
-            COMMAND_CAP_RECORD_ANTIALIAS
+            COMMAND_CAP_RECORD_ANTIALIAS or
+            COMMAND_CAP_STROKE_METADATA
     private val JBR_SKIA_CLASSES = arrayOf("com.jetbrains.JBRSkia", "com.jetbrains.desktop.JBRSkia")
     private const val JBR_INTERNAL_SERVICE_CLASS = "com.jetbrains.desktop.JBRSkiaService"
     private const val JBR_ACCESSOR_CLASS = "com.jetbrains.JBR"
