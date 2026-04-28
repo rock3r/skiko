@@ -232,6 +232,8 @@ object JbrSkiaInterop {
 
         fun renderCommandFrame(width: Int, height: Int, frameTimeNanos: Long, commands: IntArray): Boolean
 
+        fun renderCommandBufferFrame(width: Int, height: Int, frameTimeNanos: Long, commands: ByteArray): Boolean
+
         fun renderPictureFrame(width: Int, height: Int, frameTimeNanos: Long, pictureData: ByteArray): Boolean
 
         fun flush()
@@ -246,6 +248,9 @@ object JbrSkiaInterop {
 
         override fun renderCommandFrame(width: Int, height: Int, frameTimeNanos: Long, commands: IntArray): Boolean =
             scope.invokeScopeMethod("renderCommandFrame", width, height, frameTimeNanos, commands) as? Boolean ?: false
+
+        override fun renderCommandBufferFrame(width: Int, height: Int, frameTimeNanos: Long, commands: ByteArray): Boolean =
+            scope.invokeScopeMethod("renderCommandBufferFrame", width, height, frameTimeNanos, commands) as? Boolean ?: false
 
         override fun renderPictureFrame(width: Int, height: Int, frameTimeNanos: Long, pictureData: ByteArray): Boolean =
             scope.invokeScopeMethod("renderPictureFrame", width, height, frameTimeNanos, pictureData) as? Boolean ?: false

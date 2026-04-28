@@ -92,9 +92,11 @@ class JbrSkiaInteropTest {
         assertNotNull(scopedCanvas)
         assertTrue(scopedCanvas.renderDiagnosticFrame(16, 16, 42L))
         assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1246972723, 7, 0, 4, 1, 1, 1, 16, 0, 0xff000000.toInt())))
+        assertTrue(scopedCanvas.renderCommandBufferFrame(16, 16, 42L, byteArrayOf(1, 0, 0, 0)))
         assertTrue(scopedCanvas.renderPictureFrame(16, 16, 42L, byteArrayOf(1, 2, 3)))
         assertEquals(1, CompatibleJbr.service.scope.renderDiagnosticFrameCount)
         assertEquals(1, CompatibleJbr.service.scope.renderCommandFrameCount)
+        assertEquals(1, CompatibleJbr.service.scope.renderCommandBufferFrameCount)
         assertEquals(1, CompatibleJbr.service.scope.renderPictureFrameCount)
         scopedCanvas.close()
         assertEquals(1, CompatibleJbr.service.scope.closeCount)
@@ -223,6 +225,7 @@ class JbrSkiaInteropTest {
         var closeCount = 0
         var renderDiagnosticFrameCount = 0
         var renderCommandFrameCount = 0
+        var renderCommandBufferFrameCount = 0
         var renderPictureFrameCount = 0
 
         @Suppress("UNUSED_PARAMETER")
@@ -234,6 +237,12 @@ class JbrSkiaInteropTest {
         @Suppress("UNUSED_PARAMETER")
         fun renderCommandFrame(width: Int, height: Int, frameTimeNanos: Long, commands: IntArray): Boolean {
             renderCommandFrameCount++
+            return commands.isNotEmpty()
+        }
+
+        @Suppress("UNUSED_PARAMETER")
+        fun renderCommandBufferFrame(width: Int, height: Int, frameTimeNanos: Long, commands: ByteArray): Boolean {
+            renderCommandBufferFrameCount++
             return commands.isNotEmpty()
         }
 
