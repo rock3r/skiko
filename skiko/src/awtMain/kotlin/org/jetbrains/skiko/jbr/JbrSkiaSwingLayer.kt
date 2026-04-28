@@ -139,8 +139,18 @@ class JbrSkiaSwingLayer(
         val scope = JbrSkiaInterop.acquireCanvas(g) ?: return false
         return try {
             val frameTime = System.nanoTime()
-            val commands = buildCommandFrame(width.coerceAtLeast(1), height.coerceAtLeast(1), frameTime)
-            scope.renderCommandFrame(width, height, frameTime, commands).also { rendered ->
+            val frameSize = deviceFrameSize(
+                width = width,
+                height = height,
+                scale = graphicsConfiguration.defaultTransform.scaleX.toFloat()
+            )
+            val renderWidth = frameSize.width
+            val renderHeight = frameSize.height
+            val commands = buildCommandFrame(renderWidth, renderHeight, frameTime)
+            scope.renderCommandFrame(renderWidth, renderHeight, frameTime, commands).also { rendered ->
+                Logger.info {
+                    commandFrameMarker(renderWidth, renderHeight, commands.size, rendered)
+                }
                 if (rendered) {
                     scope.flush()
                 }
@@ -220,6 +230,9 @@ internal fun deviceFrameSize(width: Int, height: Int, scale: Float): DeviceFrame
 
 internal fun pictureFrameMarker(width: Int, height: Int, bytes: Int, rendered: Boolean): String =
     "SKIKO_JBR_INTEROP_PICTURE_FRAME width=$width height=$height bytes=$bytes rendered=$rendered"
+
+internal fun commandFrameMarker(width: Int, height: Int, commands: Int, rendered: Boolean): String =
+    "SKIKO_JBR_INTEROP_COMMAND_FRAME width=$width height=$height commands=$commands rendered=$rendered"
 
 internal object JbrSkiaDebugOverlay {
     private const val DEBUG_OVERLAY_PROPERTY = "skiko.jbr.interop.debugOverlay"
