@@ -44,6 +44,8 @@ class JbrSkiaSwingLayer(
     properties: SkiaLayerProperties = SkiaLayerProperties(),
 ) : SkiaSwingLayer(renderDelegate, analytics, accessibleContextProvider, properties) {
     private var context: DirectContext? = null
+    private var commandCanvasUnavailableLogged = false
+    private var pictureCanvasUnavailableLogged = false
 
     override fun paint(g: Graphics) {
         logRenderModeOnce(renderDelegate)
@@ -77,7 +79,10 @@ class JbrSkiaSwingLayer(
     }
 
     private fun renderIntoJbrTexture(g: Graphics2D): Boolean {
-        val scope = JbrSkiaInterop.acquireCanvas(g) ?: return false
+        val scope = JbrSkiaInterop.acquireCanvas(g) ?: run {
+            Logger.info { "SKIKO_JBR_INTEROP_TEXTURE_CANVAS_UNAVAILABLE" }
+            return false
+        }
         try {
             val texturePtr = scope.metalTexturePtr
             if (texturePtr == 0L) {
@@ -116,7 +121,10 @@ class JbrSkiaSwingLayer(
     }
 
     private fun renderJbrPictureFrame(g: Graphics2D): Boolean {
-        val scope = JbrSkiaInterop.acquireCanvas(g) ?: return false
+        val scope = JbrSkiaInterop.acquireCanvas(g) ?: run {
+            logPictureCanvasUnavailableOnce()
+            return false
+        }
         return try {
             val frameTime = System.nanoTime()
             val frameSize = deviceFrameSize(
@@ -162,7 +170,10 @@ class JbrSkiaSwingLayer(
         } else {
             buildCommandFrame(renderWidth, renderHeight, frameTime)
         }
-        val scope = JbrSkiaInterop.acquireCanvas(g) ?: return false
+        val scope = JbrSkiaInterop.acquireCanvas(g) ?: run {
+            logCommandCanvasUnavailableOnce()
+            return false
+        }
         return try {
             scope.renderCommandFrame(renderWidth, renderHeight, frameTime, commands).also { rendered ->
                 Logger.info {
@@ -177,6 +188,20 @@ class JbrSkiaSwingLayer(
             false
         } finally {
             scope.close()
+        }
+    }
+
+    private fun logCommandCanvasUnavailableOnce() {
+        if (!commandCanvasUnavailableLogged) {
+            commandCanvasUnavailableLogged = true
+            Logger.info { "SKIKO_JBR_INTEROP_COMMAND_CANVAS_UNAVAILABLE" }
+        }
+    }
+
+    private fun logPictureCanvasUnavailableOnce() {
+        if (!pictureCanvasUnavailableLogged) {
+            pictureCanvasUnavailableLogged = true
+            Logger.info { "SKIKO_JBR_INTEROP_PICTURE_CANVAS_UNAVAILABLE" }
         }
     }
 

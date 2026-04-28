@@ -18,7 +18,7 @@ class JbrSkiaInteropTest {
 
         assertTrue(discovery.isAvailable)
         assertSame(CompatibleJbr.service, discovery.service)
-        assertEquals(1, discovery.abiId)
+        assertEquals(2, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -56,6 +56,19 @@ class JbrSkiaInteropTest {
     }
 
     @Test
+    fun nullPublicServiceCanUsePatchedInternalProvider() {
+        val discovery = JbrSkiaInterop.discover(resolver(
+            publicJbrSkiaClass = CompatibleJbrSkia::class.java,
+            jbrAccessorClass = NullServiceJbr::class.java,
+            internalServiceClass = FakeJbrSkiaService::class.java,
+        ))
+
+        assertTrue(discovery.isAvailable)
+        assertEquals(2, discovery.abiId)
+        assertEquals("test-build", discovery.buildId)
+    }
+
+    @Test
     fun acquireCanvasReturnsScopedCanvasFromService() {
         val scopedCanvas = JbrSkiaInterop.acquireCanvas(testGraphics(), resolver(
             publicJbrSkiaClass = CompatibleJbrSkia::class.java,
@@ -81,7 +94,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(1, discovery.abiId)
+        assertEquals(2, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -131,10 +144,12 @@ class JbrSkiaInteropTest {
         publicJbrSkiaClass: Class<*>? = null,
         desktopJbrSkiaClass: Class<*>? = null,
         jbrAccessorClass: Class<*>? = null,
+        internalServiceClass: Class<*>? = null,
     ) = object : JbrSkiaInterop.ClassResolver {
         override fun loadClass(name: String): Class<*> = when (name) {
             "com.jetbrains.JBRSkia" -> publicJbrSkiaClass
             "com.jetbrains.desktop.JBRSkia" -> desktopJbrSkiaClass
+            "com.jetbrains.desktop.JBRSkiaService" -> internalServiceClass
             "com.jetbrains.JBR" -> jbrAccessorClass
             else -> null
         } ?: throw ClassNotFoundException(name)
@@ -143,7 +158,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "1".toInt()
+            val ABI_ID: Int = "2".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -153,7 +168,7 @@ class JbrSkiaInteropTest {
     class IncompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "2".toInt()
+            val ABI_ID: Int = "3".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
