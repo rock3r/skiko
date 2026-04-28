@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap
 object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
-    private const val EXPECTED_ABI_ID = 2
+    private const val EXPECTED_ABI_ID = 3
     private val JBR_SKIA_CLASSES = arrayOf("com.jetbrains.JBRSkia", "com.jetbrains.desktop.JBRSkia")
     private const val JBR_INTERNAL_SERVICE_CLASS = "com.jetbrains.desktop.JBRSkiaService"
     private const val JBR_ACCESSOR_CLASS = "com.jetbrains.JBR"
