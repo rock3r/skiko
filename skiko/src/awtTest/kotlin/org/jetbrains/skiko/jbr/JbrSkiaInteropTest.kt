@@ -117,6 +117,14 @@ class JbrSkiaInteropTest {
         )
     }
 
+    @Test
+    fun commandFrameMarkerIsParseable() {
+        assertEquals(
+            "SKIKO_JBR_INTEROP_COMMAND_FRAME width=200 height=100 commands=32 rendered=true",
+            commandFrameMarker(width = 200, height = 100, commands = 32, rendered = true)
+        )
+    }
+
     private fun testGraphics() = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics()
 
     private fun resolver(
