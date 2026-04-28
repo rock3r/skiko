@@ -236,9 +236,10 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
         private const val COMMAND_STREAM_MAGIC = 1246972723
-        private const val COMMAND_STREAM_ABI_ID = 5
+        private const val COMMAND_STREAM_ABI_ID = 6
         private const val COMMAND_STREAM_HEADER_SIZE = 4
         private const val COMMAND_STREAM_FLAGS_NONE = 0
+        private const val COMMAND_RECORD_FLAGS_NONE = 0
         private val loggedRenderMode = java.util.concurrent.atomic.AtomicBoolean(false)
 
         private fun logRenderModeOnce(renderDelegate: SkikoRenderDelegate) {
@@ -296,7 +297,8 @@ class JbrSkiaSwingLayer(
 
         private fun MutableList<Int>.addCommand(op: Int, vararg args: Int) {
             add(op)
-            add(args.size + 2)
+            add((args.size + 3) * Int.SIZE_BYTES)
+            add(COMMAND_RECORD_FLAGS_NONE)
             args.forEach(::add)
         }
 
