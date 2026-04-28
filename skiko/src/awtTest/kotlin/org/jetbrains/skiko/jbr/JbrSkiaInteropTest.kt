@@ -18,7 +18,7 @@ class JbrSkiaInteropTest {
 
         assertTrue(discovery.isAvailable)
         assertSame(CompatibleJbr.service, discovery.service)
-        assertEquals(4, discovery.abiId)
+        assertEquals(5, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
     }
@@ -65,7 +65,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(4, discovery.abiId)
+        assertEquals(5, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -91,7 +91,7 @@ class JbrSkiaInteropTest {
 
         assertNotNull(scopedCanvas)
         assertTrue(scopedCanvas.renderDiagnosticFrame(16, 16, 42L))
-        assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1246972723, 4, 0, 2, 1, 0xff000000.toInt())))
+        assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1246972723, 5, 0, 3, 1, 3, 0xff000000.toInt())))
         assertTrue(scopedCanvas.renderPictureFrame(16, 16, 42L, byteArrayOf(1, 2, 3)))
         assertEquals(1, CompatibleJbr.service.scope.renderDiagnosticFrameCount)
         assertEquals(1, CompatibleJbr.service.scope.renderCommandFrameCount)
@@ -108,7 +108,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(4, discovery.abiId)
+        assertEquals(5, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -172,7 +172,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "4".toInt()
+            val ABI_ID: Int = "5".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -182,7 +182,7 @@ class JbrSkiaInteropTest {
     class IncompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "5".toInt()
+            val ABI_ID: Int = "6".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
