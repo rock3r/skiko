@@ -236,9 +236,11 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
         private const val COMMAND_STREAM_MAGIC = 1246972723
-        private const val COMMAND_STREAM_ABI_ID = 6
-        private const val COMMAND_STREAM_HEADER_SIZE = 4
+        private const val COMMAND_STREAM_ABI_ID = 7
+        private const val COMMAND_STREAM_HEADER_SIZE = 6
         private const val COMMAND_STREAM_FLAGS_NONE = 0
+        private const val COMMAND_COORDINATE_SPACE_SWING_USER = 1
+        private const val COMMAND_PAINT_FORMAT_SOLID_ARGB = 1
         private const val COMMAND_RECORD_FLAGS_NONE = 0
         private val loggedRenderMode = java.util.concurrent.atomic.AtomicBoolean(false)
 
@@ -291,6 +293,8 @@ class JbrSkiaSwingLayer(
                 stream[1] = COMMAND_STREAM_ABI_ID
                 stream[2] = COMMAND_STREAM_FLAGS_NONE
                 stream[3] = commands.size
+                stream[4] = COMMAND_COORDINATE_SPACE_SWING_USER
+                stream[5] = COMMAND_PAINT_FORMAT_SOLID_ARGB
                 commands.forEachIndexed { index, command -> stream[COMMAND_STREAM_HEADER_SIZE + index] = command }
             }
         }

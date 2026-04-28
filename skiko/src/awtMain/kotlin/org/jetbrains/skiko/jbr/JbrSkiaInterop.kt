@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap
 object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
-    private const val EXPECTED_ABI_ID = 6
+    private const val EXPECTED_ABI_ID = 7
     private const val COMMAND_CAP_CLEAR = 1
     private const val COMMAND_CAP_FILL_RECT = 2
     private const val COMMAND_CAP_STROKE_LINE = 4
