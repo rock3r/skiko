@@ -258,7 +258,7 @@ class JbrSkiaSwingLayer(
         private fun buildCommandFrame(width: Int, height: Int, frameTimeNanos: Long): IntArray {
             val phase = ((frameTimeNanos / 16_000_000L) % 900L).toInt() / 900f
             val stripeHeight = height / 5
-            val commands = ArrayList<Int>(512)
+            val commands = CommandStreamWriter(512)
 
             commands.addCommand(COMMAND_FILL_RECT, 0xff2da44e.toInt(), 0, 0, width, stripeHeight * 2, 0)
             commands.addCommand(COMMAND_FILL_RECT, 0xff0969da.toInt(), 0, stripeHeight * 2, width, height - stripeHeight * 2, 0)
@@ -288,22 +288,29 @@ class JbrSkiaSwingLayer(
                 commands.addCommand(COMMAND_FILL_OVAL, 0xffffffff.toInt(), outerX - 20, outerY - 20, 40, 40)
             }
             commands.addCommand(COMMAND_STROKE_OVAL, 0x8cffffff.toInt(), centerX - 380, centerY - 380, 760, 760, 10)
-            return IntArray(COMMAND_STREAM_HEADER_SIZE + commands.size).also { stream ->
-                stream[0] = COMMAND_STREAM_MAGIC
-                stream[1] = COMMAND_STREAM_ABI_ID
-                stream[2] = COMMAND_STREAM_FLAGS_NONE
-                stream[3] = commands.size
-                stream[4] = COMMAND_COORDINATE_SPACE_SWING_USER
-                stream[5] = COMMAND_PAINT_FORMAT_SOLID_ARGB
-                commands.forEachIndexed { index, command -> stream[COMMAND_STREAM_HEADER_SIZE + index] = command }
-            }
+            return commands.toIntArray()
         }
 
-        private fun MutableList<Int>.addCommand(op: Int, vararg args: Int) {
-            add(op)
-            add((args.size + 3) * Int.SIZE_BYTES)
-            add(COMMAND_RECORD_FLAGS_NONE)
-            args.forEach(::add)
+        private class CommandStreamWriter(initialCapacity: Int) {
+            private val payload = ArrayList<Int>(initialCapacity)
+
+            fun addCommand(op: Int, vararg args: Int) {
+                payload.add(op)
+                payload.add((args.size + 3) * Int.SIZE_BYTES)
+                payload.add(COMMAND_RECORD_FLAGS_NONE)
+                args.forEach(payload::add)
+            }
+
+            fun toIntArray(): IntArray =
+                IntArray(COMMAND_STREAM_HEADER_SIZE + payload.size).also { stream ->
+                    stream[0] = COMMAND_STREAM_MAGIC
+                    stream[1] = COMMAND_STREAM_ABI_ID
+                    stream[2] = COMMAND_STREAM_FLAGS_NONE
+                    stream[3] = payload.size
+                    stream[4] = COMMAND_COORDINATE_SPACE_SWING_USER
+                    stream[5] = COMMAND_PAINT_FORMAT_SOLID_ARGB
+                    payload.forEachIndexed { index, command -> stream[COMMAND_STREAM_HEADER_SIZE + index] = command }
+                }
         }
 
         private fun IntArray.corruptForTestingIfRequested(): IntArray {
