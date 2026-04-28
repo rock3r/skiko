@@ -5,6 +5,8 @@ import org.jetbrains.skia.Color
 import org.jetbrains.skia.ColorSpace
 import org.jetbrains.skia.DirectContext
 import org.jetbrains.skia.PixelGeometry
+import org.jetbrains.skia.PictureRecorder
+import org.jetbrains.skia.Rect
 import org.jetbrains.skia.Surface
 import org.jetbrains.skia.SurfaceColorFormat
 import org.jetbrains.skia.SurfaceOrigin
@@ -43,6 +45,8 @@ class JbrSkiaSwingLayer(
         var renderedWithJbrTexture = false
         if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_COMMANDS_PROPERTY)) {
             renderedWithJbrTexture = renderJbrCommandFrame(g)
+        } else if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_PICTURE_PROPERTY)) {
+            renderedWithJbrTexture = renderJbrPictureFrame(g)
         } else if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_DIAGNOSTIC_PROPERTY)) {
             renderedWithJbrTexture = renderJbrDiagnosticFrame(g)
         } else if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_TO_TEXTURE_PROPERTY)) {
@@ -103,6 +107,25 @@ class JbrSkiaSwingLayer(
         }
     }
 
+    private fun renderJbrPictureFrame(g: Graphics2D): Boolean {
+        val scope = JbrSkiaInterop.acquireCanvas(g) ?: return false
+        return try {
+            val frameTime = System.nanoTime()
+            val renderWidth = width.coerceAtLeast(1)
+            val renderHeight = height.coerceAtLeast(1)
+            val pictureBytes = recordPictureFrame(renderWidth, renderHeight, frameTime)
+            scope.renderPictureFrame(renderWidth, renderHeight, frameTime, pictureBytes).also { rendered ->
+                if (rendered) {
+                    scope.flush()
+                }
+            }
+        } catch (_: Throwable) {
+            false
+        } finally {
+            scope.close()
+        }
+    }
+
     private fun renderJbrCommandFrame(g: Graphics2D): Boolean {
         val scope = JbrSkiaInterop.acquireCanvas(g) ?: return false
         return try {
@@ -138,6 +161,7 @@ class JbrSkiaSwingLayer(
     private companion object {
         const val RENDER_DIAGNOSTIC_PROPERTY = "skiko.jbr.interop.renderDiagnostic"
         const val RENDER_COMMANDS_PROPERTY = "skiko.jbr.interop.renderCommands"
+        const val RENDER_PICTURE_PROPERTY = "skiko.jbr.interop.renderPicture"
         const val RENDER_TO_TEXTURE_PROPERTY = "skiko.jbr.interop.renderToTexture"
 
         private const val COMMAND_CLEAR = 1
@@ -164,6 +188,14 @@ class JbrSkiaSwingLayer(
             commands.addAll(listOf(COMMAND_FILL_RECT, 0xff118ab2.toInt(), x + cardWidth / 2, y + 52, cardWidth / 4, 14, 7))
             return commands.toIntArray()
         }
+    }
+
+    private fun recordPictureFrame(width: Int, height: Int, frameTimeNanos: Long): ByteArray {
+        val recorder = PictureRecorder()
+        val canvas = recorder.beginRecording(Rect(0f, 0f, width.toFloat(), height.toFloat()))
+        renderDelegate.onRender(canvas, width, height, frameTimeNanos)
+        val picture = recorder.finishRecordingAsPicture()
+        return picture.serializeToData().bytes
     }
 }
 

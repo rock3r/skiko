@@ -65,8 +65,10 @@ class JbrSkiaInteropTest {
         assertNotNull(scopedCanvas)
         assertTrue(scopedCanvas.renderDiagnosticFrame(16, 16, 42L))
         assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1, 0xff000000.toInt())))
+        assertTrue(scopedCanvas.renderPictureFrame(16, 16, 42L, byteArrayOf(1, 2, 3)))
         assertEquals(1, CompatibleJbr.service.scope.renderDiagnosticFrameCount)
         assertEquals(1, CompatibleJbr.service.scope.renderCommandFrameCount)
+        assertEquals(1, CompatibleJbr.service.scope.renderPictureFrameCount)
         scopedCanvas.close()
         assertEquals(1, CompatibleJbr.service.scope.closeCount)
     }
@@ -141,6 +143,7 @@ class JbrSkiaInteropTest {
         var closeCount = 0
         var renderDiagnosticFrameCount = 0
         var renderCommandFrameCount = 0
+        var renderPictureFrameCount = 0
 
         @Suppress("UNUSED_PARAMETER")
         fun renderDiagnosticFrame(width: Int, height: Int, frameTimeNanos: Long): Boolean {
@@ -152,6 +155,12 @@ class JbrSkiaInteropTest {
         fun renderCommandFrame(width: Int, height: Int, frameTimeNanos: Long, commands: IntArray): Boolean {
             renderCommandFrameCount++
             return commands.isNotEmpty()
+        }
+
+        @Suppress("UNUSED_PARAMETER")
+        fun renderPictureFrame(width: Int, height: Int, frameTimeNanos: Long, pictureData: ByteArray): Boolean {
+            renderPictureFrameCount++
+            return pictureData.isNotEmpty()
         }
 
         override fun close() {
