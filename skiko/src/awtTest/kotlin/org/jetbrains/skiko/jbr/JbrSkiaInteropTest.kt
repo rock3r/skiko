@@ -18,8 +18,9 @@ class JbrSkiaInteropTest {
 
         assertTrue(discovery.isAvailable)
         assertSame(CompatibleJbr.service, discovery.service)
-        assertEquals(3, discovery.abiId)
+        assertEquals(4, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
+        assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
     }
 
     @Test
@@ -64,8 +65,21 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(3, discovery.abiId)
+        assertEquals(4, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
+    }
+
+    @Test
+    fun rejectsMissingCommandCapabilities() {
+        val discovery = JbrSkiaInterop.discover(resolver(
+            publicJbrSkiaClass = CompatibleJbrSkia::class.java,
+            jbrAccessorClass = MissingCapabilitiesJbr::class.java,
+        ))
+
+        assertFalse(discovery.isAvailable)
+        assertEquals(JbrSkiaInterop.FallbackReason.COMMAND_CAPABILITY_MISMATCH, discovery.fallbackReason)
+        assertEquals(0, discovery.commandCapabilities)
+        assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=command-capability-mismatch", discovery.fallbackMarker)
     }
 
     @Test
@@ -77,7 +91,7 @@ class JbrSkiaInteropTest {
 
         assertNotNull(scopedCanvas)
         assertTrue(scopedCanvas.renderDiagnosticFrame(16, 16, 42L))
-        assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1246972723, 3, 0, 2, 1, 0xff000000.toInt())))
+        assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1246972723, 4, 0, 2, 1, 0xff000000.toInt())))
         assertTrue(scopedCanvas.renderPictureFrame(16, 16, 42L, byteArrayOf(1, 2, 3)))
         assertEquals(1, CompatibleJbr.service.scope.renderDiagnosticFrameCount)
         assertEquals(1, CompatibleJbr.service.scope.renderCommandFrameCount)
@@ -94,7 +108,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(3, discovery.abiId)
+        assertEquals(4, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -158,7 +172,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "3".toInt()
+            val ABI_ID: Int = "4".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -168,7 +182,7 @@ class JbrSkiaInteropTest {
     class IncompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "4".toInt()
+            val ABI_ID: Int = "5".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -187,8 +201,19 @@ class JbrSkiaInteropTest {
         fun getJBRSkia(): Any? = null
     }
 
-    class FakeJbrSkiaService {
+    object MissingCapabilitiesJbr {
+        private val service = FakeJbrSkiaService(commandCapabilities = 0)
+
+        @JvmStatic
+        fun getJBRSkia(): FakeJbrSkiaService = service
+    }
+
+    class FakeJbrSkiaService(
+        private val commandCapabilities: Int = REQUIRED_COMMAND_CAPABILITIES,
+    ) {
         val scope = FakeScopedCanvas()
+
+        fun getCommandCapabilities(): Int = commandCapabilities
 
         @Suppress("UNUSED_PARAMETER")
         fun acquireCanvas(graphics: java.awt.Graphics2D): FakeScopedCanvas = scope
@@ -221,5 +246,9 @@ class JbrSkiaInteropTest {
         override fun close() {
             closeCount++
         }
+    }
+
+    private companion object {
+        private const val REQUIRED_COMMAND_CAPABILITIES = 511
     }
 }

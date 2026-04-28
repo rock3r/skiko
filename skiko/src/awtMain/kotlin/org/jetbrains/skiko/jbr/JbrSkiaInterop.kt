@@ -8,7 +8,26 @@ import java.util.concurrent.ConcurrentHashMap
 object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
-    private const val EXPECTED_ABI_ID = 3
+    private const val EXPECTED_ABI_ID = 4
+    private const val COMMAND_CAP_CLEAR = 1
+    private const val COMMAND_CAP_FILL_RECT = 2
+    private const val COMMAND_CAP_STROKE_LINE = 4
+    private const val COMMAND_CAP_FILL_OVAL = 8
+    private const val COMMAND_CAP_STROKE_OVAL = 16
+    private const val COMMAND_CAP_CLEAR_RECT = 32
+    private const val COMMAND_CAP_SAVE_RESTORE = 64
+    private const val COMMAND_CAP_CLIP_RECT = 128
+    private const val COMMAND_CAP_USER_SPACE_COORDINATES = 256
+    private const val REQUIRED_COMMAND_CAPABILITIES =
+        COMMAND_CAP_CLEAR or
+            COMMAND_CAP_FILL_RECT or
+            COMMAND_CAP_STROKE_LINE or
+            COMMAND_CAP_FILL_OVAL or
+            COMMAND_CAP_STROKE_OVAL or
+            COMMAND_CAP_CLEAR_RECT or
+            COMMAND_CAP_SAVE_RESTORE or
+            COMMAND_CAP_CLIP_RECT or
+            COMMAND_CAP_USER_SPACE_COORDINATES
     private val JBR_SKIA_CLASSES = arrayOf("com.jetbrains.JBRSkia", "com.jetbrains.desktop.JBRSkia")
     private const val JBR_INTERNAL_SERVICE_CLASS = "com.jetbrains.desktop.JBRSkiaService"
     private const val JBR_ACCESSOR_CLASS = "com.jetbrains.JBR"
@@ -30,6 +49,10 @@ object JbrSkiaInterop {
      */
     @JvmStatic
     fun acquireCanvasOrNull(graphics: Graphics2D): AutoCloseable? = acquireCanvas(graphics)
+
+    internal fun logFallback(reason: FallbackReason) {
+        logFallbackOnce(Discovery.fallback(reason).fallbackMarker)
+    }
 
     internal fun discover(): Discovery = discover(DefaultClassResolver)
 
@@ -79,8 +102,17 @@ object JbrSkiaInterop {
             val service = accessorClass.getDeclaredMethod(JBR_ACCESSOR_METHOD).invoke(null)
                 ?: instantiateInternalServiceForPatchedJbr(classResolver)
                 ?: return Discovery.fallback(FallbackReason.SERVICE_UNAVAILABLE, abiId = abiId, buildId = buildId)
+            val commandCapabilities = service.javaClass.getMethod("getCommandCapabilities").invoke(service) as Int
+            if (commandCapabilities and REQUIRED_COMMAND_CAPABILITIES != REQUIRED_COMMAND_CAPABILITIES) {
+                return Discovery.fallback(
+                    FallbackReason.COMMAND_CAPABILITY_MISMATCH,
+                    abiId = abiId,
+                    buildId = buildId,
+                    commandCapabilities = commandCapabilities,
+                )
+            }
 
-            Discovery.available(service, abiId, buildId)
+            Discovery.available(service, abiId, buildId, commandCapabilities)
         } catch (e: ClassNotFoundException) {
             Discovery.fallback(FallbackReason.PUBLIC_API_MISSING, cause = e)
         } catch (e: NoSuchMethodException) {
@@ -159,6 +191,7 @@ object JbrSkiaInterop {
         val service: Any?,
         val abiId: Int?,
         val buildId: String?,
+        val commandCapabilities: Int?,
         val fallbackReason: FallbackReason?,
         val cause: Throwable? = null,
     ) {
@@ -168,15 +201,16 @@ object JbrSkiaInterop {
             get() = "$FALLBACK_MARKER reason=${fallbackReason?.id ?: "none"}"
 
         companion object {
-            fun available(service: Any, abiId: Int, buildId: String) =
-                Discovery(service, abiId, buildId, fallbackReason = null)
+            fun available(service: Any, abiId: Int, buildId: String, commandCapabilities: Int) =
+                Discovery(service, abiId, buildId, commandCapabilities, fallbackReason = null)
 
             fun fallback(
                 fallbackReason: FallbackReason,
                 abiId: Int? = null,
                 buildId: String? = null,
+                commandCapabilities: Int? = null,
                 cause: Throwable? = null,
-            ) = Discovery(null, abiId, buildId, fallbackReason, cause)
+            ) = Discovery(null, abiId, buildId, commandCapabilities, fallbackReason, cause)
         }
     }
 
@@ -187,6 +221,8 @@ object JbrSkiaInterop {
         PUBLIC_API_MISSING("public-api-missing"),
         SERVICE_UNAVAILABLE("service-unavailable"),
         CANVAS_UNAVAILABLE("canvas-unavailable"),
+        COMMAND_CAPABILITY_MISMATCH("command-capability-mismatch"),
+        COMMAND_STREAM_INVALID("command-stream-invalid"),
     }
 
     internal interface ScopedCanvas : AutoCloseable {

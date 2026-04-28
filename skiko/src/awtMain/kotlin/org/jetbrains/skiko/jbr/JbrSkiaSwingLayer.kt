@@ -175,12 +175,15 @@ class JbrSkiaSwingLayer(
             return false
         }
         return try {
-            scope.renderCommandFrame(renderWidth, renderHeight, frameTime, commands).also { rendered ->
+            val commandStream = commands.corruptForTestingIfRequested()
+            scope.renderCommandFrame(renderWidth, renderHeight, frameTime, commandStream).also { rendered ->
                 Logger.info {
-                    commandFrameMarker(renderWidth, renderHeight, commands.size, rendered)
+                    commandFrameMarker(renderWidth, renderHeight, commandStream.size, rendered)
                 }
                 if (rendered) {
                     scope.flush()
+                } else {
+                    JbrSkiaInterop.logFallback(JbrSkiaInterop.FallbackReason.COMMAND_STREAM_INVALID)
                 }
             }
         } catch (e: Throwable) {
@@ -225,6 +228,7 @@ class JbrSkiaSwingLayer(
         const val RENDER_COMMANDS_PROPERTY = "skiko.jbr.interop.renderCommands"
         const val RENDER_PICTURE_PROPERTY = "skiko.jbr.interop.renderPicture"
         const val RENDER_TO_TEXTURE_PROPERTY = "skiko.jbr.interop.renderToTexture"
+        const val CORRUPT_COMMAND_STREAM_PROPERTY = "skiko.jbr.interop.corruptCommandStream"
 
         private const val COMMAND_CLEAR = 1
         private const val COMMAND_FILL_RECT = 2
@@ -232,7 +236,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
         private const val COMMAND_STREAM_MAGIC = 1246972723
-        private const val COMMAND_STREAM_ABI_ID = 3
+        private const val COMMAND_STREAM_ABI_ID = 4
         private const val COMMAND_STREAM_HEADER_SIZE = 4
         private const val COMMAND_STREAM_FLAGS_NONE = 0
         private val loggedRenderMode = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -287,6 +291,15 @@ class JbrSkiaSwingLayer(
                 stream[2] = COMMAND_STREAM_FLAGS_NONE
                 stream[3] = commands.size
                 commands.forEachIndexed { index, command -> stream[COMMAND_STREAM_HEADER_SIZE + index] = command }
+            }
+        }
+
+        private fun IntArray.corruptForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_COMMAND_STREAM_PROPERTY)) return this
+            return copyOf().also { stream ->
+                if (stream.size > 2) {
+                    stream[2] = 1
+                }
             }
         }
     }
