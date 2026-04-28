@@ -239,13 +239,17 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
         private const val COMMAND_STREAM_MAGIC = 1246972723
-        private const val COMMAND_STREAM_ABI_ID = 8
+        private const val COMMAND_STREAM_ABI_ID = 9
         private const val COMMAND_STREAM_HEADER_SIZE = 6
         private const val COMMAND_STREAM_FLAGS_NONE = 0
         private const val COMMAND_COORDINATE_SPACE_SWING_USER = 1
         private const val COMMAND_PAINT_FORMAT_SOLID_ARGB = 1
         private const val COMMAND_RECORD_FLAGS_NONE = 0
         private const val COMMAND_RECORD_FLAG_ANTIALIAS = 1
+        private const val STROKE_CAP_BUTT = 0
+        private const val STROKE_CAP_ROUND = 1
+        private const val STROKE_JOIN_MITER = 0
+        private const val STROKE_JOIN_ROUND = 1
         private val loggedRenderMode = java.util.concurrent.atomic.AtomicBoolean(false)
 
         private fun logRenderModeOnce(renderDelegate: SkikoRenderDelegate) {
@@ -276,7 +280,7 @@ class JbrSkiaSwingLayer(
             val lineStep = 86
             val linePhase = (phase * 172f).toInt()
             for (lineX in -120 + linePhase until width + 160 step lineStep) {
-                commands.addCommand(COMMAND_STROKE_LINE, COMMAND_RECORD_FLAG_ANTIALIAS, 0x52ffffff, lineX, 76, lineX + 144, height - 36, 6)
+                commands.addCommand(COMMAND_STROKE_LINE, COMMAND_RECORD_FLAG_ANTIALIAS, 0x52ffffff, lineX, 76, lineX + 144, height - 36, 6, STROKE_CAP_BUTT, STROKE_JOIN_MITER, 4000)
             }
 
             val centerX = (width * 0.52f).toInt()
@@ -288,10 +292,10 @@ class JbrSkiaSwingLayer(
                 val angle = spokePhase + index * (PI * 2.0 / 18.0)
                 val outerX = centerX + (cos(angle) * radiusX).toInt()
                 val outerY = centerY + (sin(angle) * radiusY).toInt()
-                commands.addCommand(COMMAND_STROKE_LINE, COMMAND_RECORD_FLAG_ANTIALIAS, 0xffffa657.toInt(), centerX, centerY, outerX, outerY, 12)
+                commands.addCommand(COMMAND_STROKE_LINE, COMMAND_RECORD_FLAG_ANTIALIAS, 0xffffa657.toInt(), centerX, centerY, outerX, outerY, 12, STROKE_CAP_ROUND, STROKE_JOIN_MITER, 4000)
                 commands.addCommand(COMMAND_FILL_OVAL, COMMAND_RECORD_FLAG_ANTIALIAS, 0xffffffff.toInt(), outerX - 20, outerY - 20, 40, 40)
             }
-            commands.addCommand(COMMAND_STROKE_OVAL, COMMAND_RECORD_FLAG_ANTIALIAS, 0x8cffffff.toInt(), centerX - 380, centerY - 380, 760, 760, 10)
+            commands.addCommand(COMMAND_STROKE_OVAL, COMMAND_RECORD_FLAG_ANTIALIAS, 0x8cffffff.toInt(), centerX - 380, centerY - 380, 760, 760, 10, STROKE_CAP_BUTT, STROKE_JOIN_ROUND, 4000)
             return commands.toIntArray()
         }
 
