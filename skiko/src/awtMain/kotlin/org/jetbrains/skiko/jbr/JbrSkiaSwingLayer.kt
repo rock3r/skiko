@@ -144,19 +144,26 @@ class JbrSkiaSwingLayer(
     }
 
     private fun renderJbrCommandFrame(g: Graphics2D): Boolean {
+        val frameTime = System.nanoTime()
+        val frameSize = deviceFrameSize(
+            width = width,
+            height = height,
+            scale = graphicsConfiguration.defaultTransform.scaleX.toFloat()
+        )
+        val renderWidth = frameSize.width
+        val renderHeight = frameSize.height
+        val commandDelegate = renderDelegate as? JbrSkiaCommandRenderDelegate
+        val commands = if (commandDelegate != null) {
+            commandDelegate.renderJbrSkiaCommandFrame(renderWidth, renderHeight, frameTime)
+                ?: run {
+                    Logger.info { "SKIKO_JBR_INTEROP_COMMAND_UNSUPPORTED fallback=picture" }
+                    return renderJbrPictureFrame(g)
+                }
+        } else {
+            buildCommandFrame(renderWidth, renderHeight, frameTime)
+        }
         val scope = JbrSkiaInterop.acquireCanvas(g) ?: return false
         return try {
-            val frameTime = System.nanoTime()
-            val frameSize = deviceFrameSize(
-                width = width,
-                height = height,
-                scale = graphicsConfiguration.defaultTransform.scaleX.toFloat()
-            )
-            val renderWidth = frameSize.width
-            val renderHeight = frameSize.height
-            val commands = (renderDelegate as? JbrSkiaCommandRenderDelegate)
-                ?.renderJbrSkiaCommandFrame(renderWidth, renderHeight, frameTime)
-                ?: buildCommandFrame(renderWidth, renderHeight, frameTime)
             scope.renderCommandFrame(renderWidth, renderHeight, frameTime, commands).also { rendered ->
                 Logger.info {
                     commandFrameMarker(renderWidth, renderHeight, commands.size, rendered)
