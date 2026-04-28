@@ -231,6 +231,10 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_STROKE_LINE = 3
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
+        private const val COMMAND_STREAM_MAGIC = 1246972723
+        private const val COMMAND_STREAM_ABI_ID = 3
+        private const val COMMAND_STREAM_HEADER_SIZE = 4
+        private const val COMMAND_STREAM_FLAGS_NONE = 0
         private val loggedRenderMode = java.util.concurrent.atomic.AtomicBoolean(false)
 
         private fun logRenderModeOnce(renderDelegate: SkikoRenderDelegate) {
@@ -277,7 +281,13 @@ class JbrSkiaSwingLayer(
                 commands.addAll(listOf(COMMAND_FILL_OVAL, 0xffffffff.toInt(), outerX - 20, outerY - 20, 40, 40))
             }
             commands.addAll(listOf(COMMAND_STROKE_OVAL, 0x8cffffff.toInt(), centerX - 380, centerY - 380, 760, 760, 10))
-            return commands.toIntArray()
+            return IntArray(COMMAND_STREAM_HEADER_SIZE + commands.size).also { stream ->
+                stream[0] = COMMAND_STREAM_MAGIC
+                stream[1] = COMMAND_STREAM_ABI_ID
+                stream[2] = COMMAND_STREAM_FLAGS_NONE
+                stream[3] = commands.size
+                commands.forEachIndexed { index, command -> stream[COMMAND_STREAM_HEADER_SIZE + index] = command }
+            }
         }
     }
 
