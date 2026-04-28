@@ -25,6 +25,9 @@ import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.Color as AwtColor
 import javax.accessibility.AccessibleContext
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
  * Swing layer entry point for the experimental JBR-owned Skia interop path.
@@ -60,6 +63,9 @@ class JbrSkiaSwingLayer(
         }
         if (g is Graphics2D) {
             JbrSkiaDebugOverlay.paint(g, renderedWithJbrTexture)
+        }
+        if (renderedWithJbrTexture && java.lang.Boolean.getBoolean(RENDER_COMMANDS_PROPERTY)) {
+            repaint()
         }
     }
 
@@ -186,25 +192,42 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_CLEAR = 1
         private const val COMMAND_FILL_RECT = 2
         private const val COMMAND_STROKE_LINE = 3
+        private const val COMMAND_FILL_OVAL = 4
+        private const val COMMAND_STROKE_OVAL = 5
 
         private fun buildCommandFrame(width: Int, height: Int, frameTimeNanos: Long): IntArray {
-            val phase = ((frameTimeNanos / 12_000_000L) % 64L).toInt()
-            val minSide = minOf(width, height)
-            val cardWidth = (width * 0.28f).toInt().coerceAtLeast(120)
-            val cardHeight = (height * 0.16f).toInt().coerceAtLeast(64)
-            val x = ((width - cardWidth) / 2) + ((phase % 17) - 8)
-            val y = ((height - cardHeight) / 2)
-            val commands = ArrayList<Int>(128)
+            val phase = ((frameTimeNanos / 16_000_000L) % 900L).toInt() / 900f
+            val stripeHeight = height / 5
+            val commands = ArrayList<Int>(512)
 
-            commands.addAll(listOf(COMMAND_CLEAR, 0xff101827.toInt()))
-            for (lineX in -height + phase until width + height step 64) {
-                commands.addAll(listOf(COMMAND_STROKE_LINE, 0xcc27d6c2.toInt(), lineX, height, lineX + height, 0, 3))
+            commands.addAll(listOf(COMMAND_FILL_RECT, 0xff2da44e.toInt(), 0, 0, width, stripeHeight * 2, 0))
+            commands.addAll(listOf(COMMAND_FILL_RECT, 0xff0969da.toInt(), 0, stripeHeight * 2, width, height - stripeHeight * 2, 0))
+            commands.addAll(listOf(COMMAND_FILL_RECT, 0xff824edf.toInt(), 96, 112, 440, 240, 0))
+            commands.addAll(listOf(COMMAND_FILL_OVAL, 0xffffd33d.toInt(), width - 308, 108, 168, 168))
+
+            val progressWidth = (width * 0.24f).toInt().coerceAtLeast(120)
+            val progressX = ((phase * width).toInt() % width) - progressWidth
+            commands.addAll(listOf(COMMAND_FILL_RECT, 0xffffa657.toInt(), progressX, 24, progressWidth, 36, 0))
+
+            val lineStep = 86
+            val linePhase = (phase * 172f).toInt()
+            for (lineX in -120 + linePhase until width + 160 step lineStep) {
+                commands.addAll(listOf(COMMAND_STROKE_LINE, 0x52ffffff, lineX, 76, lineX + 144, height - 36, 6))
             }
-            commands.addAll(listOf(COMMAND_FILL_RECT, 0xfff6c945.toInt(), x - 12, y - 12, cardWidth + 24, cardHeight + 24, 22))
-            commands.addAll(listOf(COMMAND_FILL_RECT, 0xff232f3e.toInt(), x, y, cardWidth, cardHeight, 18))
-            commands.addAll(listOf(COMMAND_FILL_RECT, 0xffef476f.toInt(), x + 24, y + 20, minSide / 10, minSide / 10, 16))
-            commands.addAll(listOf(COMMAND_FILL_RECT, 0xff06d6a0.toInt(), x + cardWidth / 2, y + 22, cardWidth / 3, 18, 9))
-            commands.addAll(listOf(COMMAND_FILL_RECT, 0xff118ab2.toInt(), x + cardWidth / 2, y + 52, cardWidth / 4, 14, 7))
+
+            val centerX = (width * 0.52f).toInt()
+            val centerY = (height * 0.55f).toInt()
+            val radiusX = 360
+            val radiusY = 240
+            val spokePhase = phase * PI * 2.0
+            repeat(18) { index ->
+                val angle = spokePhase + index * (PI * 2.0 / 18.0)
+                val outerX = centerX + (cos(angle) * radiusX).toInt()
+                val outerY = centerY + (sin(angle) * radiusY).toInt()
+                commands.addAll(listOf(COMMAND_STROKE_LINE, 0xffffa657.toInt(), centerX, centerY, outerX, outerY, 12))
+                commands.addAll(listOf(COMMAND_FILL_OVAL, 0xffffffff.toInt(), outerX - 20, outerY - 20, 40, 40))
+            }
+            commands.addAll(listOf(COMMAND_STROKE_OVAL, 0x8cffffff.toInt(), centerX - 380, centerY - 380, 760, 760, 10))
             return commands.toIntArray()
         }
     }
