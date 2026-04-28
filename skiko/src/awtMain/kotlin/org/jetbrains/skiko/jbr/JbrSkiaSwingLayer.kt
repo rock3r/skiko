@@ -41,7 +41,9 @@ class JbrSkiaSwingLayer(
 
     override fun paint(g: Graphics) {
         var renderedWithJbrTexture = false
-        if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_DIAGNOSTIC_PROPERTY)) {
+        if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_COMMANDS_PROPERTY)) {
+            renderedWithJbrTexture = renderJbrCommandFrame(g)
+        } else if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_DIAGNOSTIC_PROPERTY)) {
             renderedWithJbrTexture = renderJbrDiagnosticFrame(g)
         } else if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_TO_TEXTURE_PROPERTY)) {
             renderedWithJbrTexture = renderIntoJbrTexture(g)
@@ -101,6 +103,23 @@ class JbrSkiaSwingLayer(
         }
     }
 
+    private fun renderJbrCommandFrame(g: Graphics2D): Boolean {
+        val scope = JbrSkiaInterop.acquireCanvas(g) ?: return false
+        return try {
+            val frameTime = System.nanoTime()
+            val commands = buildCommandFrame(width.coerceAtLeast(1), height.coerceAtLeast(1), frameTime)
+            scope.renderCommandFrame(width, height, frameTime, commands).also { rendered ->
+                if (rendered) {
+                    scope.flush()
+                }
+            }
+        } catch (_: Throwable) {
+            false
+        } finally {
+            scope.close()
+        }
+    }
+
     private fun renderJbrDiagnosticFrame(g: Graphics2D): Boolean {
         val scope = JbrSkiaInterop.acquireCanvas(g) ?: return false
         return try {
@@ -118,7 +137,33 @@ class JbrSkiaSwingLayer(
 
     private companion object {
         const val RENDER_DIAGNOSTIC_PROPERTY = "skiko.jbr.interop.renderDiagnostic"
+        const val RENDER_COMMANDS_PROPERTY = "skiko.jbr.interop.renderCommands"
         const val RENDER_TO_TEXTURE_PROPERTY = "skiko.jbr.interop.renderToTexture"
+
+        private const val COMMAND_CLEAR = 1
+        private const val COMMAND_FILL_RECT = 2
+        private const val COMMAND_STROKE_LINE = 3
+
+        private fun buildCommandFrame(width: Int, height: Int, frameTimeNanos: Long): IntArray {
+            val phase = ((frameTimeNanos / 12_000_000L) % 64L).toInt()
+            val minSide = minOf(width, height)
+            val cardWidth = (width * 0.28f).toInt().coerceAtLeast(120)
+            val cardHeight = (height * 0.16f).toInt().coerceAtLeast(64)
+            val x = ((width - cardWidth) / 2) + ((phase % 17) - 8)
+            val y = ((height - cardHeight) / 2)
+            val commands = ArrayList<Int>(128)
+
+            commands.addAll(listOf(COMMAND_CLEAR, 0xff101827.toInt()))
+            for (lineX in -height + phase until width + height step 64) {
+                commands.addAll(listOf(COMMAND_STROKE_LINE, 0xcc27d6c2.toInt(), lineX, height, lineX + height, 0, 3))
+            }
+            commands.addAll(listOf(COMMAND_FILL_RECT, 0xfff6c945.toInt(), x - 12, y - 12, cardWidth + 24, cardHeight + 24, 22))
+            commands.addAll(listOf(COMMAND_FILL_RECT, 0xff232f3e.toInt(), x, y, cardWidth, cardHeight, 18))
+            commands.addAll(listOf(COMMAND_FILL_RECT, 0xffef476f.toInt(), x + 24, y + 20, minSide / 10, minSide / 10, 16))
+            commands.addAll(listOf(COMMAND_FILL_RECT, 0xff06d6a0.toInt(), x + cardWidth / 2, y + 22, cardWidth / 3, 18, 9))
+            commands.addAll(listOf(COMMAND_FILL_RECT, 0xff118ab2.toInt(), x + cardWidth / 2, y + 52, cardWidth / 4, 14, 7))
+            return commands.toIntArray()
+        }
     }
 }
 

@@ -64,7 +64,9 @@ class JbrSkiaInteropTest {
 
         assertNotNull(scopedCanvas)
         assertTrue(scopedCanvas.renderDiagnosticFrame(16, 16, 42L))
+        assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1, 0xff000000.toInt())))
         assertEquals(1, CompatibleJbr.service.scope.renderDiagnosticFrameCount)
+        assertEquals(1, CompatibleJbr.service.scope.renderCommandFrameCount)
         scopedCanvas.close()
         assertEquals(1, CompatibleJbr.service.scope.closeCount)
     }
@@ -138,11 +140,18 @@ class JbrSkiaInteropTest {
     class FakeScopedCanvas : AutoCloseable {
         var closeCount = 0
         var renderDiagnosticFrameCount = 0
+        var renderCommandFrameCount = 0
 
         @Suppress("UNUSED_PARAMETER")
         fun renderDiagnosticFrame(width: Int, height: Int, frameTimeNanos: Long): Boolean {
             renderDiagnosticFrameCount++
             return true
+        }
+
+        @Suppress("UNUSED_PARAMETER")
+        fun renderCommandFrame(width: Int, height: Int, frameTimeNanos: Long, commands: IntArray): Boolean {
+            renderCommandFrameCount++
+            return commands.isNotEmpty()
         }
 
         override fun close() {
