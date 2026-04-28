@@ -46,6 +46,7 @@ class JbrSkiaSwingLayer(
     private var context: DirectContext? = null
 
     override fun paint(g: Graphics) {
+        logRenderModeOnce(renderDelegate)
         var renderedWithJbrTexture = false
         if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_COMMANDS_PROPERTY)) {
             renderedWithJbrTexture = renderJbrCommandFrame(g)
@@ -134,7 +135,8 @@ class JbrSkiaSwingLayer(
                     scope.flush()
                 }
             }
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
+            Logger.warn(e) { "JBR Skia picture frame failed; falling back to Swing renderer" }
             false
         } finally {
             scope.close()
@@ -152,7 +154,9 @@ class JbrSkiaSwingLayer(
             )
             val renderWidth = frameSize.width
             val renderHeight = frameSize.height
-            val commands = buildCommandFrame(renderWidth, renderHeight, frameTime)
+            val commands = (renderDelegate as? JbrSkiaCommandRenderDelegate)
+                ?.renderJbrSkiaCommandFrame(renderWidth, renderHeight, frameTime)
+                ?: buildCommandFrame(renderWidth, renderHeight, frameTime)
             scope.renderCommandFrame(renderWidth, renderHeight, frameTime, commands).also { rendered ->
                 Logger.info {
                     commandFrameMarker(renderWidth, renderHeight, commands.size, rendered)
@@ -161,7 +165,8 @@ class JbrSkiaSwingLayer(
                     scope.flush()
                 }
             }
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
+            Logger.warn(e) { "JBR Skia command frame failed; falling back to Swing renderer" }
             false
         } finally {
             scope.close()
@@ -194,6 +199,18 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_STROKE_LINE = 3
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
+        private val loggedRenderMode = java.util.concurrent.atomic.AtomicBoolean(false)
+
+        private fun logRenderModeOnce(renderDelegate: SkikoRenderDelegate) {
+            if (loggedRenderMode.compareAndSet(false, true)) {
+                Logger.info {
+                    "SKIKO_JBR_INTEROP_RENDER_MODE commands=${java.lang.Boolean.getBoolean(RENDER_COMMANDS_PROPERTY)} " +
+                        "picture=${java.lang.Boolean.getBoolean(RENDER_PICTURE_PROPERTY)} " +
+                        "diagnostic=${java.lang.Boolean.getBoolean(RENDER_DIAGNOSTIC_PROPERTY)} " +
+                        "delegateCommands=${renderDelegate is JbrSkiaCommandRenderDelegate}"
+                }
+            }
+        }
 
         private fun buildCommandFrame(width: Int, height: Int, frameTimeNanos: Long): IntArray {
             val phase = ((frameTimeNanos / 16_000_000L) % 900L).toInt() / 900f
