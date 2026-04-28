@@ -85,6 +85,30 @@ class JbrSkiaInteropTest {
         assertEquals("test-build", discovery.buildId)
     }
 
+    @Test
+    fun pictureFrameUsesDevicePixelSize() {
+        assertEquals(
+            DeviceFrameSize(width = 200, height = 100),
+            deviceFrameSize(width = 100, height = 50, scale = 2f)
+        )
+        assertEquals(
+            DeviceFrameSize(width = 150, height = 75),
+            deviceFrameSize(width = 100, height = 50, scale = 1.5f)
+        )
+    }
+
+    @Test
+    fun pictureFrameSizeFallsBackToUserSpaceForInvalidScale() {
+        assertEquals(
+            DeviceFrameSize(width = 100, height = 50),
+            deviceFrameSize(width = 100, height = 50, scale = 0f)
+        )
+        assertEquals(
+            DeviceFrameSize(width = 1, height = 1),
+            deviceFrameSize(width = 0, height = 0, scale = Float.NaN)
+        )
+    }
+
     private fun testGraphics() = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics()
 
     private fun resolver(

@@ -111,8 +111,13 @@ class JbrSkiaSwingLayer(
         val scope = JbrSkiaInterop.acquireCanvas(g) ?: return false
         return try {
             val frameTime = System.nanoTime()
-            val renderWidth = width.coerceAtLeast(1)
-            val renderHeight = height.coerceAtLeast(1)
+            val frameSize = deviceFrameSize(
+                width = width,
+                height = height,
+                scale = graphicsConfiguration.defaultTransform.scaleX.toFloat()
+            )
+            val renderWidth = frameSize.width
+            val renderHeight = frameSize.height
             val pictureBytes = recordPictureFrame(renderWidth, renderHeight, frameTime)
             scope.renderPictureFrame(renderWidth, renderHeight, frameTime, pictureBytes).also { rendered ->
                 if (rendered) {
@@ -197,6 +202,16 @@ class JbrSkiaSwingLayer(
         val picture = recorder.finishRecordingAsPicture()
         return picture.serializeToData().bytes
     }
+}
+
+internal data class DeviceFrameSize(val width: Int, val height: Int)
+
+internal fun deviceFrameSize(width: Int, height: Int, scale: Float): DeviceFrameSize {
+    val safeScale = scale.takeIf { it.isFinite() && it > 0f } ?: 1f
+    return DeviceFrameSize(
+        width = (width * safeScale).toInt().coerceAtLeast(1),
+        height = (height * safeScale).toInt().coerceAtLeast(1),
+    )
 }
 
 internal object JbrSkiaDebugOverlay {
