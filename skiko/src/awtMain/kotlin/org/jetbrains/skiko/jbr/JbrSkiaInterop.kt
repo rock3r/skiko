@@ -8,8 +8,9 @@ import java.util.concurrent.ConcurrentHashMap
 object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
-    private const val EXPECTED_ABI_ID = 1
+    private const val EXPECTED_ABI_ID = 2
     private val JBR_SKIA_CLASSES = arrayOf("com.jetbrains.JBRSkia", "com.jetbrains.desktop.JBRSkia")
+    private const val JBR_INTERNAL_SERVICE_CLASS = "com.jetbrains.desktop.JBRSkiaService"
     private const val JBR_ACCESSOR_CLASS = "com.jetbrains.JBR"
     private const val JBR_ACCESSOR_METHOD = "getJBRSkia"
     private const val ACQUIRE_CANVAS_METHOD = "acquireCanvas"
@@ -43,7 +44,10 @@ object JbrSkiaInterop {
         discoveryProvider: () -> Discovery,
     ): ScopedCanvas? {
         val discovery = discoveryProvider()
-        val service = discovery.service ?: return null
+        val service = discovery.service ?: run {
+            logFallbackOnce(discovery.fallbackMarker)
+            return null
+        }
         return try {
             val scope = service.javaClass
                 .getMethod(ACQUIRE_CANVAS_METHOD, Graphics2D::class.java)
@@ -73,6 +77,7 @@ object JbrSkiaInterop {
 
             val accessorClass = classResolver.loadClass(JBR_ACCESSOR_CLASS)
             val service = accessorClass.getDeclaredMethod(JBR_ACCESSOR_METHOD).invoke(null)
+                ?: instantiateInternalServiceForPatchedJbr(classResolver)
                 ?: return Discovery.fallback(FallbackReason.SERVICE_UNAVAILABLE, abiId = abiId, buildId = buildId)
 
             Discovery.available(service, abiId, buildId)
@@ -97,6 +102,15 @@ object JbrSkiaInterop {
 
     private fun discoverCached(): Discovery =
         cachedDiscovery ?: discover().also { cachedDiscovery = it }
+
+    private fun instantiateInternalServiceForPatchedJbr(classResolver: ClassResolver): Any? =
+        try {
+            classResolver.loadClass(JBR_INTERNAL_SERVICE_CLASS).getConstructor().newInstance()
+        } catch (_: ReflectiveOperationException) {
+            null
+        } catch (_: LinkageError) {
+            null
+        }
 
     private fun fallback(reason: FallbackReason, cause: Throwable? = null): ScopedCanvas? {
         val marker = Discovery.fallback(reason, cause = cause).fallbackMarker
