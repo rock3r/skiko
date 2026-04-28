@@ -12,6 +12,7 @@ import org.jetbrains.skia.SurfaceColorFormat
 import org.jetbrains.skia.SurfaceOrigin
 import org.jetbrains.skia.SurfaceProps
 import org.jetbrains.skiko.ExperimentalSkikoApi
+import org.jetbrains.skiko.Logger
 import org.jetbrains.skiko.SkiaLayerAnalytics
 import org.jetbrains.skiko.SkiaLayerProperties
 import org.jetbrains.skiko.SkikoRenderDelegate
@@ -120,6 +121,9 @@ class JbrSkiaSwingLayer(
             val renderHeight = frameSize.height
             val pictureBytes = recordPictureFrame(renderWidth, renderHeight, frameTime)
             scope.renderPictureFrame(renderWidth, renderHeight, frameTime, pictureBytes).also { rendered ->
+                Logger.info {
+                    pictureFrameMarker(renderWidth, renderHeight, pictureBytes.size, rendered)
+                }
                 if (rendered) {
                     scope.flush()
                 }
@@ -213,6 +217,9 @@ internal fun deviceFrameSize(width: Int, height: Int, scale: Float): DeviceFrame
         height = (height * safeScale).toInt().coerceAtLeast(1),
     )
 }
+
+internal fun pictureFrameMarker(width: Int, height: Int, bytes: Int, rendered: Boolean): String =
+    "SKIKO_JBR_INTEROP_PICTURE_FRAME width=$width height=$height bytes=$bytes rendered=$rendered"
 
 internal object JbrSkiaDebugOverlay {
     private const val DEBUG_OVERLAY_PROPERTY = "skiko.jbr.interop.debugOverlay"

@@ -109,6 +109,14 @@ class JbrSkiaInteropTest {
         )
     }
 
+    @Test
+    fun pictureFrameMarkerIsParseable() {
+        assertEquals(
+            "SKIKO_JBR_INTEROP_PICTURE_FRAME width=200 height=100 bytes=4096 rendered=true",
+            pictureFrameMarker(width = 200, height = 100, bytes = 4096, rendered = true)
+        )
+    }
+
     private fun testGraphics() = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics()
 
     private fun resolver(
