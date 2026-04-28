@@ -236,7 +236,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
         private const val COMMAND_STREAM_MAGIC = 1246972723
-        private const val COMMAND_STREAM_ABI_ID = 4
+        private const val COMMAND_STREAM_ABI_ID = 5
         private const val COMMAND_STREAM_HEADER_SIZE = 4
         private const val COMMAND_STREAM_FLAGS_NONE = 0
         private val loggedRenderMode = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -257,19 +257,19 @@ class JbrSkiaSwingLayer(
             val stripeHeight = height / 5
             val commands = ArrayList<Int>(512)
 
-            commands.addAll(listOf(COMMAND_FILL_RECT, 0xff2da44e.toInt(), 0, 0, width, stripeHeight * 2, 0))
-            commands.addAll(listOf(COMMAND_FILL_RECT, 0xff0969da.toInt(), 0, stripeHeight * 2, width, height - stripeHeight * 2, 0))
-            commands.addAll(listOf(COMMAND_FILL_RECT, 0xff824edf.toInt(), 96, 112, 440, 240, 0))
-            commands.addAll(listOf(COMMAND_FILL_OVAL, 0xffffd33d.toInt(), width - 308, 108, 168, 168))
+            commands.addCommand(COMMAND_FILL_RECT, 0xff2da44e.toInt(), 0, 0, width, stripeHeight * 2, 0)
+            commands.addCommand(COMMAND_FILL_RECT, 0xff0969da.toInt(), 0, stripeHeight * 2, width, height - stripeHeight * 2, 0)
+            commands.addCommand(COMMAND_FILL_RECT, 0xff824edf.toInt(), 96, 112, 440, 240, 0)
+            commands.addCommand(COMMAND_FILL_OVAL, 0xffffd33d.toInt(), width - 308, 108, 168, 168)
 
             val progressWidth = (width * 0.24f).toInt().coerceAtLeast(120)
             val progressX = ((phase * width).toInt() % width) - progressWidth
-            commands.addAll(listOf(COMMAND_FILL_RECT, 0xffffa657.toInt(), progressX, 24, progressWidth, 36, 0))
+            commands.addCommand(COMMAND_FILL_RECT, 0xffffa657.toInt(), progressX, 24, progressWidth, 36, 0)
 
             val lineStep = 86
             val linePhase = (phase * 172f).toInt()
             for (lineX in -120 + linePhase until width + 160 step lineStep) {
-                commands.addAll(listOf(COMMAND_STROKE_LINE, 0x52ffffff, lineX, 76, lineX + 144, height - 36, 6))
+                commands.addCommand(COMMAND_STROKE_LINE, 0x52ffffff, lineX, 76, lineX + 144, height - 36, 6)
             }
 
             val centerX = (width * 0.52f).toInt()
@@ -281,10 +281,10 @@ class JbrSkiaSwingLayer(
                 val angle = spokePhase + index * (PI * 2.0 / 18.0)
                 val outerX = centerX + (cos(angle) * radiusX).toInt()
                 val outerY = centerY + (sin(angle) * radiusY).toInt()
-                commands.addAll(listOf(COMMAND_STROKE_LINE, 0xffffa657.toInt(), centerX, centerY, outerX, outerY, 12))
-                commands.addAll(listOf(COMMAND_FILL_OVAL, 0xffffffff.toInt(), outerX - 20, outerY - 20, 40, 40))
+                commands.addCommand(COMMAND_STROKE_LINE, 0xffffa657.toInt(), centerX, centerY, outerX, outerY, 12)
+                commands.addCommand(COMMAND_FILL_OVAL, 0xffffffff.toInt(), outerX - 20, outerY - 20, 40, 40)
             }
-            commands.addAll(listOf(COMMAND_STROKE_OVAL, 0x8cffffff.toInt(), centerX - 380, centerY - 380, 760, 760, 10))
+            commands.addCommand(COMMAND_STROKE_OVAL, 0x8cffffff.toInt(), centerX - 380, centerY - 380, 760, 760, 10)
             return IntArray(COMMAND_STREAM_HEADER_SIZE + commands.size).also { stream ->
                 stream[0] = COMMAND_STREAM_MAGIC
                 stream[1] = COMMAND_STREAM_ABI_ID
@@ -292,6 +292,12 @@ class JbrSkiaSwingLayer(
                 stream[3] = commands.size
                 commands.forEachIndexed { index, command -> stream[COMMAND_STREAM_HEADER_SIZE + index] = command }
             }
+        }
+
+        private fun MutableList<Int>.addCommand(op: Int, vararg args: Int) {
+            add(op)
+            add(args.size + 2)
+            args.forEach(::add)
         }
 
         private fun IntArray.corruptForTestingIfRequested(): IntArray {
