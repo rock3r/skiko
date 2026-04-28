@@ -7,6 +7,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import java.awt.image.BufferedImage
+import java.nio.ByteBuffer
 
 class JbrSkiaInteropTest {
     @Test
@@ -93,10 +94,12 @@ class JbrSkiaInteropTest {
         assertTrue(scopedCanvas.renderDiagnosticFrame(16, 16, 42L))
         assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1246972723, 7, 0, 4, 1, 1, 1, 16, 0, 0xff000000.toInt())))
         assertTrue(scopedCanvas.renderCommandBufferFrame(16, 16, 42L, byteArrayOf(1, 0, 0, 0)))
+        assertTrue(scopedCanvas.renderCommandDirectFrame(16, 16, 42L, ByteBuffer.allocateDirect(4).also { it.putInt(1); it.flip() }))
         assertTrue(scopedCanvas.renderPictureFrame(16, 16, 42L, byteArrayOf(1, 2, 3)))
         assertEquals(1, CompatibleJbr.service.scope.renderDiagnosticFrameCount)
         assertEquals(1, CompatibleJbr.service.scope.renderCommandFrameCount)
         assertEquals(1, CompatibleJbr.service.scope.renderCommandBufferFrameCount)
+        assertEquals(1, CompatibleJbr.service.scope.renderCommandDirectFrameCount)
         assertEquals(1, CompatibleJbr.service.scope.renderPictureFrameCount)
         scopedCanvas.close()
         assertEquals(1, CompatibleJbr.service.scope.closeCount)
@@ -226,6 +229,7 @@ class JbrSkiaInteropTest {
         var renderDiagnosticFrameCount = 0
         var renderCommandFrameCount = 0
         var renderCommandBufferFrameCount = 0
+        var renderCommandDirectFrameCount = 0
         var renderPictureFrameCount = 0
 
         @Suppress("UNUSED_PARAMETER")
@@ -244,6 +248,12 @@ class JbrSkiaInteropTest {
         fun renderCommandBufferFrame(width: Int, height: Int, frameTimeNanos: Long, commands: ByteArray): Boolean {
             renderCommandBufferFrameCount++
             return commands.isNotEmpty()
+        }
+
+        @Suppress("UNUSED_PARAMETER")
+        fun renderCommandDirectFrame(width: Int, height: Int, frameTimeNanos: Long, commands: ByteBuffer): Boolean {
+            renderCommandDirectFrameCount++
+            return commands.hasRemaining()
         }
 
         @Suppress("UNUSED_PARAMETER")
