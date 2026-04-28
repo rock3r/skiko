@@ -180,6 +180,8 @@ object JbrSkiaInterop {
 
         fun renderDiagnosticFrame(width: Int, height: Int, frameTimeNanos: Long): Boolean
 
+        fun renderCommandFrame(width: Int, height: Int, frameTimeNanos: Long, commands: IntArray): Boolean
+
         fun flush()
     }
 
@@ -189,6 +191,9 @@ object JbrSkiaInterop {
 
         override fun renderDiagnosticFrame(width: Int, height: Int, frameTimeNanos: Long): Boolean =
             scope.invokeScopeMethod("renderDiagnosticFrame", width, height, frameTimeNanos) as? Boolean ?: false
+
+        override fun renderCommandFrame(width: Int, height: Int, frameTimeNanos: Long, commands: IntArray): Boolean =
+            scope.invokeScopeMethod("renderCommandFrame", width, height, frameTimeNanos, commands) as? Boolean ?: false
 
         override fun flush() {
             scope.invokeScopeMethod("flush")
