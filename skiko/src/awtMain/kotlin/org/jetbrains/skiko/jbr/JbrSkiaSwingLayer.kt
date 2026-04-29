@@ -233,7 +233,7 @@ class JbrSkiaSwingLayer(
     }
 
     private fun noteSurfaceIdentity(scope: JbrSkiaInterop.ScopedCanvas) {
-        surfaceIdentityTracker.note(SurfaceIdentity(scope.surfaceId, scope.metalTexturePtr))?.let { change ->
+        surfaceIdentityTracker.note(SurfaceIdentity(scope.contextId, scope.surfaceId, scope.metalTexturePtr))?.let { change ->
             context?.close()
             context = null
             Logger.info { change.marker() }
@@ -253,7 +253,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
         private const val COMMAND_STREAM_MAGIC = 1246972723
-        private const val COMMAND_STREAM_ABI_ID = 40
+        private const val COMMAND_STREAM_ABI_ID = 41
         private const val COMMAND_STREAM_HEADER_SIZE = 6
         private const val COMMAND_STREAM_FLAGS_NONE = 0
         private const val COMMAND_COORDINATE_SPACE_SWING_USER = 1
@@ -362,8 +362,8 @@ class JbrSkiaSwingLayer(
 
 internal data class DeviceFrameSize(val width: Int, val height: Int)
 
-internal data class SurfaceIdentity(val surfaceId: Long, val metalTexturePtr: Long) {
-    val isUnknown: Boolean get() = surfaceId == 0L && metalTexturePtr == 0L
+internal data class SurfaceIdentity(val contextId: Long, val surfaceId: Long, val metalTexturePtr: Long) {
+    val isUnknown: Boolean get() = contextId == 0L && surfaceId == 0L && metalTexturePtr == 0L
 }
 
 internal data class SurfaceIdentityChange(
@@ -371,7 +371,9 @@ internal data class SurfaceIdentityChange(
     val current: SurfaceIdentity,
 ) {
     fun marker(): String =
-        "SKIKO_JBR_INTEROP_SURFACE_CHANGED oldSurfaceId=${previous.surfaceId.toHexString()} " +
+        "SKIKO_JBR_INTEROP_SURFACE_CHANGED oldContextId=${previous.contextId.toHexString()} " +
+            "newContextId=${current.contextId.toHexString()} " +
+            "oldSurfaceId=${previous.surfaceId.toHexString()} " +
             "newSurfaceId=${current.surfaceId.toHexString()} " +
             "oldMetalTexture=${previous.metalTexturePtr.toHexString()} " +
             "newMetalTexture=${current.metalTexturePtr.toHexString()}"
