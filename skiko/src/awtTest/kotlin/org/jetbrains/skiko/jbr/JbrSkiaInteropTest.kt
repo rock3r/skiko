@@ -99,6 +99,21 @@ class JbrSkiaInteropTest {
     }
 
     @Test
+    fun requiredCommandCapabilitiesOverrideForTestingForcesMismatch() {
+        withSystemProperty("skiko.jbr.interop.requiredCommandCapabilitiesForTest", "-1") {
+            val discovery = JbrSkiaInterop.discover(resolver(
+                publicJbrSkiaClass = CompatibleJbrSkia::class.java,
+                jbrAccessorClass = CompatibleJbr::class.java,
+            ))
+
+            assertFalse(discovery.isAvailable)
+            assertEquals(JbrSkiaInterop.FallbackReason.COMMAND_CAPABILITY_MISMATCH, discovery.fallbackReason)
+            assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
+            assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=command-capability-mismatch", discovery.fallbackMarker)
+        }
+    }
+
+    @Test
     fun acquireCanvasReturnsScopedCanvasFromService() {
         val scopedCanvas = JbrSkiaInterop.acquireCanvas(testGraphics(), resolver(
             publicJbrSkiaClass = CompatibleJbrSkia::class.java,
