@@ -234,8 +234,10 @@ class JbrSkiaSwingLayer(
 
     private fun noteSurfaceIdentity(scope: JbrSkiaInterop.ScopedCanvas) {
         surfaceIdentityTracker.note(SurfaceIdentity(scope.contextId, scope.surfaceId, scope.metalTexturePtr))?.let { change ->
-            context?.close()
-            context = null
+            if (change.contextChanged) {
+                context?.close()
+                context = null
+            }
             Logger.info { change.marker() }
         }
     }
@@ -370,9 +372,16 @@ internal data class SurfaceIdentityChange(
     val previous: SurfaceIdentity,
     val current: SurfaceIdentity,
 ) {
+    val contextChanged: Boolean get() = previous.contextId != current.contextId
+
+    val surfaceChanged: Boolean get() =
+        previous.surfaceId != current.surfaceId || previous.metalTexturePtr != current.metalTexturePtr
+
     fun marker(): String =
         "SKIKO_JBR_INTEROP_SURFACE_CHANGED oldContextId=${previous.contextId.toHexString()} " +
             "newContextId=${current.contextId.toHexString()} " +
+            "contextChanged=$contextChanged " +
+            "surfaceChanged=$surfaceChanged " +
             "oldSurfaceId=${previous.surfaceId.toHexString()} " +
             "newSurfaceId=${current.surfaceId.toHexString()} " +
             "oldMetalTexture=${previous.metalTexturePtr.toHexString()} " +

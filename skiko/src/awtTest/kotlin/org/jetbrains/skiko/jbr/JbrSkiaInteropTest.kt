@@ -278,8 +278,26 @@ class JbrSkiaInteropTest {
         val change = tracker.note(SurfaceIdentity(contextId = 0x4L, surfaceId = 0x5L, metalTexturePtr = 0x6L))
 
         assertNotNull(change)
+        assertTrue(change.contextChanged)
+        assertTrue(change.surfaceChanged)
         assertEquals(
-            "SKIKO_JBR_INTEROP_SURFACE_CHANGED oldContextId=0x1 newContextId=0x4 oldSurfaceId=0x2 newSurfaceId=0x5 oldMetalTexture=0x3 newMetalTexture=0x6",
+            "SKIKO_JBR_INTEROP_SURFACE_CHANGED oldContextId=0x1 newContextId=0x4 contextChanged=true surfaceChanged=true oldSurfaceId=0x2 newSurfaceId=0x5 oldMetalTexture=0x3 newMetalTexture=0x6",
+            change.marker()
+        )
+    }
+
+    @Test
+    fun surfaceIdentityTrackerDistinguishesSameContextSurfaceReplacement() {
+        val tracker = SurfaceIdentityTracker()
+
+        assertEquals(null, tracker.note(SurfaceIdentity(contextId = 0x1L, surfaceId = 0x2L, metalTexturePtr = 0x3L)))
+        val change = tracker.note(SurfaceIdentity(contextId = 0x1L, surfaceId = 0x4L, metalTexturePtr = 0x5L))
+
+        assertNotNull(change)
+        assertFalse(change.contextChanged)
+        assertTrue(change.surfaceChanged)
+        assertEquals(
+            "SKIKO_JBR_INTEROP_SURFACE_CHANGED oldContextId=0x1 newContextId=0x1 contextChanged=false surfaceChanged=true oldSurfaceId=0x2 newSurfaceId=0x4 oldMetalTexture=0x3 newMetalTexture=0x5",
             change.marker()
         )
     }
