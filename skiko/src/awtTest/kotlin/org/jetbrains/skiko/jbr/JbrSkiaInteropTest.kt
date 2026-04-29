@@ -19,7 +19,7 @@ class JbrSkiaInteropTest {
 
         assertTrue(discovery.isAvailable)
         assertSame(CompatibleJbr.service, discovery.service)
-        assertEquals(28, discovery.abiId)
+        assertEquals(29, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
     }
@@ -46,7 +46,7 @@ class JbrSkiaInteropTest {
 
             assertFalse(discovery.isAvailable)
             assertEquals(JbrSkiaInterop.FallbackReason.ABI_MISMATCH, discovery.fallbackReason)
-            assertEquals(28, discovery.abiId)
+            assertEquals(29, discovery.abiId)
             assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch", discovery.fallbackMarker)
         }
     }
@@ -81,7 +81,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(28, discovery.abiId)
+        assertEquals(29, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -122,7 +122,7 @@ class JbrSkiaInteropTest {
 
         assertNotNull(scopedCanvas)
         assertTrue(scopedCanvas.renderDiagnosticFrame(16, 16, 42L))
-        assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1246972723, 28, 0, 4, 1, 1, 1, 16, 1, 0xff000000.toInt())))
+        assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1246972723, 29, 0, 4, 1, 1, 1, 16, 1, 0xff000000.toInt())))
         assertTrue(scopedCanvas.renderCommandBufferFrame(16, 16, 42L, byteArrayOf(1, 0, 0, 0)))
         assertTrue(scopedCanvas.renderCommandDirectFrame(16, 16, 42L, ByteBuffer.allocateDirect(4).also { it.putInt(1); it.flip() }))
         assertTrue(scopedCanvas.renderPictureFrame(16, 16, 42L, byteArrayOf(1, 2, 3)))
@@ -143,7 +143,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(28, discovery.abiId)
+        assertEquals(29, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -221,7 +221,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "28".toInt()
+            val ABI_ID: Int = "29".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -312,6 +312,6 @@ class JbrSkiaInteropTest {
     }
 
     private companion object {
-        private const val REQUIRED_COMMAND_CAPABILITIES = 536870911
+        private const val REQUIRED_COMMAND_CAPABILITIES = 1073741823
     }
 }
