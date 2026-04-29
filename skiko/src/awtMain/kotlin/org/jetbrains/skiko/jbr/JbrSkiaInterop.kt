@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
 object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
-    private const val EXPECTED_ABI_ID = 31
+    private const val EXPECTED_ABI_ID = 32
     private const val EXPECTED_ABI_ID_FOR_TEST_PROPERTY = "skiko.jbr.interop.expectedAbiIdForTest"
     private const val REQUIRED_COMMAND_CAPABILITIES_FOR_TEST_PROPERTY =
         "skiko.jbr.interop.requiredCommandCapabilitiesForTest"
@@ -44,6 +44,7 @@ object JbrSkiaInterop {
     private const val COMMAND_CAP_DRAW_ARC = 268435456
     private const val COMMAND_CAP_DRAW_ROUND_RECT = 536870912
     private const val COMMAND_CAP_FILL_RECT_LINEAR_GRADIENT = 1073741824
+    private const val COMMAND_CAP64_FILL_ROUND_RECT_LINEAR_GRADIENT = 2147483648L
     private const val REQUIRED_COMMAND_CAPABILITIES =
         COMMAND_CAP_CLEAR.toLong() or
             COMMAND_CAP_FILL_RECT.toLong() or
@@ -75,7 +76,8 @@ object JbrSkiaInterop {
             COMMAND_CAP_DRAW_PATH.toLong() or
             COMMAND_CAP_DRAW_ARC.toLong() or
             COMMAND_CAP_DRAW_ROUND_RECT.toLong() or
-            COMMAND_CAP_FILL_RECT_LINEAR_GRADIENT.toLong()
+            COMMAND_CAP_FILL_RECT_LINEAR_GRADIENT.toLong() or
+            COMMAND_CAP64_FILL_ROUND_RECT_LINEAR_GRADIENT
     private val JBR_SKIA_CLASSES = arrayOf("com.jetbrains.JBRSkia", "com.jetbrains.desktop.JBRSkia")
     private const val JBR_INTERNAL_SERVICE_CLASS = "com.jetbrains.desktop.JBRSkiaService"
     private const val JBR_ACCESSOR_CLASS = "com.jetbrains.JBR"
