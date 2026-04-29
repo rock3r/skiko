@@ -10,6 +10,7 @@ object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
     private const val EXPECTED_ABI_ID = 25
+    private const val EXPECTED_ABI_ID_FOR_TEST_PROPERTY = "skiko.jbr.interop.expectedAbiIdForTest"
     private const val COMMAND_CAP_CLEAR = 1
     private const val COMMAND_CAP_FILL_RECT = 2
     private const val COMMAND_CAP_STROKE_LINE = 4
@@ -129,7 +130,7 @@ object JbrSkiaInterop {
             val jbrSkiaClass = classResolver.loadFirstClass(JBR_SKIA_CLASSES)
             val abiId = jbrSkiaClass.getDeclaredField("ABI_ID").get(null) as Int
             val buildId = jbrSkiaClass.getDeclaredField("BUILD_ID").get(null) as String
-            if (abiId != EXPECTED_ABI_ID) {
+            if (abiId != expectedAbiId()) {
                 return Discovery.fallback(FallbackReason.ABI_MISMATCH, abiId = abiId, buildId = buildId)
             }
 
@@ -169,6 +170,9 @@ object JbrSkiaInterop {
 
     private fun discoverCached(): Discovery =
         cachedDiscovery ?: discover().also { cachedDiscovery = it }
+
+    private fun expectedAbiId(): Int =
+        System.getProperty(EXPECTED_ABI_ID_FOR_TEST_PROPERTY)?.toIntOrNull() ?: EXPECTED_ABI_ID
 
     private fun instantiateInternalServiceForPatchedJbr(classResolver: ClassResolver): Any? =
         try {
