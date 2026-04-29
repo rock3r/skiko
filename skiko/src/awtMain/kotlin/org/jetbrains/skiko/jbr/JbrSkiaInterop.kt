@@ -10,7 +10,10 @@ object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
     private const val EXPECTED_ABI_ID = 39
+    private const val EXPECTED_NATIVE_ABI_VERSION = 1
     private const val EXPECTED_ABI_ID_FOR_TEST_PROPERTY = "skiko.jbr.interop.expectedAbiIdForTest"
+    private const val EXPECTED_NATIVE_ABI_VERSION_FOR_TEST_PROPERTY =
+        "skiko.jbr.interop.expectedNativeAbiVersionForTest"
     private const val REQUIRED_COMMAND_CAPABILITIES_FOR_TEST_PROPERTY =
         "skiko.jbr.interop.requiredCommandCapabilitiesForTest"
     private const val COMMAND_CAP_CLEAR = 1
@@ -166,6 +169,17 @@ object JbrSkiaInterop {
             val service = accessorClass.getDeclaredMethod(JBR_ACCESSOR_METHOD).invoke(null)
                 ?: instantiateInternalServiceForPatchedJbr(classResolver)
                 ?: return Discovery.fallback(FallbackReason.SERVICE_UNAVAILABLE, abiId = abiId, buildId = buildId)
+            val nativeAbiVersion = service.javaClass.getMethod("getNativeAbiVersion").invoke(service) as Int
+            val nativeCommandStreamAbiId =
+                service.javaClass.getMethod("getNativeCommandStreamAbiId").invoke(service) as Int
+            val nativeBuildId = service.javaClass.getMethod("getNativeBuildId").invoke(service) as String
+            if (
+                nativeAbiVersion != expectedNativeAbiVersion() ||
+                nativeCommandStreamAbiId != abiId ||
+                nativeBuildId != buildId
+            ) {
+                return Discovery.fallback(FallbackReason.NATIVE_ABI_MISMATCH, abiId = abiId, buildId = buildId)
+            }
             val commandCapabilities = service.javaClass.getMethod("getCommandCapabilities64").invoke(service) as Long
             val requiredCommandCapabilities = requiredCommandCapabilities()
             if (commandCapabilities and requiredCommandCapabilities != requiredCommandCapabilities) {
@@ -202,6 +216,10 @@ object JbrSkiaInterop {
 
     private fun expectedAbiId(): Int =
         System.getProperty(EXPECTED_ABI_ID_FOR_TEST_PROPERTY)?.toIntOrNull() ?: EXPECTED_ABI_ID
+
+    private fun expectedNativeAbiVersion(): Int =
+        System.getProperty(EXPECTED_NATIVE_ABI_VERSION_FOR_TEST_PROPERTY)?.toIntOrNull()
+            ?: EXPECTED_NATIVE_ABI_VERSION
 
     private fun requiredCommandCapabilities(): Long =
         System.getProperty(REQUIRED_COMMAND_CAPABILITIES_FOR_TEST_PROPERTY)?.toLongOrNull()
@@ -293,6 +311,7 @@ object JbrSkiaInterop {
         PUBLIC_API_MISSING("public-api-missing"),
         SERVICE_UNAVAILABLE("service-unavailable"),
         CANVAS_UNAVAILABLE("canvas-unavailable"),
+        NATIVE_ABI_MISMATCH("native-abi-mismatch"),
         COMMAND_CAPABILITY_MISMATCH("command-capability-mismatch"),
         COMMAND_STREAM_INVALID("command-stream-invalid"),
     }

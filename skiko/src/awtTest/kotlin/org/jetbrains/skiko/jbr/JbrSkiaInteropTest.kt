@@ -86,6 +86,56 @@ class JbrSkiaInteropTest {
     }
 
     @Test
+    fun rejectsNativeAbiMismatch() {
+        val discovery = JbrSkiaInterop.discover(resolver(
+            publicJbrSkiaClass = CompatibleJbrSkia::class.java,
+            jbrAccessorClass = NativeAbiMismatchJbr::class.java,
+        ))
+
+        assertFalse(discovery.isAvailable)
+        assertEquals(JbrSkiaInterop.FallbackReason.NATIVE_ABI_MISMATCH, discovery.fallbackReason)
+        assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=native-abi-mismatch", discovery.fallbackMarker)
+    }
+
+    @Test
+    fun expectedNativeAbiOverrideForTestingForcesMismatch() {
+        withSystemProperty("skiko.jbr.interop.expectedNativeAbiVersionForTest", "7") {
+            val discovery = JbrSkiaInterop.discover(resolver(
+                publicJbrSkiaClass = CompatibleJbrSkia::class.java,
+                jbrAccessorClass = CompatibleJbr::class.java,
+            ))
+
+            assertFalse(discovery.isAvailable)
+            assertEquals(JbrSkiaInterop.FallbackReason.NATIVE_ABI_MISMATCH, discovery.fallbackReason)
+            assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=native-abi-mismatch", discovery.fallbackMarker)
+        }
+    }
+
+    @Test
+    fun rejectsNativeCommandStreamAbiMismatch() {
+        val discovery = JbrSkiaInterop.discover(resolver(
+            publicJbrSkiaClass = CompatibleJbrSkia::class.java,
+            jbrAccessorClass = NativeCommandStreamAbiMismatchJbr::class.java,
+        ))
+
+        assertFalse(discovery.isAvailable)
+        assertEquals(JbrSkiaInterop.FallbackReason.NATIVE_ABI_MISMATCH, discovery.fallbackReason)
+        assertEquals(39, discovery.abiId)
+    }
+
+    @Test
+    fun rejectsNativeBuildIdMismatch() {
+        val discovery = JbrSkiaInterop.discover(resolver(
+            publicJbrSkiaClass = CompatibleJbrSkia::class.java,
+            jbrAccessorClass = NativeBuildIdMismatchJbr::class.java,
+        ))
+
+        assertFalse(discovery.isAvailable)
+        assertEquals(JbrSkiaInterop.FallbackReason.NATIVE_ABI_MISMATCH, discovery.fallbackReason)
+        assertEquals("test-build", discovery.buildId)
+    }
+
+    @Test
     fun rejectsMissingCommandCapabilities() {
         val discovery = JbrSkiaInterop.discover(resolver(
             publicJbrSkiaClass = CompatibleJbrSkia::class.java,
@@ -257,14 +307,44 @@ class JbrSkiaInteropTest {
         fun getJBRSkia(): FakeJbrSkiaService = service
     }
 
+    object NativeAbiMismatchJbr {
+        private val service = FakeJbrSkiaService(nativeAbiVersion = 7)
+
+        @JvmStatic
+        fun getJBRSkia(): FakeJbrSkiaService = service
+    }
+
+    object NativeCommandStreamAbiMismatchJbr {
+        private val service = FakeJbrSkiaService(nativeCommandStreamAbiId = 7)
+
+        @JvmStatic
+        fun getJBRSkia(): FakeJbrSkiaService = service
+    }
+
+    object NativeBuildIdMismatchJbr {
+        private val service = FakeJbrSkiaService(nativeBuildId = "other-build")
+
+        @JvmStatic
+        fun getJBRSkia(): FakeJbrSkiaService = service
+    }
+
     class FakeJbrSkiaService(
         private val commandCapabilities: Long = REQUIRED_COMMAND_CAPABILITIES,
+        private val nativeAbiVersion: Int = 1,
+        private val nativeCommandStreamAbiId: Int = 39,
+        private val nativeBuildId: String = "test-build",
     ) {
         val scope = FakeScopedCanvas()
 
         fun getCommandCapabilities(): Int = commandCapabilities.toInt()
 
         fun getCommandCapabilities64(): Long = commandCapabilities
+
+        fun getNativeAbiVersion(): Int = nativeAbiVersion
+
+        fun getNativeCommandStreamAbiId(): Int = nativeCommandStreamAbiId
+
+        fun getNativeBuildId(): String = nativeBuildId
 
         @Suppress("UNUSED_PARAMETER")
         fun acquireCanvas(graphics: java.awt.Graphics2D): FakeScopedCanvas = scope
