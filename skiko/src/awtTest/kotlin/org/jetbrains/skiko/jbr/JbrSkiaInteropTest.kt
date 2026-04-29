@@ -252,6 +252,46 @@ class JbrSkiaInteropTest {
         )
     }
 
+    @Test
+    fun surfaceIdentityTrackerIgnoresUnknownIdentity() {
+        val tracker = SurfaceIdentityTracker()
+
+        assertEquals(null, tracker.note(SurfaceIdentity(surfaceId = 0L, metalTexturePtr = 0L)))
+        assertEquals(null, tracker.note(SurfaceIdentity(surfaceId = 0x1L, metalTexturePtr = 0x2L)))
+    }
+
+    @Test
+    fun surfaceIdentityTrackerIgnoresStableIdentity() {
+        val tracker = SurfaceIdentityTracker()
+        val identity = SurfaceIdentity(surfaceId = 0x1L, metalTexturePtr = 0x2L)
+
+        assertEquals(null, tracker.note(identity))
+        assertEquals(null, tracker.note(identity))
+    }
+
+    @Test
+    fun surfaceIdentityTrackerReportsChangedIdentity() {
+        val tracker = SurfaceIdentityTracker()
+
+        assertEquals(null, tracker.note(SurfaceIdentity(surfaceId = 0x1L, metalTexturePtr = 0x2L)))
+        val change = tracker.note(SurfaceIdentity(surfaceId = 0x3L, metalTexturePtr = 0x4L))
+
+        assertNotNull(change)
+        assertEquals(
+            "SKIKO_JBR_INTEROP_SURFACE_CHANGED oldSurfaceId=0x1 newSurfaceId=0x3 oldMetalTexture=0x2 newMetalTexture=0x4",
+            change.marker()
+        )
+    }
+
+    @Test
+    fun surfaceIdentityTrackerClearForgetsPreviousIdentity() {
+        val tracker = SurfaceIdentityTracker()
+
+        assertEquals(null, tracker.note(SurfaceIdentity(surfaceId = 0x1L, metalTexturePtr = 0x2L)))
+        tracker.clear()
+        assertEquals(null, tracker.note(SurfaceIdentity(surfaceId = 0x3L, metalTexturePtr = 0x4L)))
+    }
+
     private fun testGraphics() = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics()
 
     private fun withSystemProperty(name: String, value: String, block: () -> Unit) {
