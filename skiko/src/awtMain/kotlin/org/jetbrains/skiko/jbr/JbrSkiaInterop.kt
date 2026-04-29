@@ -169,14 +169,12 @@ object JbrSkiaInterop {
             val service = accessorClass.getDeclaredMethod(JBR_ACCESSOR_METHOD).invoke(null)
                 ?: instantiateInternalServiceForPatchedJbr(classResolver)
                 ?: return Discovery.fallback(FallbackReason.SERVICE_UNAVAILABLE, abiId = abiId, buildId = buildId)
-            val nativeAbiVersion = service.javaClass.getMethod("getNativeAbiVersion").invoke(service) as Int
-            val nativeCommandStreamAbiId =
-                service.javaClass.getMethod("getNativeCommandStreamAbiId").invoke(service) as Int
-            val nativeBuildId = service.javaClass.getMethod("getNativeBuildId").invoke(service) as String
+            val nativeMetadata = service.nativeMetadataOrNull()
+                ?: return Discovery.fallback(FallbackReason.NATIVE_ABI_MISMATCH, abiId = abiId, buildId = buildId)
             if (
-                nativeAbiVersion != expectedNativeAbiVersion() ||
-                nativeCommandStreamAbiId != abiId ||
-                nativeBuildId != buildId
+                nativeMetadata.nativeAbiVersion != expectedNativeAbiVersion() ||
+                nativeMetadata.commandStreamAbiId != abiId ||
+                nativeMetadata.buildId != buildId
             ) {
                 return Discovery.fallback(FallbackReason.NATIVE_ABI_MISMATCH, abiId = abiId, buildId = buildId)
             }
@@ -228,6 +226,19 @@ object JbrSkiaInterop {
     private fun instantiateInternalServiceForPatchedJbr(classResolver: ClassResolver): Any? =
         try {
             classResolver.loadClass(JBR_INTERNAL_SERVICE_CLASS).getConstructor().newInstance()
+        } catch (_: ReflectiveOperationException) {
+            null
+        } catch (_: LinkageError) {
+            null
+        }
+
+    private fun Any.nativeMetadataOrNull(): NativeMetadata? =
+        try {
+            NativeMetadata(
+                nativeAbiVersion = javaClass.getMethod("getNativeAbiVersion").invoke(this) as Int,
+                commandStreamAbiId = javaClass.getMethod("getNativeCommandStreamAbiId").invoke(this) as Int,
+                buildId = javaClass.getMethod("getNativeBuildId").invoke(this) as String,
+            )
         } catch (_: ReflectiveOperationException) {
             null
         } catch (_: LinkageError) {
@@ -303,6 +314,12 @@ object JbrSkiaInterop {
             ) = Discovery(null, abiId, buildId, commandCapabilities, fallbackReason, cause)
         }
     }
+
+    private data class NativeMetadata(
+        val nativeAbiVersion: Int,
+        val commandStreamAbiId: Int,
+        val buildId: String,
+    )
 
     internal enum class FallbackReason(val id: String) {
         ABI_MISMATCH("abi-mismatch"),

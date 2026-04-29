@@ -136,6 +136,18 @@ class JbrSkiaInteropTest {
     }
 
     @Test
+    fun rejectsServiceWithoutNativeMetadata() {
+        val discovery = JbrSkiaInterop.discover(resolver(
+            publicJbrSkiaClass = CompatibleJbrSkia::class.java,
+            jbrAccessorClass = LegacyNativeMetadataJbr::class.java,
+        ))
+
+        assertFalse(discovery.isAvailable)
+        assertEquals(JbrSkiaInterop.FallbackReason.NATIVE_ABI_MISMATCH, discovery.fallbackReason)
+        assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=native-abi-mismatch", discovery.fallbackMarker)
+    }
+
+    @Test
     fun rejectsMissingCommandCapabilities() {
         val discovery = JbrSkiaInterop.discover(resolver(
             publicJbrSkiaClass = CompatibleJbrSkia::class.java,
@@ -328,6 +340,13 @@ class JbrSkiaInteropTest {
         fun getJBRSkia(): FakeJbrSkiaService = service
     }
 
+    object LegacyNativeMetadataJbr {
+        private val service = FakeJbrSkiaServiceWithoutNativeMetadata()
+
+        @JvmStatic
+        fun getJBRSkia(): FakeJbrSkiaServiceWithoutNativeMetadata = service
+    }
+
     class FakeJbrSkiaService(
         private val commandCapabilities: Long = REQUIRED_COMMAND_CAPABILITIES,
         private val nativeAbiVersion: Int = 1,
@@ -345,6 +364,15 @@ class JbrSkiaInteropTest {
         fun getNativeCommandStreamAbiId(): Int = nativeCommandStreamAbiId
 
         fun getNativeBuildId(): String = nativeBuildId
+
+        @Suppress("UNUSED_PARAMETER")
+        fun acquireCanvas(graphics: java.awt.Graphics2D): FakeScopedCanvas = scope
+    }
+
+    class FakeJbrSkiaServiceWithoutNativeMetadata {
+        val scope = FakeScopedCanvas()
+
+        fun getCommandCapabilities64(): Long = REQUIRED_COMMAND_CAPABILITIES
 
         @Suppress("UNUSED_PARAMETER")
         fun acquireCanvas(graphics: java.awt.Graphics2D): FakeScopedCanvas = scope
