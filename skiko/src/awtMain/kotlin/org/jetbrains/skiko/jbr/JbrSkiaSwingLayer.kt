@@ -46,7 +46,7 @@ class JbrSkiaSwingLayer(
     properties: SkiaLayerProperties = SkiaLayerProperties(),
 ) : SkiaSwingLayer(renderDelegate, analytics, accessibleContextProvider, properties) {
     private var context: DirectContext? = null
-    private var lastSurfaceIdentity: SurfaceIdentity? = null
+    private val surfaceIdentityTracker = SurfaceIdentityTracker()
     private var commandCanvasUnavailableLogged = false
     private var pictureCanvasUnavailableLogged = false
 
@@ -78,7 +78,7 @@ class JbrSkiaSwingLayer(
     override fun removeNotify() {
         context?.close()
         context = null
-        lastSurfaceIdentity = null
+        surfaceIdentityTracker.clear()
         super.removeNotify()
     }
 
@@ -233,22 +233,11 @@ class JbrSkiaSwingLayer(
     }
 
     private fun noteSurfaceIdentity(scope: JbrSkiaInterop.ScopedCanvas) {
-        val current = SurfaceIdentity(scope.surfaceId, scope.metalTexturePtr)
-        if (current.isUnknown) {
-            return
-        }
-        val previous = lastSurfaceIdentity
-        if (previous != null && previous != current) {
+        surfaceIdentityTracker.note(SurfaceIdentity(scope.surfaceId, scope.metalTexturePtr))?.let { change ->
             context?.close()
             context = null
-            Logger.info {
-                "SKIKO_JBR_INTEROP_SURFACE_CHANGED oldSurfaceId=${previous.surfaceId.toHexString()} " +
-                    "newSurfaceId=${current.surfaceId.toHexString()} " +
-                    "oldMetalTexture=${previous.metalTexturePtr.toHexString()} " +
-                    "newMetalTexture=${current.metalTexturePtr.toHexString()}"
-            }
+            Logger.info { change.marker() }
         }
-        lastSurfaceIdentity = current
     }
 
     private companion object {
@@ -373,8 +362,39 @@ class JbrSkiaSwingLayer(
 
 internal data class DeviceFrameSize(val width: Int, val height: Int)
 
-private data class SurfaceIdentity(val surfaceId: Long, val metalTexturePtr: Long) {
+internal data class SurfaceIdentity(val surfaceId: Long, val metalTexturePtr: Long) {
     val isUnknown: Boolean get() = surfaceId == 0L && metalTexturePtr == 0L
+}
+
+internal data class SurfaceIdentityChange(
+    val previous: SurfaceIdentity,
+    val current: SurfaceIdentity,
+) {
+    fun marker(): String =
+        "SKIKO_JBR_INTEROP_SURFACE_CHANGED oldSurfaceId=${previous.surfaceId.toHexString()} " +
+            "newSurfaceId=${current.surfaceId.toHexString()} " +
+            "oldMetalTexture=${previous.metalTexturePtr.toHexString()} " +
+            "newMetalTexture=${current.metalTexturePtr.toHexString()}"
+}
+
+internal class SurfaceIdentityTracker {
+    private var current: SurfaceIdentity? = null
+
+    fun note(next: SurfaceIdentity): SurfaceIdentityChange? {
+        if (next.isUnknown) return null
+
+        val previous = current
+        current = next
+        return if (previous != null && previous != next) {
+            SurfaceIdentityChange(previous, next)
+        } else {
+            null
+        }
+    }
+
+    fun clear() {
+        current = null
+    }
 }
 
 private fun Long.toHexString(): String = "0x${toString(16)}"
