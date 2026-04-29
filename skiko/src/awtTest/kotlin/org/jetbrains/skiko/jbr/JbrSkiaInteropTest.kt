@@ -19,7 +19,7 @@ class JbrSkiaInteropTest {
 
         assertTrue(discovery.isAvailable)
         assertSame(CompatibleJbr.service, discovery.service)
-        assertEquals(30, discovery.abiId)
+        assertEquals(31, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
     }
@@ -46,7 +46,7 @@ class JbrSkiaInteropTest {
 
             assertFalse(discovery.isAvailable)
             assertEquals(JbrSkiaInterop.FallbackReason.ABI_MISMATCH, discovery.fallbackReason)
-            assertEquals(30, discovery.abiId)
+            assertEquals(31, discovery.abiId)
             assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch", discovery.fallbackMarker)
         }
     }
@@ -81,7 +81,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(30, discovery.abiId)
+        assertEquals(31, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -94,7 +94,7 @@ class JbrSkiaInteropTest {
 
         assertFalse(discovery.isAvailable)
         assertEquals(JbrSkiaInterop.FallbackReason.COMMAND_CAPABILITY_MISMATCH, discovery.fallbackReason)
-        assertEquals(0, discovery.commandCapabilities)
+        assertEquals(0L, discovery.commandCapabilities)
         assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=command-capability-mismatch", discovery.fallbackMarker)
     }
 
@@ -122,7 +122,7 @@ class JbrSkiaInteropTest {
 
         assertNotNull(scopedCanvas)
         assertTrue(scopedCanvas.renderDiagnosticFrame(16, 16, 42L))
-        assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1246972723, 30, 0, 4, 1, 1, 1, 16, 1, 0xff000000.toInt())))
+        assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1246972723, 31, 0, 4, 1, 1, 1, 16, 1, 0xff000000.toInt())))
         assertTrue(scopedCanvas.renderCommandBufferFrame(16, 16, 42L, byteArrayOf(1, 0, 0, 0)))
         assertTrue(scopedCanvas.renderCommandDirectFrame(16, 16, 42L, ByteBuffer.allocateDirect(4).also { it.putInt(1); it.flip() }))
         assertTrue(scopedCanvas.renderPictureFrame(16, 16, 42L, byteArrayOf(1, 2, 3)))
@@ -143,7 +143,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(30, discovery.abiId)
+        assertEquals(31, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -221,7 +221,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "30".toInt()
+            val ABI_ID: Int = "31".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -258,11 +258,13 @@ class JbrSkiaInteropTest {
     }
 
     class FakeJbrSkiaService(
-        private val commandCapabilities: Int = REQUIRED_COMMAND_CAPABILITIES,
+        private val commandCapabilities: Long = REQUIRED_COMMAND_CAPABILITIES,
     ) {
         val scope = FakeScopedCanvas()
 
-        fun getCommandCapabilities(): Int = commandCapabilities
+        fun getCommandCapabilities(): Int = commandCapabilities.toInt()
+
+        fun getCommandCapabilities64(): Long = commandCapabilities
 
         @Suppress("UNUSED_PARAMETER")
         fun acquireCanvas(graphics: java.awt.Graphics2D): FakeScopedCanvas = scope
@@ -312,6 +314,6 @@ class JbrSkiaInteropTest {
     }
 
     private companion object {
-        private const val REQUIRED_COMMAND_CAPABILITIES = 2147483647
+        private const val REQUIRED_COMMAND_CAPABILITIES = 2147483647L
     }
 }
