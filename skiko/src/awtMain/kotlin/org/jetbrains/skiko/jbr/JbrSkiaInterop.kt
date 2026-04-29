@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
 object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
-    private const val EXPECTED_ABI_ID = 30
+    private const val EXPECTED_ABI_ID = 31
     private const val EXPECTED_ABI_ID_FOR_TEST_PROPERTY = "skiko.jbr.interop.expectedAbiIdForTest"
     private const val REQUIRED_COMMAND_CAPABILITIES_FOR_TEST_PROPERTY =
         "skiko.jbr.interop.requiredCommandCapabilitiesForTest"
@@ -45,37 +45,37 @@ object JbrSkiaInterop {
     private const val COMMAND_CAP_DRAW_ROUND_RECT = 536870912
     private const val COMMAND_CAP_FILL_RECT_LINEAR_GRADIENT = 1073741824
     private const val REQUIRED_COMMAND_CAPABILITIES =
-        COMMAND_CAP_CLEAR or
-            COMMAND_CAP_FILL_RECT or
-            COMMAND_CAP_STROKE_LINE or
-            COMMAND_CAP_FILL_OVAL or
-            COMMAND_CAP_STROKE_OVAL or
-            COMMAND_CAP_CLEAR_RECT or
-            COMMAND_CAP_SAVE_RESTORE or
-            COMMAND_CAP_CLIP_RECT or
-            COMMAND_CAP_USER_SPACE_COORDINATES or
-            COMMAND_CAP_RECORD_ANTIALIAS or
-            COMMAND_CAP_STROKE_METADATA or
-            COMMAND_CAP_BASIC_TRANSFORMS or
-            COMMAND_CAP_CLIP_RECT_OP or
-            COMMAND_CAP_SAVE_LAYER or
-            COMMAND_CAP_DRAW_IMAGE_ARGB or
-            COMMAND_CAP_IMAGE_CACHE or
-            COMMAND_CAP_DRAW_TEXT_UTF16 or
-            COMMAND_CAP_CLEAR_IMAGE_CACHE or
-            COMMAND_CAP_DRAW_PARAGRAPH_UTF16 or
-            COMMAND_CAP_PARAGRAPH_FONT_STYLE or
-            COMMAND_CAP_PARAGRAPH_LAYOUT or
-            COMMAND_CAP_PARAGRAPH_LINE_HEIGHT or
-            COMMAND_CAP_PARAGRAPH_OVERFLOW or
-            COMMAND_CAP_PARAGRAPH_DECORATION or
-            COMMAND_CAP_PARAGRAPH_LETTER_SPACING or
-            COMMAND_CAP_PARAGRAPH_BACKGROUND or
-            COMMAND_CAP_CLIP_PATH or
-            COMMAND_CAP_DRAW_PATH or
-            COMMAND_CAP_DRAW_ARC or
-            COMMAND_CAP_DRAW_ROUND_RECT or
-            COMMAND_CAP_FILL_RECT_LINEAR_GRADIENT
+        COMMAND_CAP_CLEAR.toLong() or
+            COMMAND_CAP_FILL_RECT.toLong() or
+            COMMAND_CAP_STROKE_LINE.toLong() or
+            COMMAND_CAP_FILL_OVAL.toLong() or
+            COMMAND_CAP_STROKE_OVAL.toLong() or
+            COMMAND_CAP_CLEAR_RECT.toLong() or
+            COMMAND_CAP_SAVE_RESTORE.toLong() or
+            COMMAND_CAP_CLIP_RECT.toLong() or
+            COMMAND_CAP_USER_SPACE_COORDINATES.toLong() or
+            COMMAND_CAP_RECORD_ANTIALIAS.toLong() or
+            COMMAND_CAP_STROKE_METADATA.toLong() or
+            COMMAND_CAP_BASIC_TRANSFORMS.toLong() or
+            COMMAND_CAP_CLIP_RECT_OP.toLong() or
+            COMMAND_CAP_SAVE_LAYER.toLong() or
+            COMMAND_CAP_DRAW_IMAGE_ARGB.toLong() or
+            COMMAND_CAP_IMAGE_CACHE.toLong() or
+            COMMAND_CAP_DRAW_TEXT_UTF16.toLong() or
+            COMMAND_CAP_CLEAR_IMAGE_CACHE.toLong() or
+            COMMAND_CAP_DRAW_PARAGRAPH_UTF16.toLong() or
+            COMMAND_CAP_PARAGRAPH_FONT_STYLE.toLong() or
+            COMMAND_CAP_PARAGRAPH_LAYOUT.toLong() or
+            COMMAND_CAP_PARAGRAPH_LINE_HEIGHT.toLong() or
+            COMMAND_CAP_PARAGRAPH_OVERFLOW.toLong() or
+            COMMAND_CAP_PARAGRAPH_DECORATION.toLong() or
+            COMMAND_CAP_PARAGRAPH_LETTER_SPACING.toLong() or
+            COMMAND_CAP_PARAGRAPH_BACKGROUND.toLong() or
+            COMMAND_CAP_CLIP_PATH.toLong() or
+            COMMAND_CAP_DRAW_PATH.toLong() or
+            COMMAND_CAP_DRAW_ARC.toLong() or
+            COMMAND_CAP_DRAW_ROUND_RECT.toLong() or
+            COMMAND_CAP_FILL_RECT_LINEAR_GRADIENT.toLong()
     private val JBR_SKIA_CLASSES = arrayOf("com.jetbrains.JBRSkia", "com.jetbrains.desktop.JBRSkia")
     private const val JBR_INTERNAL_SERVICE_CLASS = "com.jetbrains.desktop.JBRSkiaService"
     private const val JBR_ACCESSOR_CLASS = "com.jetbrains.JBR"
@@ -150,7 +150,7 @@ object JbrSkiaInterop {
             val service = accessorClass.getDeclaredMethod(JBR_ACCESSOR_METHOD).invoke(null)
                 ?: instantiateInternalServiceForPatchedJbr(classResolver)
                 ?: return Discovery.fallback(FallbackReason.SERVICE_UNAVAILABLE, abiId = abiId, buildId = buildId)
-            val commandCapabilities = service.javaClass.getMethod("getCommandCapabilities").invoke(service) as Int
+            val commandCapabilities = service.javaClass.getMethod("getCommandCapabilities64").invoke(service) as Long
             val requiredCommandCapabilities = requiredCommandCapabilities()
             if (commandCapabilities and requiredCommandCapabilities != requiredCommandCapabilities) {
                 return Discovery.fallback(
@@ -187,8 +187,8 @@ object JbrSkiaInterop {
     private fun expectedAbiId(): Int =
         System.getProperty(EXPECTED_ABI_ID_FOR_TEST_PROPERTY)?.toIntOrNull() ?: EXPECTED_ABI_ID
 
-    private fun requiredCommandCapabilities(): Int =
-        System.getProperty(REQUIRED_COMMAND_CAPABILITIES_FOR_TEST_PROPERTY)?.toIntOrNull()
+    private fun requiredCommandCapabilities(): Long =
+        System.getProperty(REQUIRED_COMMAND_CAPABILITIES_FOR_TEST_PROPERTY)?.toLongOrNull()
             ?: REQUIRED_COMMAND_CAPABILITIES
 
     private fun instantiateInternalServiceForPatchedJbr(classResolver: ClassResolver): Any? =
@@ -247,7 +247,7 @@ object JbrSkiaInterop {
         val service: Any?,
         val abiId: Int?,
         val buildId: String?,
-        val commandCapabilities: Int?,
+        val commandCapabilities: Long?,
         val fallbackReason: FallbackReason?,
         val cause: Throwable? = null,
     ) {
@@ -257,14 +257,14 @@ object JbrSkiaInterop {
             get() = "$FALLBACK_MARKER reason=${fallbackReason?.id ?: "none"}"
 
         companion object {
-            fun available(service: Any, abiId: Int, buildId: String, commandCapabilities: Int) =
+            fun available(service: Any, abiId: Int, buildId: String, commandCapabilities: Long) =
                 Discovery(service, abiId, buildId, commandCapabilities, fallbackReason = null)
 
             fun fallback(
                 fallbackReason: FallbackReason,
                 abiId: Int? = null,
                 buildId: String? = null,
-                commandCapabilities: Int? = null,
+                commandCapabilities: Long? = null,
                 cause: Throwable? = null,
             ) = Discovery(null, abiId, buildId, commandCapabilities, fallbackReason, cause)
         }
