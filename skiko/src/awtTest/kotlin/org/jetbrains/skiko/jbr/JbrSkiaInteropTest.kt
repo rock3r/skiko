@@ -37,6 +37,21 @@ class JbrSkiaInteropTest {
     }
 
     @Test
+    fun expectedAbiOverrideForTestingForcesMismatch() {
+        withSystemProperty("skiko.jbr.interop.expectedAbiIdForTest", "999") {
+            val discovery = JbrSkiaInterop.discover(resolver(
+                publicJbrSkiaClass = CompatibleJbrSkia::class.java,
+                jbrAccessorClass = CompatibleJbr::class.java,
+            ))
+
+            assertFalse(discovery.isAvailable)
+            assertEquals(JbrSkiaInterop.FallbackReason.ABI_MISMATCH, discovery.fallbackReason)
+            assertEquals(25, discovery.abiId)
+            assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch", discovery.fallbackMarker)
+        }
+    }
+
+    @Test
     fun missingPublicApiFallsBack() {
         val discovery = JbrSkiaInterop.discover(resolver())
 
@@ -158,6 +173,20 @@ class JbrSkiaInteropTest {
     }
 
     private fun testGraphics() = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics()
+
+    private fun withSystemProperty(name: String, value: String, block: () -> Unit) {
+        val oldValue = System.getProperty(name)
+        try {
+            System.setProperty(name, value)
+            block()
+        } finally {
+            if (oldValue == null) {
+                System.clearProperty(name)
+            } else {
+                System.setProperty(name, oldValue)
+            }
+        }
+    }
 
     private fun resolver(
         publicJbrSkiaClass: Class<*>? = null,
