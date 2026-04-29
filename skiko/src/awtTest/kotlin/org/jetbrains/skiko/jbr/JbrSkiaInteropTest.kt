@@ -19,7 +19,7 @@ class JbrSkiaInteropTest {
 
         assertTrue(discovery.isAvailable)
         assertSame(CompatibleJbr.service, discovery.service)
-        assertEquals(39, discovery.abiId)
+        assertEquals(40, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
     }
@@ -46,7 +46,7 @@ class JbrSkiaInteropTest {
 
             assertFalse(discovery.isAvailable)
             assertEquals(JbrSkiaInterop.FallbackReason.ABI_MISMATCH, discovery.fallbackReason)
-            assertEquals(39, discovery.abiId)
+            assertEquals(40, discovery.abiId)
             assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch", discovery.fallbackMarker)
         }
     }
@@ -81,7 +81,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(39, discovery.abiId)
+        assertEquals(40, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -120,7 +120,7 @@ class JbrSkiaInteropTest {
 
         assertFalse(discovery.isAvailable)
         assertEquals(JbrSkiaInterop.FallbackReason.NATIVE_ABI_MISMATCH, discovery.fallbackReason)
-        assertEquals(39, discovery.abiId)
+        assertEquals(40, discovery.abiId)
     }
 
     @Test
@@ -184,9 +184,10 @@ class JbrSkiaInteropTest {
 
         assertNotNull(scopedCanvas)
         assertEquals(99L, scopedCanvas.scopeId)
+        assertEquals(0x5678L, scopedCanvas.surfaceId)
         assertEquals(0x1234L, scopedCanvas.metalTexturePtr)
         assertTrue(scopedCanvas.renderDiagnosticFrame(16, 16, 42L))
-        assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1246972723, 39, 0, 4, 1, 1, 1, 16, 1, 0xff000000.toInt())))
+        assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1246972723, 40, 0, 4, 1, 1, 1, 16, 1, 0xff000000.toInt())))
         assertTrue(scopedCanvas.renderCommandBufferFrame(16, 16, 42L, byteArrayOf(1, 0, 0, 0)))
         assertTrue(scopedCanvas.renderCommandDirectFrame(16, 16, 42L, ByteBuffer.allocateDirect(4).also { it.putInt(1); it.flip() }))
         assertTrue(scopedCanvas.renderPictureFrame(16, 16, 42L, byteArrayOf(1, 2, 3)))
@@ -207,7 +208,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(39, discovery.abiId)
+        assertEquals(40, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -285,7 +286,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "39".toInt()
+            val ABI_ID: Int = "40".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -351,8 +352,8 @@ class JbrSkiaInteropTest {
 
     class FakeJbrSkiaService(
         private val commandCapabilities: Long = REQUIRED_COMMAND_CAPABILITIES,
-        private val nativeAbiVersion: Int = 1,
-        private val nativeCommandStreamAbiId: Int = 39,
+        private val nativeAbiVersion: Int = 2,
+        private val nativeCommandStreamAbiId: Int = 40,
         private val nativeBuildId: String = "test-build",
     ) {
         val scope = FakeScopedCanvas()
@@ -389,6 +390,8 @@ class JbrSkiaInteropTest {
         var renderPictureFrameCount = 0
 
         fun getScopeId(): Long = 99L
+
+        fun getSurfaceId(): Long = 0x5678L
 
         fun getMetalTexturePtr(): Long = 0x1234L
 

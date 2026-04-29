@@ -46,6 +46,7 @@ class JbrSkiaSwingLayer(
     properties: SkiaLayerProperties = SkiaLayerProperties(),
 ) : SkiaSwingLayer(renderDelegate, analytics, accessibleContextProvider, properties) {
     private var context: DirectContext? = null
+    private var lastSurfaceIdentity: SurfaceIdentity? = null
     private var commandCanvasUnavailableLogged = false
     private var pictureCanvasUnavailableLogged = false
 
@@ -77,6 +78,7 @@ class JbrSkiaSwingLayer(
     override fun removeNotify() {
         context?.close()
         context = null
+        lastSurfaceIdentity = null
         super.removeNotify()
     }
 
@@ -86,6 +88,7 @@ class JbrSkiaSwingLayer(
             return false
         }
         try {
+            noteSurfaceIdentity(scope)
             val texturePtr = scope.metalTexturePtr
             if (texturePtr == 0L) {
                 return false
@@ -128,6 +131,7 @@ class JbrSkiaSwingLayer(
             return false
         }
         return try {
+            noteSurfaceIdentity(scope)
             val frameTime = System.nanoTime()
             val frameSize = deviceFrameSize(
                 width = width,
@@ -177,6 +181,7 @@ class JbrSkiaSwingLayer(
             return false
         }
         return try {
+            noteSurfaceIdentity(scope)
             val commandStream = commands.corruptForTestingIfRequested()
             val commandBuffer = commandStream.toDirectLittleEndianByteBuffer()
             scope.renderCommandDirectFrame(renderWidth, renderHeight, frameTime, commandBuffer).also { rendered ->
@@ -214,6 +219,7 @@ class JbrSkiaSwingLayer(
     private fun renderJbrDiagnosticFrame(g: Graphics2D): Boolean {
         val scope = JbrSkiaInterop.acquireCanvas(g) ?: return false
         return try {
+            noteSurfaceIdentity(scope)
             scope.renderDiagnosticFrame(width, height, System.nanoTime()).also { rendered ->
                 if (rendered) {
                     scope.flush()
@@ -224,6 +230,25 @@ class JbrSkiaSwingLayer(
         } finally {
             scope.close()
         }
+    }
+
+    private fun noteSurfaceIdentity(scope: JbrSkiaInterop.ScopedCanvas) {
+        val current = SurfaceIdentity(scope.surfaceId, scope.metalTexturePtr)
+        if (current.isUnknown) {
+            return
+        }
+        val previous = lastSurfaceIdentity
+        if (previous != null && previous != current) {
+            context?.close()
+            context = null
+            Logger.info {
+                "SKIKO_JBR_INTEROP_SURFACE_CHANGED oldSurfaceId=${previous.surfaceId.toHexString()} " +
+                    "newSurfaceId=${current.surfaceId.toHexString()} " +
+                    "oldMetalTexture=${previous.metalTexturePtr.toHexString()} " +
+                    "newMetalTexture=${current.metalTexturePtr.toHexString()}"
+            }
+        }
+        lastSurfaceIdentity = current
     }
 
     private companion object {
@@ -239,7 +264,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
         private const val COMMAND_STREAM_MAGIC = 1246972723
-        private const val COMMAND_STREAM_ABI_ID = 39
+        private const val COMMAND_STREAM_ABI_ID = 40
         private const val COMMAND_STREAM_HEADER_SIZE = 6
         private const val COMMAND_STREAM_FLAGS_NONE = 0
         private const val COMMAND_COORDINATE_SPACE_SWING_USER = 1
@@ -347,6 +372,12 @@ class JbrSkiaSwingLayer(
 }
 
 internal data class DeviceFrameSize(val width: Int, val height: Int)
+
+private data class SurfaceIdentity(val surfaceId: Long, val metalTexturePtr: Long) {
+    val isUnknown: Boolean get() = surfaceId == 0L && metalTexturePtr == 0L
+}
+
+private fun Long.toHexString(): String = "0x${toString(16)}"
 
 internal fun deviceFrameSize(width: Int, height: Int, scale: Float): DeviceFrameSize {
     val safeScale = scale.takeIf { it.isFinite() && it > 0f } ?: 1f
