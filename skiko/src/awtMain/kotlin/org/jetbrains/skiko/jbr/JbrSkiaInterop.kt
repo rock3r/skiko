@@ -11,6 +11,8 @@ object JbrSkiaInterop {
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
     private const val EXPECTED_ABI_ID = 25
     private const val EXPECTED_ABI_ID_FOR_TEST_PROPERTY = "skiko.jbr.interop.expectedAbiIdForTest"
+    private const val REQUIRED_COMMAND_CAPABILITIES_FOR_TEST_PROPERTY =
+        "skiko.jbr.interop.requiredCommandCapabilitiesForTest"
     private const val COMMAND_CAP_CLEAR = 1
     private const val COMMAND_CAP_FILL_RECT = 2
     private const val COMMAND_CAP_STROKE_LINE = 4
@@ -139,7 +141,8 @@ object JbrSkiaInterop {
                 ?: instantiateInternalServiceForPatchedJbr(classResolver)
                 ?: return Discovery.fallback(FallbackReason.SERVICE_UNAVAILABLE, abiId = abiId, buildId = buildId)
             val commandCapabilities = service.javaClass.getMethod("getCommandCapabilities").invoke(service) as Int
-            if (commandCapabilities and REQUIRED_COMMAND_CAPABILITIES != REQUIRED_COMMAND_CAPABILITIES) {
+            val requiredCommandCapabilities = requiredCommandCapabilities()
+            if (commandCapabilities and requiredCommandCapabilities != requiredCommandCapabilities) {
                 return Discovery.fallback(
                     FallbackReason.COMMAND_CAPABILITY_MISMATCH,
                     abiId = abiId,
@@ -173,6 +176,10 @@ object JbrSkiaInterop {
 
     private fun expectedAbiId(): Int =
         System.getProperty(EXPECTED_ABI_ID_FOR_TEST_PROPERTY)?.toIntOrNull() ?: EXPECTED_ABI_ID
+
+    private fun requiredCommandCapabilities(): Int =
+        System.getProperty(REQUIRED_COMMAND_CAPABILITIES_FOR_TEST_PROPERTY)?.toIntOrNull()
+            ?: REQUIRED_COMMAND_CAPABILITIES
 
     private fun instantiateInternalServiceForPatchedJbr(classResolver: ClassResolver): Any? =
         try {
