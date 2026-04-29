@@ -9,8 +9,8 @@ import java.util.concurrent.ConcurrentHashMap
 object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
-    private const val EXPECTED_ABI_ID = 39
-    private const val EXPECTED_NATIVE_ABI_VERSION = 1
+    private const val EXPECTED_ABI_ID = 40
+    private const val EXPECTED_NATIVE_ABI_VERSION = 2
     private const val EXPECTED_ABI_ID_FOR_TEST_PROPERTY = "skiko.jbr.interop.expectedAbiIdForTest"
     private const val EXPECTED_NATIVE_ABI_VERSION_FOR_TEST_PROPERTY =
         "skiko.jbr.interop.expectedNativeAbiVersionForTest"
@@ -260,7 +260,8 @@ object JbrSkiaInterop {
     private fun logScopeAcquiredOnce(discovery: Discovery, scope: Any) {
         val marker =
             "$SCOPE_ACQUIRED_MARKER abi=${discovery.abiId} build=${discovery.buildId} " +
-                "scopeId=${scope.scopeId() ?: 0L} metalTexture=${scope.metalTexturePtr().toHexString()}"
+                "scopeId=${scope.scopeId() ?: 0L} surfaceId=${scope.surfaceId().toHexString()} " +
+                "metalTexture=${scope.metalTexturePtr().toHexString()}"
         if (loggedFallbackMarkers.add(marker)) {
             Logger.info { marker }
         }
@@ -338,6 +339,8 @@ object JbrSkiaInterop {
     internal interface ScopedCanvas : AutoCloseable {
         val scopeId: Long
 
+        val surfaceId: Long
+
         val metalTexturePtr: Long
 
         fun renderDiagnosticFrame(width: Int, height: Int, frameTimeNanos: Long): Boolean
@@ -356,6 +359,9 @@ object JbrSkiaInterop {
     private class ReflectiveScopedCanvas(private val scope: Any) : ScopedCanvas {
         override val scopeId: Long
             get() = scope.scopeId() ?: 0L
+
+        override val surfaceId: Long
+            get() = scope.surfaceId() ?: 0L
 
         override val metalTexturePtr: Long
             get() = scope.metalTexturePtr() ?: 0L
@@ -391,6 +397,16 @@ object JbrSkiaInterop {
     private fun Any.scopeId(): Long? {
         return try {
             invokeScopeMethod("getScopeId") as? Long
+        } catch (_: ReflectiveOperationException) {
+            null
+        } catch (_: LinkageError) {
+            null
+        }
+    }
+
+    private fun Any.surfaceId(): Long? {
+        return try {
+            invokeScopeMethod("getSurfaceId") as? Long
         } catch (_: ReflectiveOperationException) {
             null
         } catch (_: LinkageError) {
