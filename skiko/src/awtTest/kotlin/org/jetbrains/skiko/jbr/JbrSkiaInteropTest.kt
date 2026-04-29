@@ -19,7 +19,7 @@ class JbrSkiaInteropTest {
 
         assertTrue(discovery.isAvailable)
         assertSame(CompatibleJbr.service, discovery.service)
-        assertEquals(40, discovery.abiId)
+        assertEquals(41, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
     }
@@ -46,7 +46,7 @@ class JbrSkiaInteropTest {
 
             assertFalse(discovery.isAvailable)
             assertEquals(JbrSkiaInterop.FallbackReason.ABI_MISMATCH, discovery.fallbackReason)
-            assertEquals(40, discovery.abiId)
+            assertEquals(41, discovery.abiId)
             assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch", discovery.fallbackMarker)
         }
     }
@@ -81,7 +81,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(40, discovery.abiId)
+        assertEquals(41, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -120,7 +120,7 @@ class JbrSkiaInteropTest {
 
         assertFalse(discovery.isAvailable)
         assertEquals(JbrSkiaInterop.FallbackReason.NATIVE_ABI_MISMATCH, discovery.fallbackReason)
-        assertEquals(40, discovery.abiId)
+        assertEquals(41, discovery.abiId)
     }
 
     @Test
@@ -184,10 +184,11 @@ class JbrSkiaInteropTest {
 
         assertNotNull(scopedCanvas)
         assertEquals(99L, scopedCanvas.scopeId)
+        assertEquals(0x9abcL, scopedCanvas.contextId)
         assertEquals(0x5678L, scopedCanvas.surfaceId)
         assertEquals(0x1234L, scopedCanvas.metalTexturePtr)
         assertTrue(scopedCanvas.renderDiagnosticFrame(16, 16, 42L))
-        assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1246972723, 40, 0, 4, 1, 1, 1, 16, 1, 0xff000000.toInt())))
+        assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1246972723, 41, 0, 4, 1, 1, 1, 16, 1, 0xff000000.toInt())))
         assertTrue(scopedCanvas.renderCommandBufferFrame(16, 16, 42L, byteArrayOf(1, 0, 0, 0)))
         assertTrue(scopedCanvas.renderCommandDirectFrame(16, 16, 42L, ByteBuffer.allocateDirect(4).also { it.putInt(1); it.flip() }))
         assertTrue(scopedCanvas.renderPictureFrame(16, 16, 42L, byteArrayOf(1, 2, 3)))
@@ -208,7 +209,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(40, discovery.abiId)
+        assertEquals(41, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -256,14 +257,14 @@ class JbrSkiaInteropTest {
     fun surfaceIdentityTrackerIgnoresUnknownIdentity() {
         val tracker = SurfaceIdentityTracker()
 
-        assertEquals(null, tracker.note(SurfaceIdentity(surfaceId = 0L, metalTexturePtr = 0L)))
-        assertEquals(null, tracker.note(SurfaceIdentity(surfaceId = 0x1L, metalTexturePtr = 0x2L)))
+        assertEquals(null, tracker.note(SurfaceIdentity(contextId = 0L, surfaceId = 0L, metalTexturePtr = 0L)))
+        assertEquals(null, tracker.note(SurfaceIdentity(contextId = 0x1L, surfaceId = 0x2L, metalTexturePtr = 0x3L)))
     }
 
     @Test
     fun surfaceIdentityTrackerIgnoresStableIdentity() {
         val tracker = SurfaceIdentityTracker()
-        val identity = SurfaceIdentity(surfaceId = 0x1L, metalTexturePtr = 0x2L)
+        val identity = SurfaceIdentity(contextId = 0x1L, surfaceId = 0x2L, metalTexturePtr = 0x3L)
 
         assertEquals(null, tracker.note(identity))
         assertEquals(null, tracker.note(identity))
@@ -273,12 +274,12 @@ class JbrSkiaInteropTest {
     fun surfaceIdentityTrackerReportsChangedIdentity() {
         val tracker = SurfaceIdentityTracker()
 
-        assertEquals(null, tracker.note(SurfaceIdentity(surfaceId = 0x1L, metalTexturePtr = 0x2L)))
-        val change = tracker.note(SurfaceIdentity(surfaceId = 0x3L, metalTexturePtr = 0x4L))
+        assertEquals(null, tracker.note(SurfaceIdentity(contextId = 0x1L, surfaceId = 0x2L, metalTexturePtr = 0x3L)))
+        val change = tracker.note(SurfaceIdentity(contextId = 0x4L, surfaceId = 0x5L, metalTexturePtr = 0x6L))
 
         assertNotNull(change)
         assertEquals(
-            "SKIKO_JBR_INTEROP_SURFACE_CHANGED oldSurfaceId=0x1 newSurfaceId=0x3 oldMetalTexture=0x2 newMetalTexture=0x4",
+            "SKIKO_JBR_INTEROP_SURFACE_CHANGED oldContextId=0x1 newContextId=0x4 oldSurfaceId=0x2 newSurfaceId=0x5 oldMetalTexture=0x3 newMetalTexture=0x6",
             change.marker()
         )
     }
@@ -287,9 +288,9 @@ class JbrSkiaInteropTest {
     fun surfaceIdentityTrackerClearForgetsPreviousIdentity() {
         val tracker = SurfaceIdentityTracker()
 
-        assertEquals(null, tracker.note(SurfaceIdentity(surfaceId = 0x1L, metalTexturePtr = 0x2L)))
+        assertEquals(null, tracker.note(SurfaceIdentity(contextId = 0x1L, surfaceId = 0x2L, metalTexturePtr = 0x3L)))
         tracker.clear()
-        assertEquals(null, tracker.note(SurfaceIdentity(surfaceId = 0x3L, metalTexturePtr = 0x4L)))
+        assertEquals(null, tracker.note(SurfaceIdentity(contextId = 0x4L, surfaceId = 0x5L, metalTexturePtr = 0x6L)))
     }
 
     private fun testGraphics() = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics()
@@ -326,7 +327,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "40".toInt()
+            val ABI_ID: Int = "41".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -392,8 +393,8 @@ class JbrSkiaInteropTest {
 
     class FakeJbrSkiaService(
         private val commandCapabilities: Long = REQUIRED_COMMAND_CAPABILITIES,
-        private val nativeAbiVersion: Int = 2,
-        private val nativeCommandStreamAbiId: Int = 40,
+        private val nativeAbiVersion: Int = 3,
+        private val nativeCommandStreamAbiId: Int = 41,
         private val nativeBuildId: String = "test-build",
     ) {
         val scope = FakeScopedCanvas()
@@ -432,6 +433,8 @@ class JbrSkiaInteropTest {
         fun getScopeId(): Long = 99L
 
         fun getSurfaceId(): Long = 0x5678L
+
+        fun getContextId(): Long = 0x9abcL
 
         fun getMetalTexturePtr(): Long = 0x1234L
 
