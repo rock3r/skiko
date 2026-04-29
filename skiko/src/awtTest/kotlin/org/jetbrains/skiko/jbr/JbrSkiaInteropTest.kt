@@ -183,6 +183,8 @@ class JbrSkiaInteropTest {
         ))
 
         assertNotNull(scopedCanvas)
+        assertEquals(99L, scopedCanvas.scopeId)
+        assertEquals(0x1234L, scopedCanvas.metalTexturePtr)
         assertTrue(scopedCanvas.renderDiagnosticFrame(16, 16, 42L))
         assertTrue(scopedCanvas.renderCommandFrame(16, 16, 42L, intArrayOf(1246972723, 39, 0, 4, 1, 1, 1, 16, 1, 0xff000000.toInt())))
         assertTrue(scopedCanvas.renderCommandBufferFrame(16, 16, 42L, byteArrayOf(1, 0, 0, 0)))
@@ -385,6 +387,10 @@ class JbrSkiaInteropTest {
         var renderCommandBufferFrameCount = 0
         var renderCommandDirectFrameCount = 0
         var renderPictureFrameCount = 0
+
+        fun getScopeId(): Long = 99L
+
+        fun getMetalTexturePtr(): Long = 0x1234L
 
         @Suppress("UNUSED_PARAMETER")
         fun renderDiagnosticFrame(width: Int, height: Int, frameTimeNanos: Long): Boolean {
