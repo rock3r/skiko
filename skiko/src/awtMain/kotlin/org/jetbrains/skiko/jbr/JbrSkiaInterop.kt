@@ -258,7 +258,9 @@ object JbrSkiaInterop {
     }
 
     private fun logScopeAcquiredOnce(discovery: Discovery, scope: Any) {
-            val marker = "$SCOPE_ACQUIRED_MARKER abi=${discovery.abiId} build=${discovery.buildId} metalTexture=${scope.metalTexturePtr().toHexString()}"
+        val marker =
+            "$SCOPE_ACQUIRED_MARKER abi=${discovery.abiId} build=${discovery.buildId} " +
+                "scopeId=${scope.scopeId() ?: 0L} metalTexture=${scope.metalTexturePtr().toHexString()}"
         if (loggedFallbackMarkers.add(marker)) {
             Logger.info { marker }
         }
@@ -334,6 +336,8 @@ object JbrSkiaInterop {
     }
 
     internal interface ScopedCanvas : AutoCloseable {
+        val scopeId: Long
+
         val metalTexturePtr: Long
 
         fun renderDiagnosticFrame(width: Int, height: Int, frameTimeNanos: Long): Boolean
@@ -350,6 +354,9 @@ object JbrSkiaInterop {
     }
 
     private class ReflectiveScopedCanvas(private val scope: Any) : ScopedCanvas {
+        override val scopeId: Long
+            get() = scope.scopeId() ?: 0L
+
         override val metalTexturePtr: Long
             get() = scope.metalTexturePtr() ?: 0L
 
@@ -378,6 +385,16 @@ object JbrSkiaInterop {
             } else {
                 scope.javaClass.getMethod("close").invoke(scope)
             }
+        }
+    }
+
+    private fun Any.scopeId(): Long? {
+        return try {
+            invokeScopeMethod("getScopeId") as? Long
+        } catch (_: ReflectiveOperationException) {
+            null
+        } catch (_: LinkageError) {
+            null
         }
     }
 
