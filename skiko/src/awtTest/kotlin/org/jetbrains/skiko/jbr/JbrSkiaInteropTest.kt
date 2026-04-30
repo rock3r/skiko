@@ -19,7 +19,7 @@ class JbrSkiaInteropTest {
 
         assertTrue(discovery.isAvailable)
         assertSame(CompatibleJbr.service, discovery.service)
-        assertEquals(48, discovery.abiId)
+        assertEquals(49, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
     }
@@ -46,7 +46,7 @@ class JbrSkiaInteropTest {
 
             assertFalse(discovery.isAvailable)
             assertEquals(JbrSkiaInterop.FallbackReason.ABI_MISMATCH, discovery.fallbackReason)
-            assertEquals(48, discovery.abiId)
+            assertEquals(49, discovery.abiId)
             assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch", discovery.fallbackMarker)
         }
     }
@@ -81,7 +81,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(48, discovery.abiId)
+        assertEquals(49, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -120,7 +120,7 @@ class JbrSkiaInteropTest {
 
         assertFalse(discovery.isAvailable)
         assertEquals(JbrSkiaInterop.FallbackReason.NATIVE_ABI_MISMATCH, discovery.fallbackReason)
-        assertEquals(48, discovery.abiId)
+        assertEquals(49, discovery.abiId)
     }
 
     @Test
@@ -209,7 +209,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(48, discovery.abiId)
+        assertEquals(49, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -345,7 +345,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "48".toInt()
+            val ABI_ID: Int = "49".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -412,7 +412,7 @@ class JbrSkiaInteropTest {
     class FakeJbrSkiaService(
         private val commandCapabilities: Long = REQUIRED_COMMAND_CAPABILITIES,
         private val nativeAbiVersion: Int = 3,
-        private val nativeCommandStreamAbiId: Int = 48,
+        private val nativeCommandStreamAbiId: Int = 49,
         private val nativeBuildId: String = "test-build",
     ) {
         val scope = FakeScopedCanvas()
@@ -492,6 +492,6 @@ class JbrSkiaInteropTest {
     }
 
     private companion object {
-        private const val REQUIRED_COMMAND_CAPABILITIES = 70368744177663L
+        private const val REQUIRED_COMMAND_CAPABILITIES = 140737488355327L
     }
 }
