@@ -47,6 +47,7 @@ class JbrSkiaSwingLayer(
 ) : SkiaSwingLayer(renderDelegate, analytics, accessibleContextProvider, properties) {
     private var context: DirectContext? = null
     private val surfaceIdentityTracker = SurfaceIdentityTracker()
+    private val commandFrameCache = CommandFrameCache(MIN_MEANINGFUL_COMMAND_WORDS)
     private var commandCanvasUnavailableLogged = false
     private var pictureCanvasUnavailableLogged = false
 
@@ -70,15 +71,13 @@ class JbrSkiaSwingLayer(
         if (g is Graphics2D) {
             JbrSkiaDebugOverlay.paint(g, renderedWithJbrTexture)
         }
-        if (renderedWithJbrTexture && java.lang.Boolean.getBoolean(RENDER_COMMANDS_PROPERTY)) {
-            repaint()
-        }
     }
 
     override fun removeNotify() {
         context?.close()
         context = null
         surfaceIdentityTracker.clear()
+        commandFrameCache.clear()
         super.removeNotify()
     }
 
@@ -182,7 +181,7 @@ class JbrSkiaSwingLayer(
         }
         return try {
             noteSurfaceIdentity(scope)
-            val commandStream = commands.corruptForTestingIfRequested()
+            val commandStream = commandFrameCache.frameForRendering(commands).corruptForTestingIfRequested()
             val commandBuffer = commandStream.toDirectLittleEndianByteBuffer()
             scope.renderCommandDirectFrame(renderWidth, renderHeight, frameTime, commandBuffer).also { rendered ->
                 Logger.info {
@@ -238,6 +237,9 @@ class JbrSkiaSwingLayer(
                 context?.close()
                 context = null
             }
+            if (change.surfaceChanged) {
+                commandFrameCache.clear()
+            }
             Logger.info { change.marker() }
         }
     }
@@ -260,6 +262,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_STREAM_FLAGS_NONE = 0
         private const val COMMAND_COORDINATE_SPACE_SWING_USER = 1
         private const val COMMAND_PAINT_FORMAT_SOLID_ARGB = 1
+        private const val MIN_MEANINGFUL_COMMAND_WORDS = 64
         private const val COMMAND_RECORD_FLAGS_NONE = 0
         private const val COMMAND_RECORD_FLAG_ANTIALIAS = 1
         private const val STROKE_CAP_BUTT = 0
@@ -405,6 +408,31 @@ internal class SurfaceIdentityTracker {
 
     fun clear() {
         current = null
+    }
+}
+
+internal class CommandFrameCache(
+    private val minimumMeaningfulCommandWords: Int = 64,
+) {
+    private var lastMeaningfulFrame: IntArray? = null
+
+    fun frameForRendering(commands: IntArray): IntArray {
+        val cached = lastMeaningfulFrame
+        if (commands.size >= minimumMeaningfulCommandWords) {
+            lastMeaningfulFrame = commands.copyOf()
+            return commands
+        }
+        if (cached != null) {
+            Logger.info {
+                "SKIKO_JBR_INTEROP_COMMAND_REPLAY_CACHED currentCommands=${commands.size} cachedCommands=${cached.size}"
+            }
+            return cached
+        }
+        return commands
+    }
+
+    fun clear() {
+        lastMeaningfulFrame = null
     }
 }
 
