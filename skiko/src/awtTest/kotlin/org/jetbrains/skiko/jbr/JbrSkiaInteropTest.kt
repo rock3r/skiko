@@ -20,7 +20,7 @@ class JbrSkiaInteropTest {
 
         assertTrue(discovery.isAvailable)
         assertSame(CompatibleJbr.service, discovery.service)
-        assertEquals(74, discovery.abiId)
+        assertEquals(75, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
     }
@@ -47,7 +47,7 @@ class JbrSkiaInteropTest {
 
             assertFalse(discovery.isAvailable)
             assertEquals(JbrSkiaInterop.FallbackReason.ABI_MISMATCH, discovery.fallbackReason)
-            assertEquals(74, discovery.abiId)
+            assertEquals(75, discovery.abiId)
             assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch", discovery.fallbackMarker)
         }
     }
@@ -82,7 +82,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(74, discovery.abiId)
+        assertEquals(75, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -121,7 +121,7 @@ class JbrSkiaInteropTest {
 
         assertFalse(discovery.isAvailable)
         assertEquals(JbrSkiaInterop.FallbackReason.NATIVE_ABI_MISMATCH, discovery.fallbackReason)
-        assertEquals(74, discovery.abiId)
+        assertEquals(75, discovery.abiId)
     }
 
     @Test
@@ -162,15 +162,15 @@ class JbrSkiaInteropTest {
     }
 
     @Test
-    fun rejectsMissingSaveLayerBlendCommandCapability() {
+    fun rejectsMissingSaveLayerBlendColorFilterCommandCapability() {
         val discovery = JbrSkiaInterop.discover(resolver(
             publicJbrSkiaClass = CompatibleJbrSkia::class.java,
-            jbrAccessorClass = MissingSaveLayerBlendCapabilityJbr::class.java,
+            jbrAccessorClass = MissingSaveLayerBlendColorFilterCapabilityJbr::class.java,
         ))
 
         assertFalse(discovery.isAvailable)
         assertEquals(JbrSkiaInterop.FallbackReason.COMMAND_CAPABILITY_MISMATCH, discovery.fallbackReason)
-        assertEquals(REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND, discovery.commandCapabilities)
+        assertEquals(REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND_COLOR_FILTER, discovery.commandCapabilities)
         assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=command-capability-mismatch", discovery.fallbackMarker)
     }
 
@@ -223,7 +223,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(74, discovery.abiId)
+        assertEquals(75, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -401,7 +401,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "74".toInt()
+            val ABI_ID: Int = "75".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -437,8 +437,8 @@ class JbrSkiaInteropTest {
         fun getJBRSkia(): FakeJbrSkiaService = service
     }
 
-    object MissingSaveLayerBlendCapabilityJbr {
-        private val service = FakeJbrSkiaService(commandCapabilities = REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND)
+    object MissingSaveLayerBlendColorFilterCapabilityJbr {
+        private val service = FakeJbrSkiaService(commandCapabilities = REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND_COLOR_FILTER)
 
         @JvmStatic
         fun getJBRSkia(): FakeJbrSkiaService = service
@@ -475,7 +475,7 @@ class JbrSkiaInteropTest {
     class FakeJbrSkiaService(
         private val commandCapabilities: Long = REQUIRED_COMMAND_CAPABILITIES,
         private val nativeAbiVersion: Int = 3,
-        private val nativeCommandStreamAbiId: Int = 74,
+        private val nativeCommandStreamAbiId: Int = 75,
         private val nativeBuildId: String = "test-build",
     ) {
         val scope = FakeScopedCanvas()
@@ -555,9 +555,9 @@ class JbrSkiaInteropTest {
     }
 
     private companion object {
-        private const val COMMAND_CAP64_SAVE_LAYER_BLEND_MODE = 144115188075855872L
-        private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND = 144115188075855871L
+        private const val COMMAND_CAP64_SAVE_LAYER_BLEND_COLOR_FILTER = 288230376151711744L
+        private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND_COLOR_FILTER = 288230376151711743L
         private const val REQUIRED_COMMAND_CAPABILITIES =
-            REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND or COMMAND_CAP64_SAVE_LAYER_BLEND_MODE
+            REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND_COLOR_FILTER or COMMAND_CAP64_SAVE_LAYER_BLEND_COLOR_FILTER
     }
 }
