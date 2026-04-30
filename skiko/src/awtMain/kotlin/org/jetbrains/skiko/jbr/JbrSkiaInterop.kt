@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
 object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
-    private const val EXPECTED_ABI_ID = 70
+    private const val EXPECTED_ABI_ID = 71
     private const val EXPECTED_NATIVE_ABI_VERSION = 3
     private const val EXPECTED_ABI_ID_FOR_TEST_PROPERTY = "skiko.jbr.interop.expectedAbiIdForTest"
     private const val EXPECTED_NATIVE_ABI_VERSION_FOR_TEST_PROPERTY =
