@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
 object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
-    private const val EXPECTED_ABI_ID = 43
+    private const val EXPECTED_ABI_ID = 44
     private const val EXPECTED_NATIVE_ABI_VERSION = 3
     private const val EXPECTED_ABI_ID_FOR_TEST_PROPERTY = "skiko.jbr.interop.expectedAbiIdForTest"
     private const val EXPECTED_NATIVE_ABI_VERSION_FOR_TEST_PROPERTY =
@@ -57,6 +57,7 @@ object JbrSkiaInterop {
     private const val COMMAND_CAP64_FILL_PATH_SWEEP_GRADIENT = 274877906944L
     private const val COMMAND_CAP64_EVICT_IMAGE_CACHE_KEY = 549755813888L
     private const val COMMAND_CAP64_TEXT_FONT_FAMILY = 1099511627776L
+    private const val COMMAND_CAP64_FILL_RECT_IMAGE_SHADER = 2199023255552L
     private const val REQUIRED_COMMAND_CAPABILITIES =
         COMMAND_CAP_CLEAR.toLong() or
             COMMAND_CAP_FILL_RECT.toLong() or
@@ -98,7 +99,8 @@ object JbrSkiaInterop {
             COMMAND_CAP64_FILL_ROUND_RECT_SWEEP_GRADIENT or
             COMMAND_CAP64_FILL_PATH_SWEEP_GRADIENT or
             COMMAND_CAP64_EVICT_IMAGE_CACHE_KEY or
-            COMMAND_CAP64_TEXT_FONT_FAMILY
+            COMMAND_CAP64_TEXT_FONT_FAMILY or
+            COMMAND_CAP64_FILL_RECT_IMAGE_SHADER
     private val JBR_SKIA_CLASSES = arrayOf("com.jetbrains.JBRSkia", "com.jetbrains.desktop.JBRSkia")
     private const val JBR_INTERNAL_SERVICE_CLASS = "com.jetbrains.desktop.JBRSkiaService"
     private const val JBR_ACCESSOR_CLASS = "com.jetbrains.JBR"
