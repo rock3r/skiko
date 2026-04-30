@@ -20,7 +20,7 @@ class JbrSkiaInteropTest {
 
         assertTrue(discovery.isAvailable)
         assertSame(CompatibleJbr.service, discovery.service)
-        assertEquals(81, discovery.abiId)
+        assertEquals(82, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES_HIGH, discovery.commandCapabilitiesHigh)
@@ -48,7 +48,7 @@ class JbrSkiaInteropTest {
 
             assertFalse(discovery.isAvailable)
             assertEquals(JbrSkiaInterop.FallbackReason.ABI_MISMATCH, discovery.fallbackReason)
-            assertEquals(81, discovery.abiId)
+            assertEquals(82, discovery.abiId)
             assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch", discovery.fallbackMarker)
         }
     }
@@ -83,7 +83,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(81, discovery.abiId)
+        assertEquals(82, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -122,7 +122,7 @@ class JbrSkiaInteropTest {
 
         assertFalse(discovery.isAvailable)
         assertEquals(JbrSkiaInterop.FallbackReason.NATIVE_ABI_MISMATCH, discovery.fallbackReason)
-        assertEquals(81, discovery.abiId)
+        assertEquals(82, discovery.abiId)
     }
 
     @Test
@@ -165,7 +165,7 @@ class JbrSkiaInteropTest {
 
     @Test
     fun requiredHighCommandCapabilitiesOverrideForTestingForcesMismatch() {
-        withSystemProperty("skiko.jbr.interop.requiredCommandCapabilitiesHighForTest", "1") {
+        withSystemProperty("skiko.jbr.interop.requiredCommandCapabilitiesHighForTest", "2") {
             val discovery = JbrSkiaInterop.discover(resolver(
                 publicJbrSkiaClass = CompatibleJbrSkia::class.java,
                 jbrAccessorClass = CompatibleJbr::class.java,
@@ -309,7 +309,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(81, discovery.abiId)
+        assertEquals(82, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -487,7 +487,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "81".toInt()
+            val ABI_ID: Int = "82".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -517,7 +517,7 @@ class JbrSkiaInteropTest {
     }
 
     object MissingCapabilitiesJbr {
-        private val service = FakeJbrSkiaService(commandCapabilities = 0)
+        private val service = FakeJbrSkiaService(commandCapabilities = 0, commandCapabilitiesHigh = 0)
 
         @JvmStatic
         fun getJBRSkia(): FakeJbrSkiaService = service
@@ -597,7 +597,7 @@ class JbrSkiaInteropTest {
         private val commandCapabilities: Long = REQUIRED_COMMAND_CAPABILITIES,
         private val commandCapabilitiesHigh: Long = REQUIRED_COMMAND_CAPABILITIES_HIGH,
         private val nativeAbiVersion: Int = 3,
-        private val nativeCommandStreamAbiId: Int = 81,
+        private val nativeCommandStreamAbiId: Int = 82,
         private val nativeBuildId: String = "test-build",
     ) {
         val scope = FakeScopedCanvas()
@@ -700,6 +700,6 @@ class JbrSkiaInteropTest {
         private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND_COLOR_FILTER_REF = Long.MAX_VALUE
         private const val REQUIRED_COMMAND_CAPABILITIES =
             -1L
-        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 0L
+        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 1L
     }
 }

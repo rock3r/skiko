@@ -29,12 +29,13 @@ To build with debug symbols and debug Skia build use `-Pskiko.debug=true` Gradle
 
 The experimental JBR interop path must read `JBRSkia.ABI_ID` and `BUILD_ID`
 reflectively before acquiring `JBR.getJBRSkia()`. Current local PoC command ABI
-is 81. ABI 80 filled the low signed 64-bit capability mask (`-1L`) with
+is 82. ABI 80 filled the low signed 64-bit capability mask (`-1L`) with
 `COMMAND_SAVE_LAYER_BLEND_COLOR_FILTER_REF`, allowing Skiko/CMP command streams
 to combine direct layer blend modes with typed color-filter descriptor handles
 without passing raw Skia pointers across the runtime boundary. ABI 81 adds
-`getCommandCapabilities64High()` as an empty second capability word for future
-shader/effect commands.
+`getCommandCapabilities64High()` as a second capability word. ABI 82 consumes
+the first high-word bit for `COMMAND_SAVE_LAYER_IMAGE_FILTER_REF`, currently used
+by graphics-layer blur image-filter descriptors.
 
 #### Working with Skia sources
 
