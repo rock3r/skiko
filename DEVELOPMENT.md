@@ -25,6 +25,14 @@
 
 To build with debug symbols and debug Skia build use `-Pskiko.debug=true` Gradle argument.
 
+#### JBR Skia interop PoC
+
+The experimental JBR interop path must read `JBRSkia.ABI_ID` and `BUILD_ID`
+reflectively before acquiring `JBR.getJBRSkia()`. Current local PoC command ABI
+is 78 and the required capability set includes `COMMAND_SAVE_LAYER_COLOR_FILTER_REF`,
+allowing Skiko/CMP command streams to apply typed color-filter descriptor handles
+to saveLayer paints without passing raw Skia pointers across the runtime boundary.
+
 #### Working with Skia sources
 
 Gradle build downloads the necessary version of Skia by default.
