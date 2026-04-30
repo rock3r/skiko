@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
 object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
-    private const val EXPECTED_ABI_ID = 51
+    private const val EXPECTED_ABI_ID = 52
     private const val EXPECTED_NATIVE_ABI_VERSION = 3
     private const val EXPECTED_ABI_ID_FOR_TEST_PROPERTY = "skiko.jbr.interop.expectedAbiIdForTest"
     private const val EXPECTED_NATIVE_ABI_VERSION_FOR_TEST_PROPERTY =
@@ -65,6 +65,7 @@ object JbrSkiaInterop {
     private const val COMMAND_CAP64_STROKE_RECT_SWEEP_GRADIENT = 70368744177664L
     private const val COMMAND_CAP64_STROKE_ROUND_RECT_SWEEP_GRADIENT = 140737488355328L
     private const val COMMAND_CAP64_FILL_RECT_BLEND_MODE = 281474976710656L
+    private const val COMMAND_CAP64_FILL_RECT_COLOR_FILTER = 562949953421312L
     private const val REQUIRED_COMMAND_CAPABILITIES =
         COMMAND_CAP_CLEAR.toLong() or
             COMMAND_CAP_FILL_RECT.toLong() or
@@ -114,7 +115,8 @@ object JbrSkiaInterop {
             COMMAND_CAP64_STROKE_ROUND_RECT_RADIAL_GRADIENT or
             COMMAND_CAP64_STROKE_RECT_SWEEP_GRADIENT or
             COMMAND_CAP64_STROKE_ROUND_RECT_SWEEP_GRADIENT or
-            COMMAND_CAP64_FILL_RECT_BLEND_MODE
+            COMMAND_CAP64_FILL_RECT_BLEND_MODE or
+            COMMAND_CAP64_FILL_RECT_COLOR_FILTER
     private val JBR_SKIA_CLASSES = arrayOf("com.jetbrains.JBRSkia", "com.jetbrains.desktop.JBRSkia")
     private const val JBR_INTERNAL_SERVICE_CLASS = "com.jetbrains.desktop.JBRSkiaService"
     private const val JBR_ACCESSOR_CLASS = "com.jetbrains.JBR"
