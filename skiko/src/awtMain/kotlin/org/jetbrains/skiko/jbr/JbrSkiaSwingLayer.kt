@@ -166,14 +166,17 @@ class JbrSkiaSwingLayer(
         val renderWidth = frameSize.width
         val renderHeight = frameSize.height
         val commandDelegate = renderDelegate as? JbrSkiaCommandRenderDelegate
-        val commands = if (commandDelegate != null) {
-            commandDelegate.renderJbrSkiaCommandFrame(renderWidth, renderHeight, frameTime)
+        val commandFrame = if (commandDelegate != null) {
+            commandDelegate.renderJbrSkiaCommandFrameInfo(renderWidth, renderHeight, frameTime)
                 ?: run {
                     Logger.info { "SKIKO_JBR_INTEROP_COMMAND_UNSUPPORTED fallback=picture" }
                     return renderJbrPictureFrame(g)
                 }
         } else {
-            buildCommandFrame(renderWidth, renderHeight, frameTime)
+            JbrSkiaCommandFrame(
+                buildCommandFrame(renderWidth, renderHeight, frameTime),
+                JbrSkiaCommandFrameKind.FullScene,
+            )
         }
         val scope = JbrSkiaInterop.acquireCanvas(g) ?: run {
             logCommandCanvasUnavailableOnce()
@@ -181,7 +184,7 @@ class JbrSkiaSwingLayer(
         }
         return try {
             noteSurfaceIdentity(scope)
-            val commandStream = commandFrameCache.frameForRendering(commands).corruptForTestingIfRequested()
+            val commandStream = commandFrameCache.frameForRendering(commandFrame).corruptForTestingIfRequested()
             val commandBuffer = commandStream.toDirectLittleEndianByteBuffer()
             scope.renderCommandDirectFrame(renderWidth, renderHeight, frameTime, commandBuffer).also { rendered ->
                 Logger.info {
@@ -416,15 +419,20 @@ internal class CommandFrameCache(
 ) {
     private var lastMeaningfulFrame: IntArray? = null
 
-    fun frameForRendering(commands: IntArray): IntArray {
+    fun frameForRendering(frame: JbrSkiaCommandFrame): IntArray {
+        val commands = frame.commands
         val cached = lastMeaningfulFrame
-        if (commands.size >= minimumMeaningfulCommandWords) {
+        if (frame.kind == JbrSkiaCommandFrameKind.FullScene ||
+            frame.kind == JbrSkiaCommandFrameKind.Unknown && commands.size >= minimumMeaningfulCommandWords
+        ) {
             lastMeaningfulFrame = commands.copyOf()
             return commands
         }
-        if (cached != null) {
+        if (frame.kind == JbrSkiaCommandFrameKind.InteropOnly && cached != null ||
+            frame.kind == JbrSkiaCommandFrameKind.Unknown && cached != null
+        ) {
             Logger.info {
-                "SKIKO_JBR_INTEROP_COMMAND_REPLAY_CACHED currentCommands=${commands.size} cachedCommands=${cached.size}"
+                "SKIKO_JBR_INTEROP_COMMAND_REPLAY_CACHED kind=${frame.kind.name} currentCommands=${commands.size} cachedCommands=${cached.size}"
             }
             return cached
         }

@@ -318,8 +318,14 @@ class JbrSkiaInteropTest {
         val meaningful = IntArray(10) { index -> index + 1 }
         val minimal = intArrayOf(1, 2, 3)
 
-        assertSame(meaningful, cache.frameForRendering(meaningful))
-        assertContentEquals(meaningful, cache.frameForRendering(minimal))
+        assertSame(
+            meaningful,
+            cache.frameForRendering(JbrSkiaCommandFrame(meaningful, JbrSkiaCommandFrameKind.FullScene)),
+        )
+        assertContentEquals(
+            meaningful,
+            cache.frameForRendering(JbrSkiaCommandFrame(minimal, JbrSkiaCommandFrameKind.InteropOnly)),
+        )
     }
 
     @Test
@@ -327,7 +333,10 @@ class JbrSkiaInteropTest {
         val cache = CommandFrameCache(minimumMeaningfulCommandWords = 8)
         val minimal = intArrayOf(1, 2, 3)
 
-        assertSame(minimal, cache.frameForRendering(minimal))
+        assertSame(
+            minimal,
+            cache.frameForRendering(JbrSkiaCommandFrame(minimal, JbrSkiaCommandFrameKind.InteropOnly)),
+        )
     }
 
     @Test
@@ -336,10 +345,13 @@ class JbrSkiaInteropTest {
         val meaningful = IntArray(10) { index -> index + 1 }
         val minimal = intArrayOf(1, 2, 3)
 
-        cache.frameForRendering(meaningful)
+        cache.frameForRendering(JbrSkiaCommandFrame(meaningful, JbrSkiaCommandFrameKind.FullScene))
         cache.clear()
 
-        assertSame(minimal, cache.frameForRendering(minimal))
+        assertSame(
+            minimal,
+            cache.frameForRendering(JbrSkiaCommandFrame(minimal, JbrSkiaCommandFrameKind.InteropOnly)),
+        )
     }
 
     private fun testGraphics() = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics()
