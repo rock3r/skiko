@@ -9,13 +9,15 @@ import java.util.concurrent.ConcurrentHashMap
 object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
-    private const val EXPECTED_ABI_ID = 80
+    private const val EXPECTED_ABI_ID = 81
     private const val EXPECTED_NATIVE_ABI_VERSION = 3
     private const val EXPECTED_ABI_ID_FOR_TEST_PROPERTY = "skiko.jbr.interop.expectedAbiIdForTest"
     private const val EXPECTED_NATIVE_ABI_VERSION_FOR_TEST_PROPERTY =
         "skiko.jbr.interop.expectedNativeAbiVersionForTest"
     private const val REQUIRED_COMMAND_CAPABILITIES_FOR_TEST_PROPERTY =
         "skiko.jbr.interop.requiredCommandCapabilitiesForTest"
+    private const val REQUIRED_COMMAND_CAPABILITIES_HIGH_FOR_TEST_PROPERTY =
+        "skiko.jbr.interop.requiredCommandCapabilitiesHighForTest"
     private const val COMMAND_CAP_CLEAR = 1
     private const val COMMAND_CAP_FILL_RECT = 2
     private const val COMMAND_CAP_STROKE_LINE = 4
@@ -145,6 +147,7 @@ object JbrSkiaInterop {
             COMMAND_CAP64_SAVE_LAYER_COLOR_FILTER_REF or
             COMMAND_CAP64_DRAW_IMAGE_REF_COLOR_FILTER_REF or
             COMMAND_CAP64_SAVE_LAYER_BLEND_COLOR_FILTER_REF
+    private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 0L
     private val JBR_SKIA_CLASSES = arrayOf("com.jetbrains.JBRSkia", "com.jetbrains.desktop.JBRSkia")
     private const val JBR_INTERNAL_SERVICE_CLASS = "com.jetbrains.desktop.JBRSkiaService"
     private const val JBR_ACCESSOR_CLASS = "com.jetbrains.JBR"
@@ -230,16 +233,22 @@ object JbrSkiaInterop {
             }
             val commandCapabilities = service.javaClass.getMethod("getCommandCapabilities64").invoke(service) as Long
             val requiredCommandCapabilities = requiredCommandCapabilities()
-            if (commandCapabilities and requiredCommandCapabilities != requiredCommandCapabilities) {
+            val commandCapabilitiesHigh = service.javaClass.getMethod("getCommandCapabilities64High").invoke(service) as Long
+            val requiredCommandCapabilitiesHigh = requiredCommandCapabilitiesHigh()
+            if (
+                commandCapabilities and requiredCommandCapabilities != requiredCommandCapabilities ||
+                commandCapabilitiesHigh and requiredCommandCapabilitiesHigh != requiredCommandCapabilitiesHigh
+            ) {
                 return Discovery.fallback(
                     FallbackReason.COMMAND_CAPABILITY_MISMATCH,
                     abiId = abiId,
                     buildId = buildId,
                     commandCapabilities = commandCapabilities,
+                    commandCapabilitiesHigh = commandCapabilitiesHigh,
                 )
             }
 
-            Discovery.available(service, abiId, buildId, commandCapabilities)
+            Discovery.available(service, abiId, buildId, commandCapabilities, commandCapabilitiesHigh)
         } catch (e: ClassNotFoundException) {
             Discovery.fallback(FallbackReason.PUBLIC_API_MISSING, cause = e)
         } catch (e: NoSuchMethodException) {
@@ -272,6 +281,10 @@ object JbrSkiaInterop {
     private fun requiredCommandCapabilities(): Long =
         System.getProperty(REQUIRED_COMMAND_CAPABILITIES_FOR_TEST_PROPERTY)?.toLongOrNull()
             ?: REQUIRED_COMMAND_CAPABILITIES
+
+    private fun requiredCommandCapabilitiesHigh(): Long =
+        System.getProperty(REQUIRED_COMMAND_CAPABILITIES_HIGH_FOR_TEST_PROPERTY)?.toLongOrNull()
+            ?: REQUIRED_COMMAND_CAPABILITIES_HIGH
 
     private fun instantiateInternalServiceForPatchedJbr(classResolver: ClassResolver): Any? =
         try {
@@ -347,6 +360,7 @@ object JbrSkiaInterop {
         val abiId: Int?,
         val buildId: String?,
         val commandCapabilities: Long?,
+        val commandCapabilitiesHigh: Long?,
         val fallbackReason: FallbackReason?,
         val cause: Throwable? = null,
     ) {
@@ -356,16 +370,22 @@ object JbrSkiaInterop {
             get() = "$FALLBACK_MARKER reason=${fallbackReason?.id ?: "none"}"
 
         companion object {
-            fun available(service: Any, abiId: Int, buildId: String, commandCapabilities: Long) =
-                Discovery(service, abiId, buildId, commandCapabilities, fallbackReason = null)
+            fun available(
+                service: Any,
+                abiId: Int,
+                buildId: String,
+                commandCapabilities: Long,
+                commandCapabilitiesHigh: Long,
+            ) = Discovery(service, abiId, buildId, commandCapabilities, commandCapabilitiesHigh, fallbackReason = null)
 
             fun fallback(
                 fallbackReason: FallbackReason,
                 abiId: Int? = null,
                 buildId: String? = null,
                 commandCapabilities: Long? = null,
+                commandCapabilitiesHigh: Long? = null,
                 cause: Throwable? = null,
-            ) = Discovery(null, abiId, buildId, commandCapabilities, fallbackReason, cause)
+            ) = Discovery(null, abiId, buildId, commandCapabilities, commandCapabilitiesHigh, fallbackReason, cause)
         }
     }
 
