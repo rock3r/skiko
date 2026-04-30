@@ -20,9 +20,10 @@ class JbrSkiaInteropTest {
 
         assertTrue(discovery.isAvailable)
         assertSame(CompatibleJbr.service, discovery.service)
-        assertEquals(80, discovery.abiId)
+        assertEquals(81, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
+        assertEquals(REQUIRED_COMMAND_CAPABILITIES_HIGH, discovery.commandCapabilitiesHigh)
     }
 
     @Test
@@ -47,7 +48,7 @@ class JbrSkiaInteropTest {
 
             assertFalse(discovery.isAvailable)
             assertEquals(JbrSkiaInterop.FallbackReason.ABI_MISMATCH, discovery.fallbackReason)
-            assertEquals(80, discovery.abiId)
+            assertEquals(81, discovery.abiId)
             assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch", discovery.fallbackMarker)
         }
     }
@@ -82,7 +83,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(80, discovery.abiId)
+        assertEquals(81, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -121,7 +122,7 @@ class JbrSkiaInteropTest {
 
         assertFalse(discovery.isAvailable)
         assertEquals(JbrSkiaInterop.FallbackReason.NATIVE_ABI_MISMATCH, discovery.fallbackReason)
-        assertEquals(80, discovery.abiId)
+        assertEquals(81, discovery.abiId)
     }
 
     @Test
@@ -158,7 +159,24 @@ class JbrSkiaInteropTest {
         assertFalse(discovery.isAvailable)
         assertEquals(JbrSkiaInterop.FallbackReason.COMMAND_CAPABILITY_MISMATCH, discovery.fallbackReason)
         assertEquals(0L, discovery.commandCapabilities)
+        assertEquals(0L, discovery.commandCapabilitiesHigh)
         assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=command-capability-mismatch", discovery.fallbackMarker)
+    }
+
+    @Test
+    fun requiredHighCommandCapabilitiesOverrideForTestingForcesMismatch() {
+        withSystemProperty("skiko.jbr.interop.requiredCommandCapabilitiesHighForTest", "1") {
+            val discovery = JbrSkiaInterop.discover(resolver(
+                publicJbrSkiaClass = CompatibleJbrSkia::class.java,
+                jbrAccessorClass = CompatibleJbr::class.java,
+            ))
+
+            assertFalse(discovery.isAvailable)
+            assertEquals(JbrSkiaInterop.FallbackReason.COMMAND_CAPABILITY_MISMATCH, discovery.fallbackReason)
+            assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
+            assertEquals(REQUIRED_COMMAND_CAPABILITIES_HIGH, discovery.commandCapabilitiesHigh)
+            assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=command-capability-mismatch", discovery.fallbackMarker)
+        }
     }
 
     @Test
@@ -291,7 +309,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(80, discovery.abiId)
+        assertEquals(81, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -469,7 +487,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "80".toInt()
+            val ABI_ID: Int = "81".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -577,8 +595,9 @@ class JbrSkiaInteropTest {
 
     class FakeJbrSkiaService(
         private val commandCapabilities: Long = REQUIRED_COMMAND_CAPABILITIES,
+        private val commandCapabilitiesHigh: Long = REQUIRED_COMMAND_CAPABILITIES_HIGH,
         private val nativeAbiVersion: Int = 3,
-        private val nativeCommandStreamAbiId: Int = 80,
+        private val nativeCommandStreamAbiId: Int = 81,
         private val nativeBuildId: String = "test-build",
     ) {
         val scope = FakeScopedCanvas()
@@ -586,6 +605,8 @@ class JbrSkiaInteropTest {
         fun getCommandCapabilities(): Int = commandCapabilities.toInt()
 
         fun getCommandCapabilities64(): Long = commandCapabilities
+
+        fun getCommandCapabilities64High(): Long = commandCapabilitiesHigh
 
         fun getNativeAbiVersion(): Int = nativeAbiVersion
 
@@ -601,6 +622,8 @@ class JbrSkiaInteropTest {
         val scope = FakeScopedCanvas()
 
         fun getCommandCapabilities64(): Long = REQUIRED_COMMAND_CAPABILITIES
+
+        fun getCommandCapabilities64High(): Long = REQUIRED_COMMAND_CAPABILITIES_HIGH
 
         @Suppress("UNUSED_PARAMETER")
         fun acquireCanvas(graphics: java.awt.Graphics2D): FakeScopedCanvas = scope
@@ -677,5 +700,6 @@ class JbrSkiaInteropTest {
         private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND_COLOR_FILTER_REF = Long.MAX_VALUE
         private const val REQUIRED_COMMAND_CAPABILITIES =
             -1L
+        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 0L
     }
 }
