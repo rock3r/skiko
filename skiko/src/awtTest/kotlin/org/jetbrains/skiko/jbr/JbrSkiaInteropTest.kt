@@ -1,6 +1,7 @@
 package org.jetbrains.skiko.jbr
 
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -309,6 +310,36 @@ class JbrSkiaInteropTest {
         assertEquals(null, tracker.note(SurfaceIdentity(contextId = 0x1L, surfaceId = 0x2L, metalTexturePtr = 0x3L)))
         tracker.clear()
         assertEquals(null, tracker.note(SurfaceIdentity(contextId = 0x4L, surfaceId = 0x5L, metalTexturePtr = 0x6L)))
+    }
+
+    @Test
+    fun commandFrameCacheReplaysLastMeaningfulFrameForMinimalInteropOnlyFrame() {
+        val cache = CommandFrameCache(minimumMeaningfulCommandWords = 8)
+        val meaningful = IntArray(10) { index -> index + 1 }
+        val minimal = intArrayOf(1, 2, 3)
+
+        assertSame(meaningful, cache.frameForRendering(meaningful))
+        assertContentEquals(meaningful, cache.frameForRendering(minimal))
+    }
+
+    @Test
+    fun commandFrameCacheReturnsMinimalFrameWhenNoMeaningfulFrameWasSeen() {
+        val cache = CommandFrameCache(minimumMeaningfulCommandWords = 8)
+        val minimal = intArrayOf(1, 2, 3)
+
+        assertSame(minimal, cache.frameForRendering(minimal))
+    }
+
+    @Test
+    fun commandFrameCacheCanBeClearedAfterSurfaceReplacement() {
+        val cache = CommandFrameCache(minimumMeaningfulCommandWords = 8)
+        val meaningful = IntArray(10) { index -> index + 1 }
+        val minimal = intArrayOf(1, 2, 3)
+
+        cache.frameForRendering(meaningful)
+        cache.clear()
+
+        assertSame(minimal, cache.frameForRendering(minimal))
     }
 
     private fun testGraphics() = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics()
