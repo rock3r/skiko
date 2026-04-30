@@ -20,7 +20,7 @@ class JbrSkiaInteropTest {
 
         assertTrue(discovery.isAvailable)
         assertSame(CompatibleJbr.service, discovery.service)
-        assertEquals(76, discovery.abiId)
+        assertEquals(77, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
     }
@@ -47,7 +47,7 @@ class JbrSkiaInteropTest {
 
             assertFalse(discovery.isAvailable)
             assertEquals(JbrSkiaInterop.FallbackReason.ABI_MISMATCH, discovery.fallbackReason)
-            assertEquals(76, discovery.abiId)
+            assertEquals(77, discovery.abiId)
             assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch", discovery.fallbackMarker)
         }
     }
@@ -82,7 +82,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(76, discovery.abiId)
+        assertEquals(77, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -121,7 +121,7 @@ class JbrSkiaInteropTest {
 
         assertFalse(discovery.isAvailable)
         assertEquals(JbrSkiaInterop.FallbackReason.NATIVE_ABI_MISMATCH, discovery.fallbackReason)
-        assertEquals(76, discovery.abiId)
+        assertEquals(77, discovery.abiId)
     }
 
     @Test
@@ -188,6 +188,19 @@ class JbrSkiaInteropTest {
     }
 
     @Test
+    fun rejectsMissingLightingDescriptorCommandCapability() {
+        val discovery = JbrSkiaInterop.discover(resolver(
+            publicJbrSkiaClass = CompatibleJbrSkia::class.java,
+            jbrAccessorClass = MissingLightingDescriptorCapabilityJbr::class.java,
+        ))
+
+        assertFalse(discovery.isAvailable)
+        assertEquals(JbrSkiaInterop.FallbackReason.COMMAND_CAPABILITY_MISMATCH, discovery.fallbackReason)
+        assertEquals(REQUIRED_COMMAND_CAPABILITIES_WITHOUT_LIGHTING_DESCRIPTOR, discovery.commandCapabilities)
+        assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=command-capability-mismatch", discovery.fallbackMarker)
+    }
+
+    @Test
     fun requiredCommandCapabilitiesOverrideForTestingForcesMismatch() {
         withSystemProperty("skiko.jbr.interop.requiredCommandCapabilitiesForTest", "-1") {
             val discovery = JbrSkiaInterop.discover(resolver(
@@ -236,7 +249,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(76, discovery.abiId)
+        assertEquals(77, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -414,7 +427,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "76".toInt()
+            val ABI_ID: Int = "77".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -464,6 +477,13 @@ class JbrSkiaInteropTest {
         fun getJBRSkia(): FakeJbrSkiaService = service
     }
 
+    object MissingLightingDescriptorCapabilityJbr {
+        private val service = FakeJbrSkiaService(commandCapabilities = REQUIRED_COMMAND_CAPABILITIES_WITHOUT_LIGHTING_DESCRIPTOR)
+
+        @JvmStatic
+        fun getJBRSkia(): FakeJbrSkiaService = service
+    }
+
     object NativeAbiMismatchJbr {
         private val service = FakeJbrSkiaService(nativeAbiVersion = 7)
 
@@ -495,7 +515,7 @@ class JbrSkiaInteropTest {
     class FakeJbrSkiaService(
         private val commandCapabilities: Long = REQUIRED_COMMAND_CAPABILITIES,
         private val nativeAbiVersion: Int = 3,
-        private val nativeCommandStreamAbiId: Int = 76,
+        private val nativeCommandStreamAbiId: Int = 77,
         private val nativeBuildId: String = "test-build",
     ) {
         val scope = FakeScopedCanvas()
@@ -576,10 +596,12 @@ class JbrSkiaInteropTest {
 
     private companion object {
         private const val COMMAND_CAP64_EFFECT_DESCRIPTOR_COLOR_MATRIX_FILTER = 576460752303423488L
+        private const val COMMAND_CAP64_EFFECT_DESCRIPTOR_LIGHTING_FILTER = 1152921504606846976L
         private const val COMMAND_CAP64_SAVE_LAYER_BLEND_COLOR_FILTER = 288230376151711744L
-        private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_COLOR_MATRIX_DESCRIPTOR = 576460752303423487L
-        private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND_COLOR_FILTER = 864691128455135231L
+        private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_LIGHTING_DESCRIPTOR = 1152921504606846975L
+        private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_COLOR_MATRIX_DESCRIPTOR = 1729382256910270463L
+        private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND_COLOR_FILTER = 2017612633061982207L
         private const val REQUIRED_COMMAND_CAPABILITIES =
-            REQUIRED_COMMAND_CAPABILITIES_WITHOUT_COLOR_MATRIX_DESCRIPTOR or COMMAND_CAP64_EFFECT_DESCRIPTOR_COLOR_MATRIX_FILTER
+            REQUIRED_COMMAND_CAPABILITIES_WITHOUT_LIGHTING_DESCRIPTOR or COMMAND_CAP64_EFFECT_DESCRIPTOR_LIGHTING_FILTER
     }
 }
