@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
 object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
-    private const val EXPECTED_ABI_ID = 55
+    private const val EXPECTED_ABI_ID = 56
     private const val EXPECTED_NATIVE_ABI_VERSION = 3
     private const val EXPECTED_ABI_ID_FOR_TEST_PROPERTY = "skiko.jbr.interop.expectedAbiIdForTest"
     private const val EXPECTED_NATIVE_ABI_VERSION_FOR_TEST_PROPERTY =
@@ -69,6 +69,8 @@ object JbrSkiaInterop {
     private const val COMMAND_CAP64_STROKE_LINE_DASH_PATH_EFFECT = 1125899906842624L
     private const val COMMAND_CAP64_SAVE_LAYER_COLOR_FILTER = 2251799813685248L
     private const val COMMAND_CAP64_DRAW_IMAGE_REF_COLOR_FILTER = 4503599627370496L
+    private const val COMMAND_CAP64_DEFINE_COLOR_FILTER_TINT = 9007199254740992L
+    private const val COMMAND_CAP64_FILL_RECT_COLOR_FILTER_REF = 18014398509481984L
     private const val REQUIRED_COMMAND_CAPABILITIES =
         COMMAND_CAP_CLEAR.toLong() or
             COMMAND_CAP_FILL_RECT.toLong() or
@@ -122,7 +124,9 @@ object JbrSkiaInterop {
             COMMAND_CAP64_FILL_RECT_COLOR_FILTER or
             COMMAND_CAP64_STROKE_LINE_DASH_PATH_EFFECT or
             COMMAND_CAP64_SAVE_LAYER_COLOR_FILTER or
-            COMMAND_CAP64_DRAW_IMAGE_REF_COLOR_FILTER
+            COMMAND_CAP64_DRAW_IMAGE_REF_COLOR_FILTER or
+            COMMAND_CAP64_DEFINE_COLOR_FILTER_TINT or
+            COMMAND_CAP64_FILL_RECT_COLOR_FILTER_REF
     private val JBR_SKIA_CLASSES = arrayOf("com.jetbrains.JBRSkia", "com.jetbrains.desktop.JBRSkia")
     private const val JBR_INTERNAL_SERVICE_CLASS = "com.jetbrains.desktop.JBRSkiaService"
     private const val JBR_ACCESSOR_CLASS = "com.jetbrains.JBR"
