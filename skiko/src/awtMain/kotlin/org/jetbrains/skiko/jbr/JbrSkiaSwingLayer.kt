@@ -246,6 +246,9 @@ class JbrSkiaSwingLayer(
             }
             if (change.surfaceChanged) {
                 commandFrameCache.clear()
+                JbrSkiaCommandRecorderCacheBridge.clearForSurfaceChange(
+                    if (change.contextChanged) "contextChanged" else "surfaceChanged"
+                )
             }
             Logger.info { change.marker() }
         }
@@ -439,6 +442,25 @@ internal class SurfaceIdentityTracker {
 
     fun clear() {
         current = null
+    }
+}
+
+internal object JbrSkiaCommandRecorderCacheBridge {
+    private const val RECORDER_CLASS = "androidx.compose.ui.graphics.JbrSkiaCommandRecorder"
+    private const val CLEAR_METHOD = "clearInteropCachesForSurfaceChange"
+
+    fun clearForSurfaceChange(reason: String) {
+        runCatching {
+            Class.forName(RECORDER_CLASS)
+                .getMethod(CLEAR_METHOD)
+                .invoke(null)
+            Logger.info { "SKIKO_JBR_INTEROP_COMMAND_CACHES_CLEARED reason=$reason" }
+        }.onFailure {
+            Logger.info {
+                "SKIKO_JBR_INTEROP_COMMAND_CACHES_CLEAR_UNAVAILABLE reason=$reason " +
+                    "error=${it.javaClass.simpleName}"
+            }
+        }
     }
 }
 
