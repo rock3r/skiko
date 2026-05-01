@@ -22,4 +22,4 @@ or:
 SKIKO_JBR_INTEROP_COMMAND_CACHES_CLEARED reason=contextChanged
 ```
 
-If the method is missing, Skiko logs `SKIKO_JBR_INTEROP_COMMAND_CACHES_CLEAR_UNAVAILABLE` and continues. The Magic Jewel `commands-resize-descriptor-redefine` probe asserts the successful marker and verifies descriptors are redefined after resize.
+If the method is missing, Skiko logs `SKIKO_JBR_INTEROP_COMMAND_CACHES_CLEAR_UNAVAILABLE`, emits `SKIKO_JBR_INTEROP_FALLBACK reason=command-cache-clear-unavailable`, and falls back for that paint instead of risking stale descriptor handles. The Magic Jewel `commands-resize-descriptor-redefine` probe asserts the successful marker and verifies descriptors are redefined after resize.
