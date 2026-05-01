@@ -36,11 +36,24 @@ extern "C" JNIEXPORT jlong JNICALL
 Java_org_jetbrains_skia_RuntimeEffectKt__1nMakeColorFilter(JNIEnv* env,
                                                           jclass jclass,
                                                           jlong ptr,
-                                                          jlong uniformPtr) {
+                                                          jlong uniformPtr,
+                                                          jlongArray childrenPtrsArr,
+                                                          jint _childCount) {
     SkRuntimeEffect* runtimeEffect = jlongToPtr<SkRuntimeEffect*>(ptr);
     SkData* uniform = jlongToPtr<SkData*>(uniformPtr);
 
-    sk_sp<SkColorFilter> colorFilter = runtimeEffect->makeColorFilter(sk_ref_sp<SkData>(uniform));
+    jsize childCount = env->GetArrayLength(childrenPtrsArr);
+    jlong* childrenPtrs = env->GetLongArrayElements(childrenPtrsArr, 0);
+    std::vector<sk_sp<SkColorFilter>> children(childCount);
+    for (size_t i = 0; i < childCount; i++) {
+        SkColorFilter* colorFilter = jlongToPtr<SkColorFilter*>(childrenPtrs[i]);
+        children[i] = sk_ref_sp(colorFilter);
+    }
+    env->ReleaseLongArrayElements(childrenPtrsArr, childrenPtrs, 0);
+
+    sk_sp<SkColorFilter> colorFilter = runtimeEffect->makeColorFilter(sk_ref_sp<SkData>(uniform),
+                                                                      children.data(),
+                                                                      childCount);
     return ptrToJlong(colorFilter.release());
 }
 
