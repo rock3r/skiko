@@ -37,6 +37,6 @@ class RuntimeEffectTest {
             |  return child.eval(inColor).bgra;
             |}""".trimMargin()
         RuntimeEffect.makeForColorFilter(childColorFilterSKSL)
-            .makeColorFilter(null, arrayOf(ColorFilter.makeMode(Color.RED, BlendMode.SRC_IN)))
+            .makeColorFilter(null, arrayOf(ColorFilter.makeBlend(Color.RED, BlendMode.SRC_IN)))
     }
 }
