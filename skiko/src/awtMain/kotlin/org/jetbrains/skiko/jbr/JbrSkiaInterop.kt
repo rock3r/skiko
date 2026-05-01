@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
 object JbrSkiaInterop {
     const val FALLBACK_MARKER = "SKIKO_JBR_INTEROP_FALLBACK"
     const val SCOPE_ACQUIRED_MARKER = "SKIKO_JBR_INTEROP_SCOPE_ACQUIRED"
-    private const val EXPECTED_ABI_ID = 93
+    private const val EXPECTED_ABI_ID = 94
     private const val EXPECTED_NATIVE_ABI_VERSION = 3
     private const val EXPECTED_ABI_ID_FOR_TEST_PROPERTY = "skiko.jbr.interop.expectedAbiIdForTest"
     private const val EXPECTED_NATIVE_ABI_VERSION_FOR_TEST_PROPERTY =
@@ -153,13 +153,15 @@ object JbrSkiaInterop {
     private const val COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_REF = 8L
     private const val COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER = 16L
     private const val COMMAND_CAP64_HIGH_STROKE_RECT_DASH_PATH_EFFECT = 32L
+    private const val COMMAND_CAP64_HIGH_STROKE_ROUND_RECT_DASH_PATH_EFFECT = 64L
     private const val REQUIRED_COMMAND_CAPABILITIES_HIGH =
         COMMAND_CAP64_HIGH_SAVE_LAYER_IMAGE_FILTER_REF or
             COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER or
             COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_CHAIN_IMAGE_FILTER or
             COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_REF or
             COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER or
-            COMMAND_CAP64_HIGH_STROKE_RECT_DASH_PATH_EFFECT
+            COMMAND_CAP64_HIGH_STROKE_RECT_DASH_PATH_EFFECT or
+            COMMAND_CAP64_HIGH_STROKE_ROUND_RECT_DASH_PATH_EFFECT
     private val JBR_SKIA_CLASSES = arrayOf("com.jetbrains.JBRSkia", "com.jetbrains.desktop.JBRSkia")
     private const val JBR_INTERNAL_SERVICE_CLASS = "com.jetbrains.desktop.JBRSkiaService"
     private const val JBR_ACCESSOR_CLASS = "com.jetbrains.JBR"
