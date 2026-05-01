@@ -413,6 +413,7 @@ object JbrSkiaInterop {
         NATIVE_ABI_MISMATCH("native-abi-mismatch"),
         COMMAND_CAPABILITY_MISMATCH("command-capability-mismatch"),
         COMMAND_STREAM_INVALID("command-stream-invalid"),
+        COMMAND_CACHE_CLEAR_UNAVAILABLE("command-cache-clear-unavailable"),
     }
 
     internal interface ScopedCanvas : AutoCloseable {

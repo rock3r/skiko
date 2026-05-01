@@ -185,7 +185,9 @@ class JbrSkiaSwingLayer(
             return false
         }
         return try {
-            noteSurfaceIdentity(scope)
+            if (!noteSurfaceIdentity(scope, clearCommandCaches = true)) {
+                return false
+            }
             val commandStream = commandFrameCache
                 .frameForRendering(commandFrame.tinyFullSceneForTestingIfRequested())
                 .corruptForTestingIfRequested()
@@ -238,7 +240,10 @@ class JbrSkiaSwingLayer(
         }
     }
 
-    private fun noteSurfaceIdentity(scope: JbrSkiaInterop.ScopedCanvas) {
+    private fun noteSurfaceIdentity(
+        scope: JbrSkiaInterop.ScopedCanvas,
+        clearCommandCaches: Boolean = false,
+    ): Boolean {
         surfaceIdentityTracker.note(SurfaceIdentity(scope.contextId, scope.surfaceId, scope.metalTexturePtr))?.let { change ->
             if (change.contextChanged) {
                 context?.close()
@@ -246,12 +251,17 @@ class JbrSkiaSwingLayer(
             }
             if (change.surfaceChanged) {
                 commandFrameCache.clear()
-                JbrSkiaCommandRecorderCacheBridge.clearForSurfaceChange(
-                    if (change.contextChanged) "contextChanged" else "surfaceChanged"
-                )
+                if (clearCommandCaches && !JbrSkiaCommandRecorderCacheBridge.clearForSurfaceChange(
+                        if (change.contextChanged) "contextChanged" else "surfaceChanged"
+                    )
+                ) {
+                    JbrSkiaInterop.logFallback(JbrSkiaInterop.FallbackReason.COMMAND_CACHE_CLEAR_UNAVAILABLE)
+                    return false
+                }
             }
             Logger.info { change.marker() }
         }
+        return true
     }
 
     private companion object {
@@ -449,19 +459,19 @@ internal object JbrSkiaCommandRecorderCacheBridge {
     private const val RECORDER_CLASS = "androidx.compose.ui.graphics.JbrSkiaCommandRecorder"
     private const val CLEAR_METHOD = "clearInteropCachesForSurfaceChange"
 
-    fun clearForSurfaceChange(reason: String) {
+    fun clearForSurfaceChange(reason: String): Boolean =
         runCatching {
             Class.forName(RECORDER_CLASS)
                 .getMethod(CLEAR_METHOD)
                 .invoke(null)
             Logger.info { "SKIKO_JBR_INTEROP_COMMAND_CACHES_CLEARED reason=$reason" }
+            true
         }.onFailure {
             Logger.info {
                 "SKIKO_JBR_INTEROP_COMMAND_CACHES_CLEAR_UNAVAILABLE reason=$reason " +
                     "error=${it.javaClass.simpleName}"
             }
-        }
-    }
+        }.getOrDefault(false)
 }
 
 internal class CommandFrameCache(
