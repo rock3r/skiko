@@ -165,7 +165,7 @@ class JbrSkiaInteropTest {
 
     @Test
     fun requiredHighCommandCapabilitiesOverrideForTestingForcesMismatch() {
-        withSystemProperty("skiko.jbr.interop.requiredCommandCapabilitiesHighForTest", "16") {
+        withSystemProperty("skiko.jbr.interop.requiredCommandCapabilitiesHighForTest", "8192") {
             val discovery = JbrSkiaInterop.discover(resolver(
                 publicJbrSkiaClass = CompatibleJbrSkia::class.java,
                 jbrAccessorClass = CompatibleJbr::class.java,
@@ -626,7 +626,7 @@ class JbrSkiaInteropTest {
         private val commandCapabilities: Long = REQUIRED_COMMAND_CAPABILITIES,
         private val commandCapabilitiesHigh: Long = REQUIRED_COMMAND_CAPABILITIES_HIGH,
         private val nativeAbiVersion: Int = 3,
-        private val nativeCommandStreamAbiId: Int = 90,
+        private val nativeCommandStreamAbiId: Int = 99,
         private val nativeBuildId: String = "test-build",
     ) {
         val scope = FakeScopedCanvas()
@@ -729,6 +729,6 @@ class JbrSkiaInteropTest {
         private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND_COLOR_FILTER_REF = Long.MAX_VALUE
         private const val REQUIRED_COMMAND_CAPABILITIES =
             -1L
-        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 2047L
+        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 4095L
     }
 }

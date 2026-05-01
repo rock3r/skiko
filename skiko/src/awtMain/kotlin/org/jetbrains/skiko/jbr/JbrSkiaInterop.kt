@@ -158,6 +158,7 @@ object JbrSkiaInterop {
     private const val COMMAND_CAP64_HIGH_PATH_EFFECT_DESCRIPTOR_REF = 256L
     private const val COMMAND_CAP64_HIGH_CONCAT_MATRIX33 = 512L
     private const val COMMAND_CAP64_HIGH_DRAW_SHADOW_PATH = 1024L
+    private const val COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_COLOR_FILTER = 2048L
     private const val REQUIRED_COMMAND_CAPABILITIES_HIGH =
         COMMAND_CAP64_HIGH_SAVE_LAYER_IMAGE_FILTER_REF or
             COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER or
@@ -169,7 +170,8 @@ object JbrSkiaInterop {
             COMMAND_CAP64_HIGH_STROKE_PATH_DASH_PATH_EFFECT or
             COMMAND_CAP64_HIGH_PATH_EFFECT_DESCRIPTOR_REF or
             COMMAND_CAP64_HIGH_CONCAT_MATRIX33 or
-            COMMAND_CAP64_HIGH_DRAW_SHADOW_PATH
+            COMMAND_CAP64_HIGH_DRAW_SHADOW_PATH or
+            COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_COLOR_FILTER
     private val JBR_SKIA_CLASSES = arrayOf("com.jetbrains.JBRSkia", "com.jetbrains.desktop.JBRSkia")
     private const val JBR_INTERNAL_SERVICE_CLASS = "com.jetbrains.desktop.JBRSkiaService"
     private const val JBR_ACCESSOR_CLASS = "com.jetbrains.JBR"
