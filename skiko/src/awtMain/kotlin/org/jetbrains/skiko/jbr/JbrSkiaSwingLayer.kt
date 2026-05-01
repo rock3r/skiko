@@ -190,6 +190,7 @@ class JbrSkiaSwingLayer(
             }
             val commandStream = commandFrameCache
                 .frameForRendering(commandFrame.tinyFullSceneForTestingIfRequested())
+                .corruptDescriptorUseForTestingIfRequested()
                 .corruptForTestingIfRequested()
             val commandBuffer = commandStream.toDirectLittleEndianByteBuffer()
             scope.renderCommandDirectFrame(renderWidth, renderHeight, frameTime, commandBuffer).also { rendered ->
@@ -270,14 +271,18 @@ class JbrSkiaSwingLayer(
         const val RENDER_PICTURE_PROPERTY = "skiko.jbr.interop.renderPicture"
         const val RENDER_TO_TEXTURE_PROPERTY = "skiko.jbr.interop.renderToTexture"
         const val CORRUPT_COMMAND_STREAM_PROPERTY = "skiko.jbr.interop.corruptCommandStream"
+        const val CORRUPT_DESCRIPTOR_USE_PROPERTY = "skiko.jbr.interop.corruptDescriptorUseForTesting"
         const val FORCE_TINY_FULL_SCENE_ONCE_PROPERTY = "skiko.jbr.interop.forceTinyFullSceneOnceForTesting"
         private const val TINY_FULL_SCENE_INJECTED_MARKER = "SKIKO_JBR_INTEROP_TINY_FULL_SCENE_INJECTED"
+        private const val DESCRIPTOR_USE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_CORRUPTED"
 
         private const val COMMAND_CLEAR = 1
         private const val COMMAND_FILL_RECT = 2
         private const val COMMAND_STROKE_LINE = 3
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
+        private const val COMMAND_FILL_RECT_COLOR_FILTER_REF = 47
+        private const val COMMAND_FILL_RECT_SHADER_REF = 58
         private const val COMMAND_STREAM_MAGIC = 1246972723
         private const val COMMAND_STREAM_ABI_ID = 90
         private const val COMMAND_STREAM_HEADER_SIZE = 6
@@ -292,6 +297,7 @@ class JbrSkiaSwingLayer(
         private const val STROKE_JOIN_MITER = 0
         private const val STROKE_JOIN_ROUND = 1
         private val loggedRenderMode = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val descriptorUseCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
 
         private fun logRenderModeOnce(renderDelegate: SkikoRenderDelegate) {
             if (loggedRenderMode.compareAndSet(false, true)) {
@@ -380,6 +386,45 @@ class JbrSkiaSwingLayer(
                 }
             }
         }
+
+        private fun IntArray.corruptDescriptorUseForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_DESCRIPTOR_USE_PROPERTY)) return this
+            if (!descriptorUseCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                when (op) {
+                    COMMAND_FILL_RECT_SHADER_REF -> {
+                        if (argsStart + 1 < recordEnd) {
+                            return copyOf().also { stream ->
+                                stream[argsStart] = Int.MAX_VALUE
+                                stream[argsStart + 1] = Int.MAX_VALUE
+                                Logger.info { "$DESCRIPTOR_USE_CORRUPTED_MARKER op=$op" }
+                            }
+                        }
+                    }
+                    COMMAND_FILL_RECT_COLOR_FILTER_REF -> {
+                        if (argsStart + 2 < recordEnd) {
+                            return copyOf().also { stream ->
+                                stream[argsStart + 1] = Int.MAX_VALUE
+                                stream[argsStart + 2] = Int.MAX_VALUE
+                                Logger.info { "$DESCRIPTOR_USE_CORRUPTED_MARKER op=$op" }
+                            }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun Int?.orZero(): Int = this ?: 0
 
         private fun IntArray.toDirectLittleEndianByteBuffer(): ByteBuffer =
             ByteBuffer.allocateDirect(size * Int.SIZE_BYTES).order(ByteOrder.LITTLE_ENDIAN).also { encoded ->
