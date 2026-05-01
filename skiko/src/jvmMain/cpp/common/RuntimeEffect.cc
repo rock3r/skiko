@@ -1,5 +1,6 @@
 #include <jni.h>
 
+#include "SkColorFilter.h"
 #include "SkRuntimeEffect.h"
 #include "interop.hh"
 
@@ -29,6 +30,18 @@ Java_org_jetbrains_skia_RuntimeEffectKt__1nMakeShader(JNIEnv* env,
                                                        childCount,
                                                        localMatrix.get());
     return ptrToJlong(shader.release());
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_org_jetbrains_skia_RuntimeEffectKt__1nMakeColorFilter(JNIEnv* env,
+                                                          jclass jclass,
+                                                          jlong ptr,
+                                                          jlong uniformPtr) {
+    SkRuntimeEffect* runtimeEffect = jlongToPtr<SkRuntimeEffect*>(ptr);
+    SkData* uniform = jlongToPtr<SkData*>(uniformPtr);
+
+    sk_sp<SkColorFilter> colorFilter = runtimeEffect->makeColorFilter(sk_ref_sp<SkData>(uniform));
+    return ptrToJlong(colorFilter.release());
 }
 
 extern "C" JNIEXPORT jlong JNICALL
