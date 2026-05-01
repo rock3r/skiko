@@ -192,6 +192,7 @@ class JbrSkiaSwingLayer(
             val commandStream = commandFrameCache
                 .frameForRendering(commandFrame.tinyFullSceneForTestingIfRequested())
                 .corruptDescriptorUseForTestingIfRequested()
+                .corruptDescriptorUseAfterEvictForTestingIfRequested()
                 .corruptDescriptorVersionForTestingIfRequested()
                 .corruptRuntimeEffectChildTypeForTestingIfRequested()
                 .corruptForTestingIfRequested()
@@ -294,12 +295,16 @@ class JbrSkiaSwingLayer(
         const val RENDER_TO_TEXTURE_PROPERTY = "skiko.jbr.interop.renderToTexture"
         const val CORRUPT_COMMAND_STREAM_PROPERTY = "skiko.jbr.interop.corruptCommandStream"
         const val CORRUPT_DESCRIPTOR_USE_PROPERTY = "skiko.jbr.interop.corruptDescriptorUseForTesting"
+        const val CORRUPT_DESCRIPTOR_USE_AFTER_EVICT_PROPERTY =
+            "skiko.jbr.interop.corruptDescriptorUseAfterEvictForTesting"
         const val CORRUPT_DESCRIPTOR_VERSION_PROPERTY = "skiko.jbr.interop.corruptDescriptorVersionForTesting"
         const val CORRUPT_RUNTIME_EFFECT_CHILD_TYPE_PROPERTY = "skiko.jbr.interop.corruptRuntimeEffectChildTypeForTesting"
         const val FORCE_TINY_FULL_SCENE_ONCE_PROPERTY = "skiko.jbr.interop.forceTinyFullSceneOnceForTesting"
         const val FORCE_CONTEXT_CHANGE_ONCE_PROPERTY = "skiko.jbr.interop.forceContextChangeOnceForTesting"
         private const val TINY_FULL_SCENE_INJECTED_MARKER = "SKIKO_JBR_INTEROP_TINY_FULL_SCENE_INJECTED"
         private const val DESCRIPTOR_USE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_CORRUPTED"
+        private const val DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED"
         private const val DESCRIPTOR_VERSION_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_VERSION_CORRUPTED"
         private const val RUNTIME_EFFECT_CHILD_TYPE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_CHILD_TYPE_CORRUPTED"
@@ -313,6 +318,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_STROKE_OVAL = 5
         private const val COMMAND_FILL_RECT_COLOR_FILTER_REF = 47
         private const val COMMAND_DEFINE_SHADER_DESCRIPTOR = 56
+        private const val COMMAND_EVICT_SHADER_HANDLE = 57
         private const val COMMAND_FILL_RECT_SHADER_REF = 58
         private const val COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT = 6
         private const val COMMAND_STREAM_MAGIC = 1246972723
@@ -330,6 +336,7 @@ class JbrSkiaSwingLayer(
         private const val STROKE_JOIN_ROUND = 1
         private val loggedRenderMode = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val descriptorUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorVersionCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectChildTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
 
@@ -452,6 +459,36 @@ class JbrSkiaSwingLayer(
                             }
                         }
                     }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptDescriptorUseAfterEvictForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_DESCRIPTOR_USE_AFTER_EVICT_PROPERTY)) return this
+            if (!descriptorUseAfterEvictCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_FILL_RECT_SHADER_REF && argsStart + 1 < recordEnd) {
+                    val evict = intArrayOf(
+                        COMMAND_EVICT_SHADER_HANDLE,
+                        5 * Int.SIZE_BYTES,
+                        COMMAND_RECORD_FLAGS_NONE,
+                        this[argsStart],
+                        this[argsStart + 1],
+                    )
+                    val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
+                    corrupted[3] = corrupted[3] + evict.size
+                    Logger.info { DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER }
+                    return corrupted
                 }
                 offset = recordEnd
             }
