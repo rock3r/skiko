@@ -428,6 +428,35 @@ class JbrSkiaInteropTest {
     }
 
     @Test
+    fun commandFrameCacheDoesNotReplaceMeaningfulFrameWithMinimalFullSceneFrame() {
+        val cache = CommandFrameCache(minimumMeaningfulCommandWords = 8)
+        val meaningful = IntArray(10) { index -> index + 1 }
+        val minimal = intArrayOf(1, 2, 3)
+
+        cache.frameForRendering(JbrSkiaCommandFrame(meaningful, JbrSkiaCommandFrameKind.FullScene))
+
+        assertContentEquals(
+            meaningful,
+            cache.frameForRendering(JbrSkiaCommandFrame(minimal, JbrSkiaCommandFrameKind.FullScene)),
+        )
+        assertContentEquals(
+            meaningful,
+            cache.frameForRendering(JbrSkiaCommandFrame(minimal, JbrSkiaCommandFrameKind.InteropOnly)),
+        )
+    }
+
+    @Test
+    fun commandFrameCacheReturnsMinimalFullSceneFrameWhenNoMeaningfulFrameWasSeen() {
+        val cache = CommandFrameCache(minimumMeaningfulCommandWords = 8)
+        val minimal = intArrayOf(1, 2, 3)
+
+        assertSame(
+            minimal,
+            cache.frameForRendering(JbrSkiaCommandFrame(minimal, JbrSkiaCommandFrameKind.FullScene)),
+        )
+    }
+
+    @Test
     fun commandFrameCacheReturnsMinimalFrameWhenNoMeaningfulFrameWasSeen() {
         val cache = CommandFrameCache(minimumMeaningfulCommandWords = 8)
         val minimal = intArrayOf(1, 2, 3)
