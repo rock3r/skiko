@@ -192,6 +192,7 @@ class JbrSkiaSwingLayer(
             val commandStream = commandFrameCache
                 .frameForRendering(commandFrame.tinyFullSceneForTestingIfRequested())
                 .corruptDescriptorUseForTestingIfRequested()
+                .corruptRuntimeEffectChildTypeForTestingIfRequested()
                 .corruptForTestingIfRequested()
             val commandBuffer = commandStream.toDirectLittleEndianByteBuffer()
             scope.renderCommandDirectFrame(renderWidth, renderHeight, frameTime, commandBuffer).also { rendered ->
@@ -292,10 +293,13 @@ class JbrSkiaSwingLayer(
         const val RENDER_TO_TEXTURE_PROPERTY = "skiko.jbr.interop.renderToTexture"
         const val CORRUPT_COMMAND_STREAM_PROPERTY = "skiko.jbr.interop.corruptCommandStream"
         const val CORRUPT_DESCRIPTOR_USE_PROPERTY = "skiko.jbr.interop.corruptDescriptorUseForTesting"
+        const val CORRUPT_RUNTIME_EFFECT_CHILD_TYPE_PROPERTY = "skiko.jbr.interop.corruptRuntimeEffectChildTypeForTesting"
         const val FORCE_TINY_FULL_SCENE_ONCE_PROPERTY = "skiko.jbr.interop.forceTinyFullSceneOnceForTesting"
         const val FORCE_CONTEXT_CHANGE_ONCE_PROPERTY = "skiko.jbr.interop.forceContextChangeOnceForTesting"
         private const val TINY_FULL_SCENE_INJECTED_MARKER = "SKIKO_JBR_INTEROP_TINY_FULL_SCENE_INJECTED"
         private const val DESCRIPTOR_USE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_CORRUPTED"
+        private const val RUNTIME_EFFECT_CHILD_TYPE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_CHILD_TYPE_CORRUPTED"
         private const val FORCED_CONTEXT_CHANGE_MARKER = "SKIKO_JBR_INTEROP_FORCED_CONTEXT_CHANGE"
         private const val FORCED_CONTEXT_ID_MASK = 0x4000000000000000L
 
@@ -305,7 +309,9 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
         private const val COMMAND_FILL_RECT_COLOR_FILTER_REF = 47
+        private const val COMMAND_DEFINE_SHADER_DESCRIPTOR = 56
         private const val COMMAND_FILL_RECT_SHADER_REF = 58
+        private const val COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT = 6
         private const val COMMAND_STREAM_MAGIC = 1246972723
         private const val COMMAND_STREAM_ABI_ID = 90
         private const val COMMAND_STREAM_HEADER_SIZE = 6
@@ -321,6 +327,7 @@ class JbrSkiaSwingLayer(
         private const val STROKE_JOIN_ROUND = 1
         private val loggedRenderMode = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val runtimeEffectChildTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
 
         private fun logRenderModeOnce(renderDelegate: SkikoRenderDelegate) {
             if (loggedRenderMode.compareAndSet(false, true)) {
@@ -446,6 +453,103 @@ class JbrSkiaSwingLayer(
             }
             return this
         }
+
+        private fun IntArray.corruptRuntimeEffectChildTypeForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_RUNTIME_EFFECT_CHILD_TYPE_PROPERTY)) return this
+            if (!runtimeEffectChildTypeCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 5 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val payloadStart = argsStart + 5
+                    val payloadEnd = payloadStart + payloadIntCount
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT &&
+                        payloadIntCount >= 7 &&
+                        payloadEnd <= recordEnd
+                    ) {
+                        corruptRuntimeEffectDescriptorChildType(offset, recordEnd, payloadStart, payloadEnd)?.let {
+                            return it
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptRuntimeEffectDescriptorChildType(
+            recordStart: Int,
+            recordEnd: Int,
+            payloadStart: Int,
+            payloadEnd: Int,
+        ): IntArray? {
+            val payload = copyOfRange(payloadStart, payloadEnd)
+            val skslLength = payload[0]
+            val childCount = payload[2]
+            val namedUniformCount = payload[3]
+            val namedChildCount = payload[4]
+            if (skslLength <= 0 || childCount <= 0 || namedChildCount <= 0) return null
+
+            var schemaOffset = 7 + childCount * 2
+            repeat(namedUniformCount) {
+                if (schemaOffset + 3 > payload.size) return null
+                val nameLength = payload[schemaOffset + 2]
+                schemaOffset += 3 + nameLength
+            }
+            repeat(namedChildCount) {
+                if (schemaOffset + 2 > payload.size) return null
+                val nameLength = payload[schemaOffset + 1]
+                schemaOffset += 2 + nameLength
+            }
+            val skslStart = schemaOffset
+            val skslEnd = skslStart + skslLength
+            if (skslEnd > payload.size) return null
+            val source = payload.copyOfRange(skslStart, skslEnd).map { it.toChar() }.joinToString("")
+            val replacement = source
+                .replace("uniform shader content;", "uniform colorFilter content;")
+                .replace("half4 base = content.eval(p);", "half4 base = content.eval(half4(0.25, 0.45, 0.85, 1.0));")
+            if (replacement == source || replacement.any { it.code !in 1..127 }) return null
+
+            val replacementPayload = payload.copyOfRange(0, skslStart) +
+                replacement.map { it.code }.toIntArray() +
+                payload.copyOfRange(skslEnd, payload.size)
+            replacementPayload[0] = replacement.length
+            val sourceHash = replacement.shaderSourceHashForTesting()
+            replacementPayload[5] = sourceHash.highIntForTesting()
+            replacementPayload[6] = sourceHash.lowIntForTesting()
+
+            val argsStart = recordStart + 3
+            val prefix = copyOfRange(0, payloadStart)
+            val suffix = copyOfRange(payloadEnd, size)
+            val corrupted = prefix + replacementPayload + suffix
+            val recordLengthDelta = replacementPayload.size - payload.size
+            corrupted[argsStart + 4] = replacementPayload.size
+            corrupted[recordStart + 1] = (recordEnd - recordStart + recordLengthDelta) * Int.SIZE_BYTES
+            corrupted[3] = corrupted[3] + recordLengthDelta
+            Logger.info { RUNTIME_EFFECT_CHILD_TYPE_CORRUPTED_MARKER }
+            return corrupted
+        }
+
+        private fun String.shaderSourceHashForTesting(): Long {
+            var hash = -3750763034362895579L
+            forEach { char ->
+                hash = hash xor char.code.toLong()
+                hash *= 1099511628211L
+            }
+            return hash
+        }
+
+        private fun Long.highIntForTesting(): Int = (this ushr 32).toInt()
+
+        private fun Long.lowIntForTesting(): Int = this.toInt()
 
         private fun Int?.orZero(): Int = this ?: 0
 
