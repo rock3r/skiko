@@ -29,6 +29,6 @@ class RuntimeEffectTest {
             |half4 main(half4 inColor) {
             | return inColor.bgra;
             |}""".trimMargin()
-        RuntimeEffect.makeForColorFilter(colorFilterSKSL)
+        RuntimeEffect.makeForColorFilter(colorFilterSKSL).makeColorFilter(null)
     }
 }

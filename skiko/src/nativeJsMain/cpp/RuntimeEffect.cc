@@ -1,4 +1,5 @@
 #include "SkRuntimeEffect.h"
+#include "SkColorFilter.h"
 #include "common.h"
 
 SKIKO_EXPORT KNativePointer org_jetbrains_skia_RuntimeEffect__1nMakeShader
@@ -19,6 +20,15 @@ SKIKO_EXPORT KNativePointer org_jetbrains_skia_RuntimeEffect__1nMakeShader
                                                        childCount,
                                                        localMatrix.get());
     return reinterpret_cast<KNativePointer>(shader.release());
+}
+
+SKIKO_EXPORT KNativePointer org_jetbrains_skia_RuntimeEffect__1nMakeColorFilter
+(KNativePointer ptr, KNativePointer uniformPtr) {
+    SkRuntimeEffect* runtimeEffect = reinterpret_cast<SkRuntimeEffect*>(ptr);
+    SkData* uniform = reinterpret_cast<SkData*>(uniformPtr);
+
+    sk_sp<SkColorFilter> colorFilter = runtimeEffect->makeColorFilter(sk_ref_sp<SkData>(uniform));
+    return reinterpret_cast<KNativePointer>(colorFilter.release());
 }
 
 SKIKO_EXPORT KNativePointer org_jetbrains_skia_RuntimeEffect__1nMakeForShader
