@@ -50,6 +50,8 @@ class JbrSkiaSwingLayer(
     private val commandFrameCache = CommandFrameCache(MIN_MEANINGFUL_COMMAND_WORDS)
     private var commandCanvasUnavailableLogged = false
     private var pictureCanvasUnavailableLogged = false
+    private var meaningfulFullSceneFramesForTesting = 0
+    private var tinyFullSceneInjectedForTesting = false
 
     override fun paint(g: Graphics) {
         logRenderModeOnce(renderDelegate)
@@ -184,7 +186,9 @@ class JbrSkiaSwingLayer(
         }
         return try {
             noteSurfaceIdentity(scope)
-            val commandStream = commandFrameCache.frameForRendering(commandFrame).corruptForTestingIfRequested()
+            val commandStream = commandFrameCache
+                .frameForRendering(commandFrame.tinyFullSceneForTestingIfRequested())
+                .corruptForTestingIfRequested()
             val commandBuffer = commandStream.toDirectLittleEndianByteBuffer()
             scope.renderCommandDirectFrame(renderWidth, renderHeight, frameTime, commandBuffer).also { rendered ->
                 Logger.info {
@@ -253,6 +257,8 @@ class JbrSkiaSwingLayer(
         const val RENDER_PICTURE_PROPERTY = "skiko.jbr.interop.renderPicture"
         const val RENDER_TO_TEXTURE_PROPERTY = "skiko.jbr.interop.renderToTexture"
         const val CORRUPT_COMMAND_STREAM_PROPERTY = "skiko.jbr.interop.corruptCommandStream"
+        const val FORCE_TINY_FULL_SCENE_ONCE_PROPERTY = "skiko.jbr.interop.forceTinyFullSceneOnceForTesting"
+        private const val TINY_FULL_SCENE_INJECTED_MARKER = "SKIKO_JBR_INTEROP_TINY_FULL_SCENE_INJECTED"
 
         private const val COMMAND_CLEAR = 1
         private const val COMMAND_FILL_RECT = 2
@@ -321,6 +327,16 @@ class JbrSkiaSwingLayer(
             return commands.toIntArray()
         }
 
+        private fun emptyCommandFrame(): IntArray =
+            IntArray(COMMAND_STREAM_HEADER_SIZE).also { stream ->
+                stream[0] = COMMAND_STREAM_MAGIC
+                stream[1] = COMMAND_STREAM_ABI_ID
+                stream[2] = COMMAND_STREAM_FLAGS_NONE
+                stream[3] = 0
+                stream[4] = COMMAND_COORDINATE_SPACE_SWING_USER
+                stream[5] = COMMAND_PAINT_FORMAT_SOLID_ARGB
+            }
+
         private class CommandStreamWriter(initialCapacity: Int) {
             private val payload = ArrayList<Int>(initialCapacity)
 
@@ -357,6 +373,18 @@ class JbrSkiaSwingLayer(
                 forEach(encoded::putInt)
                 encoded.flip()
             }
+    }
+
+    private fun JbrSkiaCommandFrame.tinyFullSceneForTestingIfRequested(): JbrSkiaCommandFrame {
+        if (!java.lang.Boolean.getBoolean(FORCE_TINY_FULL_SCENE_ONCE_PROPERTY)) return this
+        if (kind != JbrSkiaCommandFrameKind.FullScene || commands.size < MIN_MEANINGFUL_COMMAND_WORDS) return this
+
+        meaningfulFullSceneFramesForTesting++
+        if (meaningfulFullSceneFramesForTesting < 2 || tinyFullSceneInjectedForTesting) return this
+
+        tinyFullSceneInjectedForTesting = true
+        Logger.info { "$TINY_FULL_SCENE_INJECTED_MARKER originalCommands=${commands.size}" }
+        return JbrSkiaCommandFrame(emptyCommandFrame(), JbrSkiaCommandFrameKind.FullScene)
     }
 
     private fun recordPictureFrame(width: Int, height: Int, frameTimeNanos: Long): ByteArray {
