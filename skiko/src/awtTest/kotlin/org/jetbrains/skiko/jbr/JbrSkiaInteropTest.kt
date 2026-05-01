@@ -516,7 +516,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "93".toInt()
+            val ABI_ID: Int = "94".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -729,6 +729,6 @@ class JbrSkiaInteropTest {
         private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND_COLOR_FILTER_REF = Long.MAX_VALUE
         private const val REQUIRED_COMMAND_CAPABILITIES =
             -1L
-        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 63L
+        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 127L
     }
 }
