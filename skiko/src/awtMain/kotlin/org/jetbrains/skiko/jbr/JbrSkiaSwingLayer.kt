@@ -422,13 +422,15 @@ internal class CommandFrameCache(
     fun frameForRendering(frame: JbrSkiaCommandFrame): IntArray {
         val commands = frame.commands
         val cached = lastMeaningfulFrame
-        if (frame.kind == JbrSkiaCommandFrameKind.FullScene ||
-            frame.kind == JbrSkiaCommandFrameKind.Unknown && commands.size >= minimumMeaningfulCommandWords
+        val isMeaningfulFrame = commands.size >= minimumMeaningfulCommandWords
+        if ((frame.kind == JbrSkiaCommandFrameKind.FullScene || frame.kind == JbrSkiaCommandFrameKind.Unknown) &&
+            isMeaningfulFrame
         ) {
             lastMeaningfulFrame = commands.copyOf()
             return commands
         }
         if (frame.kind == JbrSkiaCommandFrameKind.InteropOnly && cached != null ||
+            frame.kind == JbrSkiaCommandFrameKind.FullScene && cached != null ||
             frame.kind == JbrSkiaCommandFrameKind.Unknown && cached != null
         ) {
             Logger.info {
