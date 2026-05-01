@@ -180,6 +180,20 @@ class JbrSkiaInteropTest {
     }
 
     @Test
+    fun rejectsMissingShaderDescriptorColorFilterCommandCapability() {
+        val discovery = JbrSkiaInterop.discover(resolver(
+            publicJbrSkiaClass = CompatibleJbrSkia::class.java,
+            jbrAccessorClass = MissingShaderDescriptorColorFilterCapabilityJbr::class.java,
+        ))
+
+        assertFalse(discovery.isAvailable)
+        assertEquals(JbrSkiaInterop.FallbackReason.COMMAND_CAPABILITY_MISMATCH, discovery.fallbackReason)
+        assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
+        assertEquals(REQUIRED_COMMAND_CAPABILITIES_HIGH_WITHOUT_SHADER_DESCRIPTOR_COLOR_FILTER, discovery.commandCapabilitiesHigh)
+        assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=command-capability-mismatch", discovery.fallbackMarker)
+    }
+
+    @Test
     fun rejectsMissingSaveLayerBlendColorFilterCommandCapability() {
         val discovery = JbrSkiaInterop.discover(resolver(
             publicJbrSkiaClass = CompatibleJbrSkia::class.java,
@@ -559,6 +573,13 @@ class JbrSkiaInteropTest {
         fun getJBRSkia(): FakeJbrSkiaService = service
     }
 
+    object MissingShaderDescriptorColorFilterCapabilityJbr {
+        private val service = FakeJbrSkiaService(commandCapabilitiesHigh = REQUIRED_COMMAND_CAPABILITIES_HIGH_WITHOUT_SHADER_DESCRIPTOR_COLOR_FILTER)
+
+        @JvmStatic
+        fun getJBRSkia(): FakeJbrSkiaService = service
+    }
+
     object MissingColorMatrixDescriptorCapabilityJbr {
         private val service = FakeJbrSkiaService(commandCapabilities = REQUIRED_COMMAND_CAPABILITIES_WITHOUT_COLOR_MATRIX_DESCRIPTOR)
 
@@ -730,5 +751,8 @@ class JbrSkiaInteropTest {
         private const val REQUIRED_COMMAND_CAPABILITIES =
             -1L
         private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 4095L
+        private const val COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_COLOR_FILTER = 2048L
+        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH_WITHOUT_SHADER_DESCRIPTOR_COLOR_FILTER =
+            REQUIRED_COMMAND_CAPABILITIES_HIGH and COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_COLOR_FILTER.inv()
     }
 }
