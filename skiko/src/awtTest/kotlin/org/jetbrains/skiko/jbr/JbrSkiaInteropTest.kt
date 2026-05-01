@@ -20,7 +20,7 @@ class JbrSkiaInteropTest {
 
         assertTrue(discovery.isAvailable)
         assertSame(CompatibleJbr.service, discovery.service)
-        assertEquals(97, discovery.abiId)
+        assertEquals(98, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES_HIGH, discovery.commandCapabilitiesHigh)
@@ -48,7 +48,7 @@ class JbrSkiaInteropTest {
 
             assertFalse(discovery.isAvailable)
             assertEquals(JbrSkiaInterop.FallbackReason.ABI_MISMATCH, discovery.fallbackReason)
-            assertEquals(97, discovery.abiId)
+            assertEquals(98, discovery.abiId)
             assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch", discovery.fallbackMarker)
         }
     }
@@ -83,7 +83,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(97, discovery.abiId)
+        assertEquals(98, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -122,7 +122,7 @@ class JbrSkiaInteropTest {
 
         assertFalse(discovery.isAvailable)
         assertEquals(JbrSkiaInterop.FallbackReason.NATIVE_ABI_MISMATCH, discovery.fallbackReason)
-        assertEquals(97, discovery.abiId)
+        assertEquals(98, discovery.abiId)
     }
 
     @Test
@@ -309,7 +309,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(97, discovery.abiId)
+        assertEquals(98, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -516,7 +516,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "97".toInt()
+            val ABI_ID: Int = "98".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
