@@ -52,6 +52,7 @@ class JbrSkiaSwingLayer(
     private var pictureCanvasUnavailableLogged = false
     private var meaningfulFullSceneFramesForTesting = 0
     private var tinyFullSceneInjectedForTesting = false
+    private var forcedContextChangeInjectedForTesting = false
 
     override fun paint(g: Graphics) {
         logRenderModeOnce(renderDelegate)
@@ -245,12 +246,12 @@ class JbrSkiaSwingLayer(
         scope: JbrSkiaInterop.ScopedCanvas,
         clearCommandCaches: Boolean = false,
     ): Boolean {
-        surfaceIdentityTracker.note(SurfaceIdentity(scope.contextId, scope.surfaceId, scope.metalTexturePtr))?.let { change ->
+        surfaceIdentityTracker.note(surfaceIdentityForTestingIfRequested(scope))?.let { change ->
             if (change.contextChanged) {
                 context?.close()
                 context = null
             }
-            if (change.surfaceChanged) {
+            if (change.contextChanged || change.surfaceChanged) {
                 commandFrameCache.clear()
                 if (clearCommandCaches && !JbrSkiaCommandRecorderCacheBridge.clearForSurfaceChange(
                         if (change.contextChanged) "contextChanged" else "surfaceChanged"
@@ -265,6 +266,25 @@ class JbrSkiaSwingLayer(
         return true
     }
 
+    private fun surfaceIdentityForTestingIfRequested(scope: JbrSkiaInterop.ScopedCanvas): SurfaceIdentity {
+        val identity = SurfaceIdentity(scope.contextId, scope.surfaceId, scope.metalTexturePtr)
+        if (!java.lang.Boolean.getBoolean(FORCE_CONTEXT_CHANGE_ONCE_PROPERTY) ||
+            forcedContextChangeInjectedForTesting ||
+            !surfaceIdentityTracker.hasCurrent ||
+            identity.isUnknown
+        ) {
+            return if (forcedContextChangeInjectedForTesting && !identity.isUnknown) {
+                identity.copy(contextId = identity.contextId xor FORCED_CONTEXT_ID_MASK)
+            } else {
+                identity
+            }
+        }
+
+        forcedContextChangeInjectedForTesting = true
+        Logger.info { "$FORCED_CONTEXT_CHANGE_MARKER oldContextId=${identity.contextId.toHexString()}" }
+        return identity.copy(contextId = identity.contextId xor FORCED_CONTEXT_ID_MASK)
+    }
+
     private companion object {
         const val RENDER_DIAGNOSTIC_PROPERTY = "skiko.jbr.interop.renderDiagnostic"
         const val RENDER_COMMANDS_PROPERTY = "skiko.jbr.interop.renderCommands"
@@ -273,8 +293,11 @@ class JbrSkiaSwingLayer(
         const val CORRUPT_COMMAND_STREAM_PROPERTY = "skiko.jbr.interop.corruptCommandStream"
         const val CORRUPT_DESCRIPTOR_USE_PROPERTY = "skiko.jbr.interop.corruptDescriptorUseForTesting"
         const val FORCE_TINY_FULL_SCENE_ONCE_PROPERTY = "skiko.jbr.interop.forceTinyFullSceneOnceForTesting"
+        const val FORCE_CONTEXT_CHANGE_ONCE_PROPERTY = "skiko.jbr.interop.forceContextChangeOnceForTesting"
         private const val TINY_FULL_SCENE_INJECTED_MARKER = "SKIKO_JBR_INTEROP_TINY_FULL_SCENE_INJECTED"
         private const val DESCRIPTOR_USE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_CORRUPTED"
+        private const val FORCED_CONTEXT_CHANGE_MARKER = "SKIKO_JBR_INTEROP_FORCED_CONTEXT_CHANGE"
+        private const val FORCED_CONTEXT_ID_MASK = 0x4000000000000000L
 
         private const val COMMAND_CLEAR = 1
         private const val COMMAND_FILL_RECT = 2
@@ -482,6 +505,7 @@ internal data class SurfaceIdentityChange(
 
 internal class SurfaceIdentityTracker {
     private var current: SurfaceIdentity? = null
+    val hasCurrent: Boolean get() = current != null
 
     fun note(next: SurfaceIdentity): SurfaceIdentityChange? {
         if (next.isUnknown) return null
