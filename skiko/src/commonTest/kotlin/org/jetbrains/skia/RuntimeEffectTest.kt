@@ -30,5 +30,13 @@ class RuntimeEffectTest {
             | return inColor.bgra;
             |}""".trimMargin()
         RuntimeEffect.makeForColorFilter(colorFilterSKSL).makeColorFilter(null)
+
+        val childColorFilterSKSL = """
+            |uniform colorFilter child;
+            |half4 main(half4 inColor) {
+            |  return child.eval(inColor).bgra;
+            |}""".trimMargin()
+        RuntimeEffect.makeForColorFilter(childColorFilterSKSL)
+            .makeColorFilter(null, arrayOf(ColorFilter.makeMode(Color.RED, BlendMode.SRC_IN)))
     }
 }

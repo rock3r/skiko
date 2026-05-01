@@ -23,11 +23,20 @@ SKIKO_EXPORT KNativePointer org_jetbrains_skia_RuntimeEffect__1nMakeShader
 }
 
 SKIKO_EXPORT KNativePointer org_jetbrains_skia_RuntimeEffect__1nMakeColorFilter
-(KNativePointer ptr, KNativePointer uniformPtr) {
+(KNativePointer ptr, KNativePointer uniformPtr, KNativePointerArray childrenPtrsArr, KInt childCount) {
     SkRuntimeEffect* runtimeEffect = reinterpret_cast<SkRuntimeEffect*>(ptr);
     SkData* uniform = reinterpret_cast<SkData*>(uniformPtr);
 
-    sk_sp<SkColorFilter> colorFilter = runtimeEffect->makeColorFilter(sk_ref_sp<SkData>(uniform));
+    KNativePointer* childrenPtrs = reinterpret_cast<KNativePointer*>(childrenPtrsArr);
+    std::vector<sk_sp<SkColorFilter>> children(childCount);
+    for (size_t i = 0; i < childCount; i++) {
+        SkColorFilter* colorFilter = reinterpret_cast<SkColorFilter*>(childrenPtrs[i]);
+        children[i] = sk_ref_sp(colorFilter);
+    }
+
+    sk_sp<SkColorFilter> colorFilter = runtimeEffect->makeColorFilter(sk_ref_sp<SkData>(uniform),
+                                                                      children.data(),
+                                                                      childCount);
     return reinterpret_cast<KNativePointer>(colorFilter.release());
 }
 

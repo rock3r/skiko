@@ -50,15 +50,19 @@ class RuntimeEffect internal constructor(ptr: NativePointer) : RefCnt(ptr) {
         }
     }
 
-    fun makeColorFilter(uniforms: Data?): ColorFilter {
+    fun makeColorFilter(uniforms: Data?, children: Array<ColorFilter?>? = null): ColorFilter {
         Stats.onNativeCall()
+        val childCount = children?.size ?: 0
+        val childrenPtrs = NativePointerArray(childCount)
+        for (i in 0 until childCount) childrenPtrs[i] = getPtr(children!![i])
         return try {
             interopScope {
-                ColorFilter(_nMakeColorFilter(_ptr, getPtr(uniforms)))
+                ColorFilter(_nMakeColorFilter(_ptr, getPtr(uniforms), toInterop(childrenPtrs), childCount))
             }
         } finally {
             reachabilityBarrier(this)
             reachabilityBarrier(uniforms)
+            reachabilityBarrier(children)
         }
     }
 
@@ -84,7 +88,9 @@ private external fun _nMakeShader(
 ): NativePointer
 
 @ExternalSymbolName("org_jetbrains_skia_RuntimeEffect__1nMakeColorFilter")
-private external fun _nMakeColorFilter(runtimeEffectPtr: NativePointer, uniformPtr: NativePointer): NativePointer
+private external fun _nMakeColorFilter(
+    runtimeEffectPtr: NativePointer, uniformPtr: NativePointer, childrenPtrs: InteropPointer, childCount: Int
+): NativePointer
 
 @ExternalSymbolName("org_jetbrains_skia_RuntimeEffect__1nMakeBlender")
 private external fun _nMakeBlender(
