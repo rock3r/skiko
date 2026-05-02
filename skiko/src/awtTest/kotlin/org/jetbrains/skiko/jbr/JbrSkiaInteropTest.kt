@@ -412,6 +412,34 @@ class JbrSkiaInteropTest {
     }
 
     @Test
+    fun commandStreamPreflightRejectsAbiMismatch() {
+        assertEquals(
+            JbrSkiaInterop.FallbackReason.ABI_MISMATCH,
+            commandStreamFallbackReason(intArrayOf(1246972723, 99, 0, 0, 1, 1))
+        )
+    }
+
+    @Test
+    fun commandStreamPreflightRejectsInvalidHeader() {
+        assertEquals(
+            JbrSkiaInterop.FallbackReason.COMMAND_STREAM_INVALID,
+            commandStreamFallbackReason(intArrayOf(1246972723, 100, 0))
+        )
+        assertEquals(
+            JbrSkiaInterop.FallbackReason.COMMAND_STREAM_INVALID,
+            commandStreamFallbackReason(intArrayOf(42, 100, 0, 0, 1, 1))
+        )
+    }
+
+    @Test
+    fun commandStreamPreflightAcceptsCurrentAbi() {
+        assertEquals(
+            null,
+            commandStreamFallbackReason(intArrayOf(1246972723, 100, 0, 0, 1, 1))
+        )
+    }
+
+    @Test
     fun surfaceIdentityTrackerIgnoresUnknownIdentity() {
         val tracker = SurfaceIdentityTracker()
 
