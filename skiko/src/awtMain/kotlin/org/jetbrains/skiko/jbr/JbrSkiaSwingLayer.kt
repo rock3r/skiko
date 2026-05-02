@@ -196,6 +196,10 @@ class JbrSkiaSwingLayer(
                 .corruptDescriptorVersionForTestingIfRequested()
                 .corruptRuntimeEffectChildTypeForTestingIfRequested()
                 .corruptForTestingIfRequested()
+            commandStreamFallbackReason(commandStream)?.let { reason ->
+                JbrSkiaInterop.logFallback(reason)
+                return renderJbrPictureFrame(g)
+            }
             val commandBuffer = commandStream.toDirectLittleEndianByteBuffer()
             scope.renderCommandDirectFrame(renderWidth, renderHeight, frameTime, commandBuffer).also { rendered ->
                 Logger.info {
@@ -322,7 +326,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_RECT_SHADER_REF = 58
         private const val COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT = 6
         private const val COMMAND_STREAM_MAGIC = 1246972723
-        private const val COMMAND_STREAM_ABI_ID = 90
+        private const val COMMAND_STREAM_ABI_ID = 100
         private const val COMMAND_STREAM_HEADER_SIZE = 6
         private const val COMMAND_STREAM_FLAGS_NONE = 0
         private const val COMMAND_COORDINATE_SPACE_SWING_USER = 1
@@ -758,6 +762,16 @@ internal fun pictureFrameMarker(width: Int, height: Int, bytes: Int, rendered: B
 
 internal fun commandFrameMarker(width: Int, height: Int, commands: Int, rendered: Boolean): String =
     "SKIKO_JBR_INTEROP_COMMAND_FRAME width=$width height=$height commands=$commands rendered=$rendered"
+
+internal fun commandStreamFallbackReason(commands: IntArray): JbrSkiaInterop.FallbackReason? {
+    if (commands.size < 6 || commands[0] != 1246972723) {
+        return JbrSkiaInterop.FallbackReason.COMMAND_STREAM_INVALID
+    }
+    if (commands[1] != 100) {
+        return JbrSkiaInterop.FallbackReason.ABI_MISMATCH
+    }
+    return null
+}
 
 internal object JbrSkiaDebugOverlay {
     private const val DEBUG_OVERLAY_PROPERTY = "skiko.jbr.interop.debugOverlay"
