@@ -180,6 +180,36 @@ class JbrSkiaInteropTest {
     }
 
     @Test
+    fun rejectsEachMissingHighCommandCapability() {
+        val capabilities = listOf(
+            "save-layer image-filter ref" to COMMAND_CAP64_HIGH_SAVE_LAYER_IMAGE_FILTER_REF,
+            "offset image-filter descriptor" to COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER,
+            "chained image-filter descriptor" to COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_CHAIN_IMAGE_FILTER,
+            "shader descriptor ref" to COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_REF,
+            "runtime color-filter descriptor" to COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER,
+            "rect dash path-effect stroke" to COMMAND_CAP64_HIGH_STROKE_RECT_DASH_PATH_EFFECT,
+            "round-rect dash path-effect stroke" to COMMAND_CAP64_HIGH_STROKE_ROUND_RECT_DASH_PATH_EFFECT,
+            "path dash path-effect stroke" to COMMAND_CAP64_HIGH_STROKE_PATH_DASH_PATH_EFFECT,
+            "path-effect descriptor ref" to COMMAND_CAP64_HIGH_PATH_EFFECT_DESCRIPTOR_REF,
+            "concat matrix33" to COMMAND_CAP64_HIGH_CONCAT_MATRIX33,
+            "shadow path" to COMMAND_CAP64_HIGH_DRAW_SHADOW_PATH,
+            "shader descriptor color-filter" to COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_COLOR_FILTER,
+            "draw points" to COMMAND_CAP64_HIGH_DRAW_POINTS,
+        )
+
+        capabilities.forEach { (label, capability) ->
+            val availableHighCapabilities = REQUIRED_COMMAND_CAPABILITIES_HIGH and capability.inv()
+            val discovery = discoverWithCapabilities(commandCapabilitiesHigh = availableHighCapabilities)
+
+            assertFalse(discovery.isAvailable, label)
+            assertEquals(JbrSkiaInterop.FallbackReason.COMMAND_CAPABILITY_MISMATCH, discovery.fallbackReason, label)
+            assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities, label)
+            assertEquals(availableHighCapabilities, discovery.commandCapabilitiesHigh, label)
+            assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=command-capability-mismatch", discovery.fallbackMarker, label)
+        }
+    }
+
+    @Test
     fun rejectsMissingShaderDescriptorColorFilterCommandCapability() {
         val discovery = JbrSkiaInterop.discover(resolver(
             publicJbrSkiaClass = CompatibleJbrSkia::class.java,
@@ -512,6 +542,20 @@ class JbrSkiaInteropTest {
 
     private fun testGraphics() = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics()
 
+    private fun discoverWithCapabilities(
+        commandCapabilities: Long = REQUIRED_COMMAND_CAPABILITIES,
+        commandCapabilitiesHigh: Long = REQUIRED_COMMAND_CAPABILITIES_HIGH,
+    ): JbrSkiaInterop.Discovery {
+        DynamicCapabilitiesJbr.service = FakeJbrSkiaService(
+            commandCapabilities = commandCapabilities,
+            commandCapabilitiesHigh = commandCapabilitiesHigh,
+        )
+        return JbrSkiaInterop.discover(resolver(
+            publicJbrSkiaClass = CompatibleJbrSkia::class.java,
+            jbrAccessorClass = DynamicCapabilitiesJbr::class.java,
+        ))
+    }
+
     private fun withSystemProperty(name: String, value: String, block: () -> Unit) {
         val oldValue = System.getProperty(name)
         try {
@@ -575,6 +619,13 @@ class JbrSkiaInteropTest {
 
     object MissingCapabilitiesJbr {
         private val service = FakeJbrSkiaService(commandCapabilities = 0, commandCapabilitiesHigh = 0)
+
+        @JvmStatic
+        fun getJBRSkia(): FakeJbrSkiaService = service
+    }
+
+    object DynamicCapabilitiesJbr {
+        lateinit var service: FakeJbrSkiaService
 
         @JvmStatic
         fun getJBRSkia(): FakeJbrSkiaService = service
@@ -772,6 +823,17 @@ class JbrSkiaInteropTest {
         private const val REQUIRED_COMMAND_CAPABILITIES =
             -1L
         private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 8191L
+        private const val COMMAND_CAP64_HIGH_SAVE_LAYER_IMAGE_FILTER_REF = 1L
+        private const val COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER = 2L
+        private const val COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_CHAIN_IMAGE_FILTER = 4L
+        private const val COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_REF = 8L
+        private const val COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER = 16L
+        private const val COMMAND_CAP64_HIGH_STROKE_RECT_DASH_PATH_EFFECT = 32L
+        private const val COMMAND_CAP64_HIGH_STROKE_ROUND_RECT_DASH_PATH_EFFECT = 64L
+        private const val COMMAND_CAP64_HIGH_STROKE_PATH_DASH_PATH_EFFECT = 128L
+        private const val COMMAND_CAP64_HIGH_PATH_EFFECT_DESCRIPTOR_REF = 256L
+        private const val COMMAND_CAP64_HIGH_CONCAT_MATRIX33 = 512L
+        private const val COMMAND_CAP64_HIGH_DRAW_SHADOW_PATH = 1024L
         private const val COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_COLOR_FILTER = 2048L
         private const val COMMAND_CAP64_HIGH_DRAW_POINTS = 4096L
         private const val REQUIRED_COMMAND_CAPABILITIES_HIGH_WITHOUT_SHADER_DESCRIPTOR_COLOR_FILTER =
