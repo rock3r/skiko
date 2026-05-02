@@ -238,6 +238,20 @@ class JbrSkiaInteropTest {
     }
 
     @Test
+    fun rejectsMissingTextFontFamilyCommandCapability() {
+        val discovery = JbrSkiaInterop.discover(resolver(
+            publicJbrSkiaClass = CompatibleJbrSkia::class.java,
+            jbrAccessorClass = MissingTextFontFamilyCapabilityJbr::class.java,
+        ))
+
+        assertFalse(discovery.isAvailable)
+        assertEquals(JbrSkiaInterop.FallbackReason.COMMAND_CAPABILITY_MISMATCH, discovery.fallbackReason)
+        assertEquals(REQUIRED_COMMAND_CAPABILITIES_WITHOUT_TEXT_FONT_FAMILY, discovery.commandCapabilities)
+        assertEquals(REQUIRED_COMMAND_CAPABILITIES_HIGH, discovery.commandCapabilitiesHigh)
+        assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=command-capability-mismatch", discovery.fallbackMarker)
+    }
+
+    @Test
     fun rejectsMissingSaveLayerBlendColorFilterCommandCapability() {
         val discovery = JbrSkiaInterop.discover(resolver(
             publicJbrSkiaClass = CompatibleJbrSkia::class.java,
@@ -680,6 +694,13 @@ class JbrSkiaInteropTest {
         fun getJBRSkia(): FakeJbrSkiaService = service
     }
 
+    object MissingTextFontFamilyCapabilityJbr {
+        private val service = FakeJbrSkiaService(commandCapabilities = REQUIRED_COMMAND_CAPABILITIES_WITHOUT_TEXT_FONT_FAMILY)
+
+        @JvmStatic
+        fun getJBRSkia(): FakeJbrSkiaService = service
+    }
+
     object MissingColorMatrixDescriptorCapabilityJbr {
         private val service = FakeJbrSkiaService(commandCapabilities = REQUIRED_COMMAND_CAPABILITIES_WITHOUT_COLOR_MATRIX_DESCRIPTOR)
 
@@ -831,12 +852,15 @@ class JbrSkiaInteropTest {
     }
 
     private companion object {
+        private const val COMMAND_CAP64_TEXT_FONT_FAMILY = 1099511627776L
         private const val COMMAND_CAP64_EFFECT_DESCRIPTOR_COLOR_MATRIX_FILTER = 576460752303423488L
         private const val COMMAND_CAP64_EFFECT_DESCRIPTOR_LIGHTING_FILTER = 1152921504606846976L
         private const val COMMAND_CAP64_SAVE_LAYER_COLOR_FILTER_REF = 2305843009213693952L
         private const val COMMAND_CAP64_DRAW_IMAGE_REF_COLOR_FILTER_REF = 4611686018427387904L
         private const val COMMAND_CAP64_SAVE_LAYER_BLEND_COLOR_FILTER_REF = Long.MIN_VALUE
         private const val COMMAND_CAP64_SAVE_LAYER_BLEND_COLOR_FILTER = 288230376151711744L
+        private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_TEXT_FONT_FAMILY =
+            -1L and COMMAND_CAP64_TEXT_FONT_FAMILY.inv()
         private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_COLOR_FILTER_REF =
             2305843009213693951L or COMMAND_CAP64_DRAW_IMAGE_REF_COLOR_FILTER_REF or COMMAND_CAP64_SAVE_LAYER_BLEND_COLOR_FILTER_REF
         private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_LIGHTING_DESCRIPTOR =
