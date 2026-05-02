@@ -20,7 +20,7 @@ class JbrSkiaInteropTest {
 
         assertTrue(discovery.isAvailable)
         assertSame(CompatibleJbr.service, discovery.service)
-        assertEquals(100, discovery.abiId)
+        assertEquals(101, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES_HIGH, discovery.commandCapabilitiesHigh)
@@ -48,7 +48,7 @@ class JbrSkiaInteropTest {
 
             assertFalse(discovery.isAvailable)
             assertEquals(JbrSkiaInterop.FallbackReason.ABI_MISMATCH, discovery.fallbackReason)
-            assertEquals(100, discovery.abiId)
+            assertEquals(101, discovery.abiId)
             assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch", discovery.fallbackMarker)
         }
     }
@@ -83,7 +83,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(100, discovery.abiId)
+        assertEquals(101, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -122,7 +122,7 @@ class JbrSkiaInteropTest {
 
         assertFalse(discovery.isAvailable)
         assertEquals(JbrSkiaInterop.FallbackReason.NATIVE_ABI_MISMATCH, discovery.fallbackReason)
-        assertEquals(100, discovery.abiId)
+        assertEquals(101, discovery.abiId)
     }
 
     @Test
@@ -367,7 +367,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(100, discovery.abiId)
+        assertEquals(101, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -423,11 +423,11 @@ class JbrSkiaInteropTest {
     fun commandStreamPreflightRejectsInvalidHeader() {
         assertEquals(
             JbrSkiaInterop.FallbackReason.COMMAND_STREAM_INVALID,
-            commandStreamFallbackReason(intArrayOf(1246972723, 100, 0))
+            commandStreamFallbackReason(intArrayOf(1246972723, 101, 0))
         )
         assertEquals(
             JbrSkiaInterop.FallbackReason.COMMAND_STREAM_INVALID,
-            commandStreamFallbackReason(intArrayOf(42, 100, 0, 0, 1, 1))
+            commandStreamFallbackReason(intArrayOf(42, 101, 0, 0, 1, 1))
         )
     }
 
@@ -435,7 +435,7 @@ class JbrSkiaInteropTest {
     fun commandStreamPreflightAcceptsCurrentAbi() {
         assertEquals(
             null,
-            commandStreamFallbackReason(intArrayOf(1246972723, 100, 0, 0, 1, 1))
+            commandStreamFallbackReason(intArrayOf(1246972723, 101, 0, 0, 1, 1))
         )
     }
 
@@ -616,7 +616,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "100".toInt()
+            val ABI_ID: Int = "101".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -747,7 +747,7 @@ class JbrSkiaInteropTest {
         private val commandCapabilities: Long = REQUIRED_COMMAND_CAPABILITIES,
         private val commandCapabilitiesHigh: Long = REQUIRED_COMMAND_CAPABILITIES_HIGH,
         private val nativeAbiVersion: Int = 3,
-        private val nativeCommandStreamAbiId: Int = 100,
+        private val nativeCommandStreamAbiId: Int = 101,
         private val nativeBuildId: String = "test-build",
     ) {
         val scope = FakeScopedCanvas()

@@ -31,6 +31,8 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
+private const val COMMAND_STREAM_ABI_ID = 101
+
 /**
  * Swing layer entry point for the experimental JBR-owned Skia interop path.
  *
@@ -326,7 +328,6 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_RECT_SHADER_REF = 58
         private const val COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT = 6
         private const val COMMAND_STREAM_MAGIC = 1246972723
-        private const val COMMAND_STREAM_ABI_ID = 100
         private const val COMMAND_STREAM_HEADER_SIZE = 6
         private const val COMMAND_STREAM_FLAGS_NONE = 0
         private const val COMMAND_COORDINATE_SPACE_SWING_USER = 1
@@ -767,7 +768,7 @@ internal fun commandStreamFallbackReason(commands: IntArray): JbrSkiaInterop.Fal
     if (commands.size < 6 || commands[0] != 1246972723) {
         return JbrSkiaInterop.FallbackReason.COMMAND_STREAM_INVALID
     }
-    if (commands[1] != 100) {
+    if (commands[1] != COMMAND_STREAM_ABI_ID) {
         return JbrSkiaInterop.FallbackReason.ABI_MISMATCH
     }
     return null
