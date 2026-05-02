@@ -5,14 +5,29 @@ This worktree contains an experimental Swing path where Skiko renders Compose co
 ## Compatibility Gate
 
 Skiko reflectively reads the public JBR API `ABI_ID`/`BUILD_ID`, then acquires `com.jetbrains.JBR.getJBRSkia()`.
-The current command stream gate is ABI 91 and requires JBR's high capability bit for RuntimeEffect color-filter
-descriptors. If either the ABI/build id or required capability bits do not match, Skiko emits
+The current command stream gate is ABI 100 and requires both low-word and high-word command capability masks through
+`COMMAND_CAP64_HIGH_DRAW_POINTS`. If either the ABI/build id, native ABI/build metadata, or required capability bits do not match, Skiko emits
 `SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch`, `native-abi-mismatch`, or `command-capability-mismatch` and uses the
 old Swing path for that paint.
 
-The ABI 91 RuntimeEffect color-filter path still does not pass Skiko-owned Skia objects to JBR. CMP serializes the SKSL,
-source hash, uniform floats, and named uniform schema; JBR compiles the `SkRuntimeEffect` and `SkColorFilter` inside the
-destination context.
+The RuntimeEffect shader/color-filter paths still do not pass Skiko-owned Skia objects to JBR. CMP serializes SKSL,
+source hashes, uniform floats, named uniform schema, and child descriptor handles; JBR compiles the `SkRuntimeEffect`,
+`SkShader`, and `SkColorFilter` objects inside the destination context.
+
+## Artifact Shape
+
+The PoC keeps `org.jetbrains.skiko:skiko-awt` as the JVM/Kotlin API artifact that Compose and Skiko callers compile
+against. JBR command replay is an AWT runtime mode discovered reflectively at paint time; it is not a separate raw-Skia
+native bridge inside Skiko.
+
+The normal `skiko-awt-runtime-*` artifacts remain the correct dependency for applications that need the old SwingGraphics
+fallback, direct Skiko surfaces, text/image helpers that still call Skiko JNI, or non-JBR runtimes. A future JBR-only
+distribution can omit the platform runtime only after the Compose Swing command recorder no longer needs Skiko JNI during
+recording. Until then, publishing an empty or marker-only `skiko-awt-runtime-jbr-*` artifact would hide real fallback and
+recording dependencies rather than removing them.
+
+The JBR-owned native bridge is packaged with JBR as `libjbrskiainterop`. Skiko only negotiates the API/ABI gate and sends
+versioned command buffers or descriptors to that bridge.
 
 ## Surface Changes
 
