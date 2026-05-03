@@ -31,7 +31,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val COMMAND_STREAM_ABI_ID = 102
+private const val COMMAND_STREAM_ABI_ID = 103
 
 /**
  * Swing layer entry point for the experimental JBR-owned Skia interop path.
