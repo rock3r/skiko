@@ -196,6 +196,7 @@ class JbrSkiaSwingLayer(
                 .corruptDescriptorUseForTestingIfRequested()
                 .corruptDescriptorUseAfterEvictForTestingIfRequested()
                 .corruptDescriptorVersionForTestingIfRequested()
+                .corruptRuntimeEffectSourceForTestingIfRequested()
                 .corruptRuntimeEffectChildTypeForTestingIfRequested()
                 .corruptForTestingIfRequested()
             commandStreamFallbackReason(commandStream)?.let { reason ->
@@ -304,6 +305,7 @@ class JbrSkiaSwingLayer(
         const val CORRUPT_DESCRIPTOR_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptDescriptorUseAfterEvictForTesting"
         const val CORRUPT_DESCRIPTOR_VERSION_PROPERTY = "skiko.jbr.interop.corruptDescriptorVersionForTesting"
+        const val CORRUPT_RUNTIME_EFFECT_SOURCE_PROPERTY = "skiko.jbr.interop.corruptRuntimeEffectSourceForTesting"
         const val CORRUPT_RUNTIME_EFFECT_CHILD_TYPE_PROPERTY = "skiko.jbr.interop.corruptRuntimeEffectChildTypeForTesting"
         const val FORCE_TINY_FULL_SCENE_ONCE_PROPERTY = "skiko.jbr.interop.forceTinyFullSceneOnceForTesting"
         const val FORCE_CONTEXT_CHANGE_ONCE_PROPERTY = "skiko.jbr.interop.forceContextChangeOnceForTesting"
@@ -312,6 +314,8 @@ class JbrSkiaSwingLayer(
         private const val DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED"
         private const val DESCRIPTOR_VERSION_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_VERSION_CORRUPTED"
+        private const val RUNTIME_EFFECT_SOURCE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SOURCE_CORRUPTED"
         private const val RUNTIME_EFFECT_CHILD_TYPE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_CHILD_TYPE_CORRUPTED"
         private const val FORCED_CONTEXT_CHANGE_MARKER = "SKIKO_JBR_INTEROP_FORCED_CONTEXT_CHANGE"
@@ -343,6 +347,7 @@ class JbrSkiaSwingLayer(
         private val descriptorUseCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorVersionCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val runtimeEffectSourceCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectChildTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
 
         private fun logRenderModeOnce(renderDelegate: SkikoRenderDelegate) {
@@ -521,6 +526,82 @@ class JbrSkiaSwingLayer(
                 offset = recordEnd
             }
             return this
+        }
+
+        private fun IntArray.corruptRuntimeEffectSourceForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_RUNTIME_EFFECT_SOURCE_PROPERTY)) return this
+            if (!runtimeEffectSourceCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 5 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val payloadStart = argsStart + 5
+                    val payloadEnd = payloadStart + payloadIntCount
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT &&
+                        payloadIntCount >= 7 &&
+                        payloadEnd <= recordEnd
+                    ) {
+                        corruptRuntimeEffectDescriptorSource(payloadStart, payloadEnd)?.let {
+                            return it
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptRuntimeEffectDescriptorSource(
+            payloadStart: Int,
+            payloadEnd: Int,
+        ): IntArray? {
+            val payload = copyOfRange(payloadStart, payloadEnd)
+            val skslLength = payload[0]
+            val childCount = payload[2]
+            val namedUniformCount = payload[3]
+            val namedChildCount = payload[4]
+            if (skslLength <= 0) return null
+
+            var schemaOffset = 7 + childCount * 2
+            repeat(namedUniformCount) {
+                if (schemaOffset + 3 > payload.size) return null
+                val nameLength = payload[schemaOffset + 2]
+                schemaOffset += 3 + nameLength
+            }
+            repeat(namedChildCount) {
+                if (schemaOffset + 2 > payload.size) return null
+                val nameLength = payload[schemaOffset + 1]
+                schemaOffset += 2 + nameLength
+            }
+            val skslStart = schemaOffset
+            val skslEnd = skslStart + skslLength
+            if (skslEnd > payload.size) return null
+            val source = payload.copyOfRange(skslStart, skslEnd).map { it.toChar() }.joinToString("")
+            val replacement = source.replaceFirst("return", "retxrn")
+            if (replacement == source || replacement.length != source.length || replacement.any { it.code !in 1..127 }) {
+                return null
+            }
+
+            val replacementPayload = payload.copyOf()
+            replacement.forEachIndexed { index, char ->
+                replacementPayload[skslStart + index] = char.code
+            }
+            val sourceHash = replacement.shaderSourceHashForTesting()
+            replacementPayload[5] = sourceHash.highIntForTesting()
+            replacementPayload[6] = sourceHash.lowIntForTesting()
+
+            val corrupted = copyOf()
+            replacementPayload.copyInto(corrupted, destinationOffset = payloadStart)
+            Logger.info { RUNTIME_EFFECT_SOURCE_CORRUPTED_MARKER }
+            return corrupted
         }
 
         private fun IntArray.corruptRuntimeEffectChildTypeForTestingIfRequested(): IntArray {
