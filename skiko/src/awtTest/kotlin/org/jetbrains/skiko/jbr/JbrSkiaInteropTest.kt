@@ -215,6 +215,22 @@ class JbrSkiaInteropTest {
     }
 
     @Test
+    fun rejectsEachMissingLowCommandCapability() {
+        val capabilities = (0 until Long.SIZE_BITS).map { bit -> "low bit $bit" to (1L shl bit) }
+
+        capabilities.forEach { (label, capability) ->
+            val availableCapabilities = REQUIRED_COMMAND_CAPABILITIES and capability.inv()
+            val discovery = discoverWithCapabilities(commandCapabilities = availableCapabilities)
+
+            assertFalse(discovery.isAvailable, label)
+            assertEquals(JbrSkiaInterop.FallbackReason.COMMAND_CAPABILITY_MISMATCH, discovery.fallbackReason, label)
+            assertEquals(availableCapabilities, discovery.commandCapabilities, label)
+            assertEquals(REQUIRED_COMMAND_CAPABILITIES_HIGH, discovery.commandCapabilitiesHigh, label)
+            assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=command-capability-mismatch", discovery.fallbackMarker, label)
+        }
+    }
+
+    @Test
     fun rejectsMissingShaderDescriptorColorFilterCommandCapability() {
         val discovery = JbrSkiaInterop.discover(resolver(
             publicJbrSkiaClass = CompatibleJbrSkia::class.java,
