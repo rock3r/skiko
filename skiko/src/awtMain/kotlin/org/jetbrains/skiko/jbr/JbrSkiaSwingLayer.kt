@@ -327,9 +327,11 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
         private const val COMMAND_FILL_RECT_COLOR_FILTER_REF = 47
+        private const val COMMAND_DEFINE_EFFECT_DESCRIPTOR = 49
         private const val COMMAND_DEFINE_SHADER_DESCRIPTOR = 56
         private const val COMMAND_EVICT_SHADER_HANDLE = 57
         private const val COMMAND_FILL_RECT_SHADER_REF = 58
+        private const val COMMAND_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER = 8
         private const val COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT = 6
         private const val COMMAND_STREAM_MAGIC = 1246972723
         private const val COMMAND_STREAM_HEADER_SIZE = 6
@@ -540,12 +542,14 @@ class JbrSkiaSwingLayer(
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
-                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 5 < recordEnd) {
+                if ((op == COMMAND_DEFINE_SHADER_DESCRIPTOR || op == COMMAND_DEFINE_EFFECT_DESCRIPTOR) &&
+                    argsStart + 5 < recordEnd
+                ) {
                     val descriptorType = this[argsStart + 2]
                     val payloadIntCount = this[argsStart + 4]
                     val payloadStart = argsStart + 5
                     val payloadEnd = payloadStart + payloadIntCount
-                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT &&
+                    if (isRuntimeEffectSourceDescriptor(op, descriptorType) &&
                         payloadIntCount >= 7 &&
                         payloadEnd <= recordEnd
                     ) {
@@ -558,6 +562,11 @@ class JbrSkiaSwingLayer(
             }
             return this
         }
+
+        private fun isRuntimeEffectSourceDescriptor(op: Int, descriptorType: Int): Boolean =
+            (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && descriptorType == COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT) ||
+                (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR &&
+                    descriptorType == COMMAND_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER)
 
         private fun IntArray.corruptRuntimeEffectDescriptorSource(
             payloadStart: Int,
