@@ -625,16 +625,18 @@ class JbrSkiaSwingLayer(
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
-                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 5 < recordEnd) {
+                if ((op == COMMAND_DEFINE_SHADER_DESCRIPTOR || op == COMMAND_DEFINE_EFFECT_DESCRIPTOR) &&
+                    argsStart + 5 < recordEnd
+                ) {
                     val descriptorType = this[argsStart + 2]
                     val payloadIntCount = this[argsStart + 4]
                     val payloadStart = argsStart + 5
                     val payloadEnd = payloadStart + payloadIntCount
-                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT &&
+                    if (isRuntimeEffectSourceDescriptor(op, descriptorType) &&
                         payloadIntCount >= 7 &&
                         payloadEnd <= recordEnd
                     ) {
-                        corruptRuntimeEffectDescriptorChildType(offset, recordEnd, payloadStart, payloadEnd)?.let {
+                        corruptRuntimeEffectDescriptorChildType(op, offset, recordEnd, payloadStart, payloadEnd)?.let {
                             return it
                         }
                     }
@@ -645,6 +647,7 @@ class JbrSkiaSwingLayer(
         }
 
         private fun IntArray.corruptRuntimeEffectDescriptorChildType(
+            op: Int,
             recordStart: Int,
             recordEnd: Int,
             payloadStart: Int,
@@ -672,9 +675,18 @@ class JbrSkiaSwingLayer(
             val skslEnd = skslStart + skslLength
             if (skslEnd > payload.size) return null
             val source = payload.copyOfRange(skslStart, skslEnd).map { it.toChar() }.joinToString("")
-            val replacement = source
-                .replace("uniform shader content;", "uniform colorFilter content;")
-                .replace("half4 base = content.eval(p);", "half4 base = content.eval(half4(0.25, 0.45, 0.85, 1.0));")
+            val replacement = if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR) {
+                source
+                    .replace("uniform shader content;", "uniform colorFilter content;")
+                    .replace(
+                        "half4 base = content.eval(p);",
+                        "half4 base = content.eval(half4(0.25, 0.45, 0.85, 1.0));",
+                    )
+            } else {
+                source
+                    .replace("uniform colorFilter content;", "uniform shader content;")
+                    .replace("half4 base = content.eval(inColor);", "half4 base = content.eval(float2(0.25, 0.45));")
+            }
             if (replacement == source || replacement.any { it.code !in 1..127 }) return null
 
             val replacementPayload = payload.copyOfRange(0, skslStart) +
