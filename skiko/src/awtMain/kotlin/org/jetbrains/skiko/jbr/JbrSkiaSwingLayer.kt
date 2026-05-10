@@ -309,6 +309,8 @@ class JbrSkiaSwingLayer(
         const val CORRUPT_DESCRIPTOR_VERSION_PROPERTY = "skiko.jbr.interop.corruptDescriptorVersionForTesting"
         const val CORRUPT_COLOR_FILTER_HANDLE_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptColorFilterHandleTypeForTesting"
+        const val CORRUPT_COLOR_FILTER_HANDLE_TO_PATH_EFFECT_TYPE_PROPERTY =
+            "skiko.jbr.interop.corruptColorFilterHandleToPathEffectTypeForTesting"
         const val CORRUPT_IMAGE_FILTER_HANDLE_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptImageFilterHandleTypeForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SOURCE_PROPERTY = "skiko.jbr.interop.corruptRuntimeEffectSourceForTesting"
@@ -349,6 +351,9 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER_WITH_INPUT = 6
         private const val COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER_WITH_INPUT = 7
         private const val COMMAND_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER = 8
+        private const val COMMAND_EFFECT_DESCRIPTOR_CORNER_PATH_EFFECT = 9
+        private const val COMMAND_EFFECT_DESCRIPTOR_STAMPED_PATH_EFFECT = 10
+        private const val COMMAND_EFFECT_DESCRIPTOR_CHAIN_PATH_EFFECT = 11
         private const val COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT = 6
         private const val COMMAND_SHADER_DESCRIPTOR_COLOR_FILTER = 7
         private const val COMMAND_STREAM_MAGIC = 1246972723
@@ -551,16 +556,27 @@ class JbrSkiaSwingLayer(
         }
 
         private fun IntArray.corruptColorFilterHandleTypeForTestingIfRequested(): IntArray {
-            if (!java.lang.Boolean.getBoolean(CORRUPT_COLOR_FILTER_HANDLE_TYPE_PROPERTY)) return this
+            val corruptToImageFilter = java.lang.Boolean.getBoolean(CORRUPT_COLOR_FILTER_HANDLE_TYPE_PROPERTY)
+            val corruptToPathEffect =
+                java.lang.Boolean.getBoolean(CORRUPT_COLOR_FILTER_HANDLE_TO_PATH_EFFECT_TYPE_PROPERTY)
+            if (!corruptToImageFilter && !corruptToPathEffect) return this
             if (!colorFilterHandleTypeCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
 
-            val imageFilterHandle = firstEffectDescriptorHandle(commandEnd) { descriptorType ->
-                descriptorType == COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER ||
-                    descriptorType == COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER ||
-                    descriptorType == COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER_WITH_INPUT ||
-                    descriptorType == COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER_WITH_INPUT
+            val wrongTypeHandle = if (corruptToPathEffect) {
+                firstEffectDescriptorHandle(commandEnd) { descriptorType ->
+                    descriptorType == COMMAND_EFFECT_DESCRIPTOR_CORNER_PATH_EFFECT ||
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_STAMPED_PATH_EFFECT ||
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_CHAIN_PATH_EFFECT
+                }
+            } else {
+                firstEffectDescriptorHandle(commandEnd) { descriptorType ->
+                    descriptorType == COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER ||
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER ||
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER_WITH_INPUT ||
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER_WITH_INPUT
+                }
             } ?: return this
 
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -573,18 +589,22 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 9 <= recordEnd) {
                     val descriptorType = this[argsStart + 2]
                     val payloadIntCount = this[argsStart + 4]
-                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_COLOR_FILTER && payloadIntCount == 4) {
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_COLOR_FILTER &&
+                        payloadIntCount == 4 &&
+                        !corruptToPathEffect
+                    ) {
                         return copyOf().also { stream ->
-                            stream[argsStart + 7] = imageFilterHandle.first
-                            stream[argsStart + 8] = imageFilterHandle.second
+                            stream[argsStart + 7] = wrongTypeHandle.first
+                            stream[argsStart + 8] = wrongTypeHandle.second
                             Logger.info { "$COLOR_FILTER_HANDLE_TYPE_CORRUPTED_MARKER target=shaderColorFilter" }
                         }
                     }
                 } else if (op == COMMAND_FILL_RECT_COLOR_FILTER_REF && argsStart + 7 <= recordEnd) {
                     return copyOf().also { stream ->
-                        stream[argsStart + 1] = imageFilterHandle.first
-                        stream[argsStart + 2] = imageFilterHandle.second
-                        Logger.info { "$COLOR_FILTER_HANDLE_TYPE_CORRUPTED_MARKER target=fillRectColorFilter" }
+                        stream[argsStart + 1] = wrongTypeHandle.first
+                        stream[argsStart + 2] = wrongTypeHandle.second
+                        val target = if (corruptToPathEffect) "fillRectColorFilterPathEffect" else "fillRectColorFilter"
+                        Logger.info { "$COLOR_FILTER_HANDLE_TYPE_CORRUPTED_MARKER target=$target" }
                     }
                 }
                 offset = recordEnd
