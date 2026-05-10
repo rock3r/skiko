@@ -577,14 +577,14 @@ class JbrSkiaSwingLayer(
                         return copyOf().also { stream ->
                             stream[argsStart + 7] = imageFilterHandle.first
                             stream[argsStart + 8] = imageFilterHandle.second
-                            Logger.info { COLOR_FILTER_HANDLE_TYPE_CORRUPTED_MARKER }
+                            Logger.info { "$COLOR_FILTER_HANDLE_TYPE_CORRUPTED_MARKER target=shaderColorFilter" }
                         }
                     }
                 } else if (op == COMMAND_FILL_RECT_COLOR_FILTER_REF && argsStart + 7 <= recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart + 1] = imageFilterHandle.first
                         stream[argsStart + 2] = imageFilterHandle.second
-                        Logger.info { COLOR_FILTER_HANDLE_TYPE_CORRUPTED_MARKER }
+                        Logger.info { "$COLOR_FILTER_HANDLE_TYPE_CORRUPTED_MARKER target=fillRectColorFilter" }
                     }
                 }
                 offset = recordEnd
@@ -615,7 +615,7 @@ class JbrSkiaSwingLayer(
                     return copyOf().also { stream ->
                         stream[argsStart + 5] = colorFilterHandle.first
                         stream[argsStart + 6] = colorFilterHandle.second
-                        Logger.info { IMAGE_FILTER_HANDLE_TYPE_CORRUPTED_MARKER }
+                        Logger.info { "$IMAGE_FILTER_HANDLE_TYPE_CORRUPTED_MARKER target=saveLayerImageFilter" }
                     }
                 }
                 offset = recordEnd
