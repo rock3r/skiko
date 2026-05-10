@@ -197,6 +197,7 @@ class JbrSkiaSwingLayer(
                 .corruptDescriptorUseAfterEvictForTestingIfRequested()
                 .corruptDescriptorVersionForTestingIfRequested()
                 .corruptColorFilterHandleTypeForTestingIfRequested()
+                .corruptImageFilterHandleTypeForTestingIfRequested()
                 .corruptRuntimeEffectSourceForTestingIfRequested()
                 .corruptRuntimeEffectChildTypeForTestingIfRequested()
                 .corruptForTestingIfRequested()
@@ -308,6 +309,8 @@ class JbrSkiaSwingLayer(
         const val CORRUPT_DESCRIPTOR_VERSION_PROPERTY = "skiko.jbr.interop.corruptDescriptorVersionForTesting"
         const val CORRUPT_COLOR_FILTER_HANDLE_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptColorFilterHandleTypeForTesting"
+        const val CORRUPT_IMAGE_FILTER_HANDLE_TYPE_PROPERTY =
+            "skiko.jbr.interop.corruptImageFilterHandleTypeForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SOURCE_PROPERTY = "skiko.jbr.interop.corruptRuntimeEffectSourceForTesting"
         const val CORRUPT_RUNTIME_EFFECT_CHILD_TYPE_PROPERTY = "skiko.jbr.interop.corruptRuntimeEffectChildTypeForTesting"
         const val FORCE_TINY_FULL_SCENE_ONCE_PROPERTY = "skiko.jbr.interop.forceTinyFullSceneOnceForTesting"
@@ -319,6 +322,8 @@ class JbrSkiaSwingLayer(
         private const val DESCRIPTOR_VERSION_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_VERSION_CORRUPTED"
         private const val COLOR_FILTER_HANDLE_TYPE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_COLOR_FILTER_HANDLE_TYPE_CORRUPTED"
+        private const val IMAGE_FILTER_HANDLE_TYPE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_IMAGE_FILTER_HANDLE_TYPE_CORRUPTED"
         private const val RUNTIME_EFFECT_SOURCE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SOURCE_CORRUPTED"
         private const val RUNTIME_EFFECT_CHILD_TYPE_CORRUPTED_MARKER =
@@ -333,9 +338,12 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_STROKE_OVAL = 5
         private const val COMMAND_FILL_RECT_COLOR_FILTER_REF = 47
         private const val COMMAND_DEFINE_EFFECT_DESCRIPTOR = 49
+        private const val COMMAND_SAVE_LAYER_IMAGE_FILTER_REF = 55
         private const val COMMAND_DEFINE_SHADER_DESCRIPTOR = 56
         private const val COMMAND_EVICT_SHADER_HANDLE = 57
         private const val COMMAND_FILL_RECT_SHADER_REF = 58
+        private const val COMMAND_EFFECT_DESCRIPTOR_TINT_COLOR_FILTER = 1
+        private const val COMMAND_EFFECT_DESCRIPTOR_COLOR_MATRIX_FILTER = 2
         private const val COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER = 4
         private const val COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER = 5
         private const val COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER_WITH_INPUT = 6
@@ -360,6 +368,7 @@ class JbrSkiaSwingLayer(
         private val descriptorUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorVersionCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val colorFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectSourceCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectChildTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
 
@@ -576,6 +585,37 @@ class JbrSkiaSwingLayer(
                         stream[argsStart + 1] = imageFilterHandle.first
                         stream[argsStart + 2] = imageFilterHandle.second
                         Logger.info { COLOR_FILTER_HANDLE_TYPE_CORRUPTED_MARKER }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptImageFilterHandleTypeForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_FILTER_HANDLE_TYPE_PROPERTY)) return this
+            if (!imageFilterHandleTypeCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+
+            val colorFilterHandle = firstEffectDescriptorHandle(commandEnd) { descriptorType ->
+                descriptorType == COMMAND_EFFECT_DESCRIPTOR_TINT_COLOR_FILTER ||
+                    descriptorType == COMMAND_EFFECT_DESCRIPTOR_COLOR_MATRIX_FILTER ||
+                    descriptorType == COMMAND_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER
+            } ?: return this
+
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_SAVE_LAYER_IMAGE_FILTER_REF && argsStart + 7 <= recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + 5] = colorFilterHandle.first
+                        stream[argsStart + 6] = colorFilterHandle.second
+                        Logger.info { IMAGE_FILTER_HANDLE_TYPE_CORRUPTED_MARKER }
                     }
                 }
                 offset = recordEnd
