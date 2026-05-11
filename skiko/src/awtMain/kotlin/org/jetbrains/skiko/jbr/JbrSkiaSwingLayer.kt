@@ -198,6 +198,7 @@ class JbrSkiaSwingLayer(
                 .corruptDescriptorVersionForTestingIfRequested()
                 .corruptColorFilterHandleTypeForTestingIfRequested()
                 .corruptImageFilterHandleTypeForTestingIfRequested()
+                .corruptPathEffectHandleTypeForTestingIfRequested()
                 .corruptShaderHandleTypeForTestingIfRequested()
                 .corruptRuntimeEffectSourceForTestingIfRequested()
                 .corruptRuntimeEffectChildTypeForTestingIfRequested()
@@ -314,6 +315,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptColorFilterHandleToPathEffectTypeForTesting"
         const val CORRUPT_IMAGE_FILTER_HANDLE_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptImageFilterHandleTypeForTesting"
+        const val CORRUPT_PATH_EFFECT_HANDLE_TYPE_PROPERTY =
+            "skiko.jbr.interop.corruptPathEffectHandleTypeForTesting"
         const val CORRUPT_SHADER_HANDLE_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptShaderHandleTypeForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SOURCE_PROPERTY = "skiko.jbr.interop.corruptRuntimeEffectSourceForTesting"
@@ -329,6 +332,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_COLOR_FILTER_HANDLE_TYPE_CORRUPTED"
         private const val IMAGE_FILTER_HANDLE_TYPE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_FILTER_HANDLE_TYPE_CORRUPTED"
+        private const val PATH_EFFECT_HANDLE_TYPE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_PATH_EFFECT_HANDLE_TYPE_CORRUPTED"
         private const val SHADER_HANDLE_TYPE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SHADER_HANDLE_TYPE_CORRUPTED"
         private const val RUNTIME_EFFECT_SOURCE_CORRUPTED_MARKER =
@@ -381,6 +386,7 @@ class JbrSkiaSwingLayer(
         private val descriptorVersionCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val colorFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val pathEffectHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectSourceCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectChildTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -675,6 +681,43 @@ class JbrSkiaSwingLayer(
                         stream[argsStart + 5] = colorFilterHandle.first
                         stream[argsStart + 6] = colorFilterHandle.second
                         Logger.info { "$IMAGE_FILTER_HANDLE_TYPE_CORRUPTED_MARKER target=saveLayerImageFilter" }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptPathEffectHandleTypeForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_PATH_EFFECT_HANDLE_TYPE_PROPERTY)) return this
+            if (!pathEffectHandleTypeCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+
+            val colorFilterHandle = firstEffectDescriptorHandle(commandEnd) { descriptorType ->
+                descriptorType == COMMAND_EFFECT_DESCRIPTOR_TINT_COLOR_FILTER ||
+                    descriptorType == COMMAND_EFFECT_DESCRIPTOR_COLOR_MATRIX_FILTER ||
+                    descriptorType == COMMAND_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER
+            } ?: return this
+
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 9 <= recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    if (descriptorType == COMMAND_EFFECT_DESCRIPTOR_CHAIN_PATH_EFFECT &&
+                        payloadIntCount == 4
+                    ) {
+                        return copyOf().also { stream ->
+                            stream[argsStart + 5] = colorFilterHandle.first
+                            stream[argsStart + 6] = colorFilterHandle.second
+                            Logger.info { "$PATH_EFFECT_HANDLE_TYPE_CORRUPTED_MARKER target=chainPathEffectChild" }
+                        }
                     }
                 }
                 offset = recordEnd
