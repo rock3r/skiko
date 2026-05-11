@@ -361,6 +361,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_EFFECT_DESCRIPTOR_CHAIN_PATH_EFFECT = 11
         private const val COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT = 6
         private const val COMMAND_SHADER_DESCRIPTOR_COLOR_FILTER = 7
+        private const val COMMAND_SHADER_DESCRIPTOR_TRANSFORM = 8
         private const val COMMAND_STREAM_MAGIC = 1246972723
         private const val COMMAND_STREAM_HEADER_SIZE = 6
         private const val COMMAND_STREAM_FLAGS_NONE = 0
@@ -668,7 +669,17 @@ class JbrSkiaSwingLayer(
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
-                if (op == COMMAND_FILL_RECT_SHADER_REF && argsStart + 7 <= recordEnd) {
+                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 7 <= recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_TRANSFORM && payloadIntCount == 11) {
+                        return copyOf().also { stream ->
+                            stream[argsStart + 5] = colorFilterHandle.first
+                            stream[argsStart + 6] = colorFilterHandle.second
+                            Logger.info { "$SHADER_HANDLE_TYPE_CORRUPTED_MARKER target=transformedShaderChild" }
+                        }
+                    }
+                } else if (op == COMMAND_FILL_RECT_SHADER_REF && argsStart + 7 <= recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart] = colorFilterHandle.first
                         stream[argsStart + 1] = colorFilterHandle.second
