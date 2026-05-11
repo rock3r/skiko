@@ -673,7 +673,17 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 7 <= recordEnd) {
                     val descriptorType = this[argsStart + 2]
                     val payloadIntCount = this[argsStart + 4]
-                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_COMPOSITE && payloadIntCount == 5) {
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT && payloadIntCount >= 9) {
+                        val payloadStart = argsStart + 5
+                        val childCount = this[payloadStart + 2]
+                        if (childCount > 0 && payloadStart + 8 <= recordEnd) {
+                            return copyOf().also { stream ->
+                                stream[payloadStart + 7] = colorFilterHandle.first
+                                stream[payloadStart + 8] = colorFilterHandle.second
+                                Logger.info { "$SHADER_HANDLE_TYPE_CORRUPTED_MARKER target=runtimeEffectShaderChild" }
+                            }
+                        }
+                    } else if (descriptorType == COMMAND_SHADER_DESCRIPTOR_COMPOSITE && payloadIntCount == 5) {
                         return copyOf().also { stream ->
                             stream[argsStart + 5] = colorFilterHandle.first
                             stream[argsStart + 6] = colorFilterHandle.second
