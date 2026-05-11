@@ -359,6 +359,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_EFFECT_DESCRIPTOR_CORNER_PATH_EFFECT = 9
         private const val COMMAND_EFFECT_DESCRIPTOR_STAMPED_PATH_EFFECT = 10
         private const val COMMAND_EFFECT_DESCRIPTOR_CHAIN_PATH_EFFECT = 11
+        private const val COMMAND_SHADER_DESCRIPTOR_COMPOSITE = 5
         private const val COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT = 6
         private const val COMMAND_SHADER_DESCRIPTOR_COLOR_FILTER = 7
         private const val COMMAND_SHADER_DESCRIPTOR_TRANSFORM = 8
@@ -672,7 +673,13 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 7 <= recordEnd) {
                     val descriptorType = this[argsStart + 2]
                     val payloadIntCount = this[argsStart + 4]
-                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_TRANSFORM && payloadIntCount == 11) {
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_COMPOSITE && payloadIntCount == 5) {
+                        return copyOf().also { stream ->
+                            stream[argsStart + 5] = colorFilterHandle.first
+                            stream[argsStart + 6] = colorFilterHandle.second
+                            Logger.info { "$SHADER_HANDLE_TYPE_CORRUPTED_MARKER target=compositeShaderDstChild" }
+                        }
+                    } else if (descriptorType == COMMAND_SHADER_DESCRIPTOR_TRANSFORM && payloadIntCount == 11) {
                         return copyOf().also { stream ->
                             stream[argsStart + 5] = colorFilterHandle.first
                             stream[argsStart + 6] = colorFilterHandle.second
