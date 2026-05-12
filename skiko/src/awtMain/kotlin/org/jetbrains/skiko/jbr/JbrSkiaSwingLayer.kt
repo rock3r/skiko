@@ -196,6 +196,7 @@ class JbrSkiaSwingLayer(
                 .corruptDescriptorUseForTestingIfRequested()
                 .corruptDescriptorUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildUseAfterEvictForTestingIfRequested()
+                .corruptEffectChildMissingForTestingIfRequested()
                 .corruptDescriptorVersionForTestingIfRequested()
                 .corruptColorFilterHandleTypeForTestingIfRequested()
                 .corruptImageFilterHandleTypeForTestingIfRequested()
@@ -312,6 +313,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptDescriptorUseAfterEvictForTesting"
         const val CORRUPT_EFFECT_CHILD_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptEffectChildUseAfterEvictForTesting"
+        const val CORRUPT_EFFECT_CHILD_MISSING_PROPERTY =
+            "skiko.jbr.interop.corruptEffectChildMissingForTesting"
         const val CORRUPT_DESCRIPTOR_VERSION_PROPERTY = "skiko.jbr.interop.corruptDescriptorVersionForTesting"
         const val CORRUPT_COLOR_FILTER_HANDLE_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptColorFilterHandleTypeForTesting"
@@ -335,6 +338,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED"
         private const val EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED"
+        private const val EFFECT_CHILD_MISSING_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_EFFECT_CHILD_MISSING_CORRUPTED"
         private const val DESCRIPTOR_VERSION_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_VERSION_CORRUPTED"
         private const val COLOR_FILTER_HANDLE_TYPE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_COLOR_FILTER_HANDLE_TYPE_CORRUPTED"
@@ -395,6 +400,7 @@ class JbrSkiaSwingLayer(
         private val descriptorUseCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val effectChildMissingCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorVersionCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val colorFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -594,6 +600,59 @@ class JbrSkiaSwingLayer(
                         corrupted[3] = corrupted[3] + evict.size
                         Logger.info { "$EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER target=$target" }
                         return corrupted
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptEffectChildMissingForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_EFFECT_CHILD_MISSING_PROPERTY)) return this
+            if (!effectChildMissingCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 9 <= recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val target = when {
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER && payloadIntCount >= 9 -> {
+                            val payloadStart = argsStart + 5
+                            val childCount = this[payloadStart + 2]
+                            if (childCount <= 0 || payloadStart + 8 > recordEnd) null else "runtimeEffectColorFilterChild"
+                        }
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER_WITH_INPUT &&
+                            payloadIntCount == 4 -> "offsetImageFilterChild"
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_CHAIN_PATH_EFFECT &&
+                            payloadIntCount == 4 -> "chainPathEffectChild"
+                        else -> null
+                    }
+                    if (target != null) {
+                        return copyOf().also { stream ->
+                            val childHandleOffset =
+                                if (descriptorType == COMMAND_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER) argsStart + 12 else argsStart + 5
+                            stream[childHandleOffset] = 0x7f10_0001
+                            stream[childHandleOffset + 1] = 0x7f10_0002
+                            Logger.info { "$EFFECT_CHILD_MISSING_CORRUPTED_MARKER target=$target" }
+                        }
+                    }
+                } else if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 9 <= recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_COLOR_FILTER && payloadIntCount == 4) {
+                        return copyOf().also { stream ->
+                            stream[argsStart + 7] = 0x7f10_0001
+                            stream[argsStart + 8] = 0x7f10_0002
+                            Logger.info { "$EFFECT_CHILD_MISSING_CORRUPTED_MARKER target=shaderColorFilterEffectChild" }
+                        }
                     }
                 }
                 offset = recordEnd
