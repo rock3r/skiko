@@ -201,6 +201,7 @@ class JbrSkiaSwingLayer(
                 .corruptImageFilterHandleTypeForTestingIfRequested()
                 .corruptPathEffectHandleTypeForTestingIfRequested()
                 .corruptShaderHandleTypeForTestingIfRequested()
+                .corruptShaderChildMissingForTestingIfRequested()
                 .corruptRuntimeEffectSourceForTestingIfRequested()
                 .corruptRuntimeEffectChildTypeForTestingIfRequested()
                 .corruptForTestingIfRequested()
@@ -322,6 +323,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptPathEffectHandleTypeForTesting"
         const val CORRUPT_SHADER_HANDLE_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptShaderHandleTypeForTesting"
+        const val CORRUPT_SHADER_CHILD_MISSING_PROPERTY =
+            "skiko.jbr.interop.corruptShaderChildMissingForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SOURCE_PROPERTY = "skiko.jbr.interop.corruptRuntimeEffectSourceForTesting"
         const val CORRUPT_RUNTIME_EFFECT_CHILD_TYPE_PROPERTY = "skiko.jbr.interop.corruptRuntimeEffectChildTypeForTesting"
         const val FORCE_TINY_FULL_SCENE_ONCE_PROPERTY = "skiko.jbr.interop.forceTinyFullSceneOnceForTesting"
@@ -341,6 +344,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_PATH_EFFECT_HANDLE_TYPE_CORRUPTED"
         private const val SHADER_HANDLE_TYPE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SHADER_HANDLE_TYPE_CORRUPTED"
+        private const val SHADER_CHILD_MISSING_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SHADER_CHILD_MISSING_CORRUPTED"
         private const val RUNTIME_EFFECT_SOURCE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SOURCE_CORRUPTED"
         private const val RUNTIME_EFFECT_CHILD_TYPE_CORRUPTED_MARKER =
@@ -395,6 +400,7 @@ class JbrSkiaSwingLayer(
         private val imageFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val pathEffectHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val shaderChildMissingCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectSourceCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectChildTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
 
@@ -824,6 +830,51 @@ class JbrSkiaSwingLayer(
                         stream[argsStart] = colorFilterHandle.first
                         stream[argsStart + 1] = colorFilterHandle.second
                         Logger.info { "$SHADER_HANDLE_TYPE_CORRUPTED_MARKER target=fillRectShader" }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptShaderChildMissingForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SHADER_CHILD_MISSING_PROPERTY)) return this
+            if (!shaderChildMissingCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 7 <= recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val target = when {
+                        descriptorType == COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT && payloadIntCount >= 9 -> {
+                            val payloadStart = argsStart + 5
+                            val childCount = this[payloadStart + 2]
+                            if (childCount <= 0 || payloadStart + 8 > recordEnd) null else "runtimeEffectShaderChild"
+                        }
+                        descriptorType == COMMAND_SHADER_DESCRIPTOR_COMPOSITE && payloadIntCount == 5 ->
+                            "compositeShaderDstChild"
+                        descriptorType == COMMAND_SHADER_DESCRIPTOR_COLOR_FILTER && payloadIntCount == 4 ->
+                            "shaderColorFilterShaderChild"
+                        descriptorType == COMMAND_SHADER_DESCRIPTOR_TRANSFORM && payloadIntCount == 11 ->
+                            "transformedShaderChild"
+                        else -> null
+                    }
+                    if (target != null) {
+                        return copyOf().also { stream ->
+                            val childHandleOffset =
+                                if (descriptorType == COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT) argsStart + 12 else argsStart + 5
+                            stream[childHandleOffset] = 0x7f00_0001
+                            stream[childHandleOffset + 1] = 0x7f00_0002
+                            Logger.info { "$SHADER_CHILD_MISSING_CORRUPTED_MARKER target=$target" }
+                        }
                     }
                 }
                 offset = recordEnd
