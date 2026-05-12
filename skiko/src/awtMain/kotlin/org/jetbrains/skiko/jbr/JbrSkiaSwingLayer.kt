@@ -557,7 +557,19 @@ class JbrSkiaSwingLayer(
                     )
                     val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
                     corrupted[3] = corrupted[3] + evict.size
-                    Logger.info { DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER }
+                    Logger.info { "$DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER op=$op" }
+                    return corrupted
+                } else if (op == COMMAND_FILL_RECT_COLOR_FILTER_REF && argsStart + 2 < recordEnd) {
+                    val evict = intArrayOf(
+                        COMMAND_EVICT_COLOR_FILTER_HANDLE,
+                        5 * Int.SIZE_BYTES,
+                        COMMAND_RECORD_FLAGS_NONE,
+                        this[argsStart + 1],
+                        this[argsStart + 2],
+                    )
+                    val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
+                    corrupted[3] = corrupted[3] + evict.size
+                    Logger.info { "$DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER op=$op" }
                     return corrupted
                 }
                 offset = recordEnd
