@@ -195,6 +195,7 @@ class JbrSkiaSwingLayer(
                 .frameForRendering(commandFrame.tinyFullSceneForTestingIfRequested())
                 .corruptDescriptorUseForTestingIfRequested()
                 .corruptDescriptorUseAfterEvictForTestingIfRequested()
+                .corruptEffectChildUseAfterEvictForTestingIfRequested()
                 .corruptDescriptorVersionForTestingIfRequested()
                 .corruptColorFilterHandleTypeForTestingIfRequested()
                 .corruptImageFilterHandleTypeForTestingIfRequested()
@@ -308,6 +309,8 @@ class JbrSkiaSwingLayer(
         const val CORRUPT_DESCRIPTOR_USE_PROPERTY = "skiko.jbr.interop.corruptDescriptorUseForTesting"
         const val CORRUPT_DESCRIPTOR_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptDescriptorUseAfterEvictForTesting"
+        const val CORRUPT_EFFECT_CHILD_USE_AFTER_EVICT_PROPERTY =
+            "skiko.jbr.interop.corruptEffectChildUseAfterEvictForTesting"
         const val CORRUPT_DESCRIPTOR_VERSION_PROPERTY = "skiko.jbr.interop.corruptDescriptorVersionForTesting"
         const val CORRUPT_COLOR_FILTER_HANDLE_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptColorFilterHandleTypeForTesting"
@@ -327,6 +330,8 @@ class JbrSkiaSwingLayer(
         private const val DESCRIPTOR_USE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_CORRUPTED"
         private const val DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED"
+        private const val EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED"
         private const val DESCRIPTOR_VERSION_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_VERSION_CORRUPTED"
         private const val COLOR_FILTER_HANDLE_TYPE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_COLOR_FILTER_HANDLE_TYPE_CORRUPTED"
@@ -349,6 +354,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
         private const val COMMAND_FILL_RECT_COLOR_FILTER_REF = 47
+        private const val COMMAND_EVICT_COLOR_FILTER_HANDLE = 48
         private const val COMMAND_DEFINE_EFFECT_DESCRIPTOR = 49
         private const val COMMAND_SAVE_LAYER_IMAGE_FILTER_REF = 55
         private const val COMMAND_DEFINE_SHADER_DESCRIPTOR = 56
@@ -383,6 +389,7 @@ class JbrSkiaSwingLayer(
         private val loggedRenderMode = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val effectChildUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorVersionCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val colorFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -540,6 +547,48 @@ class JbrSkiaSwingLayer(
                     corrupted[3] = corrupted[3] + evict.size
                     Logger.info { DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER }
                     return corrupted
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptEffectChildUseAfterEvictForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_EFFECT_CHILD_USE_AFTER_EVICT_PROPERTY)) return this
+            if (!effectChildUseAfterEvictCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 9 <= recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    if ((descriptorType == COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER_WITH_INPUT ||
+                            descriptorType == COMMAND_EFFECT_DESCRIPTOR_CHAIN_PATH_EFFECT) &&
+                        payloadIntCount == 4
+                    ) {
+                        val evict = intArrayOf(
+                            COMMAND_EVICT_COLOR_FILTER_HANDLE,
+                            5 * Int.SIZE_BYTES,
+                            COMMAND_RECORD_FLAGS_NONE,
+                            this[argsStart + 5],
+                            this[argsStart + 6],
+                        )
+                        val target = if (descriptorType == COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER_WITH_INPUT) {
+                            "offsetImageFilterChild"
+                        } else {
+                            "chainPathEffectChild"
+                        }
+                        val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
+                        corrupted[3] = corrupted[3] + evict.size
+                        Logger.info { "$EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER target=$target" }
+                        return corrupted
+                    }
                 }
                 offset = recordEnd
             }
