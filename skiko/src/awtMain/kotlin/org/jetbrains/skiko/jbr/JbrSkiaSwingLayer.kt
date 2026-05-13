@@ -203,6 +203,7 @@ class JbrSkiaSwingLayer(
                 .corruptEffectDescriptorRecordLengthForTestingIfRequested()
                 .corruptShaderDescriptorTypeForTestingIfRequested()
                 .corruptShaderDescriptorPayloadCountForTestingIfRequested()
+                .corruptTransformedShaderDescriptorPayloadCountForTestingIfRequested()
                 .corruptShaderDescriptorRecordLengthForTestingIfRequested()
                 .corruptDescriptorVersionForTestingIfRequested()
                 .corruptColorFilterHandleTypeForTestingIfRequested()
@@ -334,6 +335,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptShaderDescriptorTypeForTesting"
         const val CORRUPT_SHADER_DESCRIPTOR_PAYLOAD_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptShaderDescriptorPayloadCountForTesting"
+        const val CORRUPT_TRANSFORMED_SHADER_DESCRIPTOR_PAYLOAD_COUNT_PROPERTY =
+            "skiko.jbr.interop.corruptTransformedShaderDescriptorPayloadCountForTesting"
         const val CORRUPT_SHADER_DESCRIPTOR_RECORD_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptShaderDescriptorRecordLengthForTesting"
         const val CORRUPT_DESCRIPTOR_VERSION_PROPERTY = "skiko.jbr.interop.corruptDescriptorVersionForTesting"
@@ -373,6 +376,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_SHADER_DESCRIPTOR_TYPE_CORRUPTED"
         private const val SHADER_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SHADER_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED"
+        private const val TRANSFORMED_SHADER_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_TRANSFORMED_SHADER_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED"
         private const val SHADER_DESCRIPTOR_RECORD_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SHADER_DESCRIPTOR_RECORD_LENGTH_CORRUPTED"
         private const val DESCRIPTOR_VERSION_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_VERSION_CORRUPTED"
@@ -442,6 +447,8 @@ class JbrSkiaSwingLayer(
         private val effectDescriptorRecordLengthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorPayloadCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val transformedShaderDescriptorPayloadCountCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorRecordLengthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorVersionCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val colorFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -844,6 +851,33 @@ class JbrSkiaSwingLayer(
                     return copyOf().also { stream ->
                         stream[argsStart + 4] = Int.MAX_VALUE
                         Logger.info { SHADER_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED_MARKER }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptTransformedShaderDescriptorPayloadCountForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_TRANSFORMED_SHADER_DESCRIPTOR_PAYLOAD_COUNT_PROPERTY)) return this
+            if (!transformedShaderDescriptorPayloadCountCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 4 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_TRANSFORM && payloadIntCount == 11) {
+                        return copyOf().also { stream ->
+                            stream[argsStart + 4] = 10
+                            Logger.info { TRANSFORMED_SHADER_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED_MARKER }
+                        }
                     }
                 }
                 offset = recordEnd
