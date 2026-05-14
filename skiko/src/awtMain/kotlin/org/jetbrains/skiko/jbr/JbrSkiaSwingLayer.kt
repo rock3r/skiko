@@ -203,6 +203,7 @@ class JbrSkiaSwingLayer(
                 .corruptEffectDescriptorRecordLengthForTestingIfRequested()
                 .corruptTintColorFilterDescriptorBlendModeForTestingIfRequested()
                 .corruptColorMatrixFilterDescriptorPayloadForTestingIfRequested()
+                .corruptBlurImageFilterDescriptorSigmaForTestingIfRequested()
                 .corruptShaderDescriptorTypeForTestingIfRequested()
                 .corruptShaderDescriptorPayloadCountForTestingIfRequested()
                 .corruptTransformedShaderDescriptorPayloadCountForTestingIfRequested()
@@ -339,6 +340,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptTintColorFilterDescriptorBlendModeForTesting"
         const val CORRUPT_COLOR_MATRIX_FILTER_DESCRIPTOR_PAYLOAD_PROPERTY =
             "skiko.jbr.interop.corruptColorMatrixFilterDescriptorPayloadForTesting"
+        const val CORRUPT_BLUR_IMAGE_FILTER_DESCRIPTOR_SIGMA_PROPERTY =
+            "skiko.jbr.interop.corruptBlurImageFilterDescriptorSigmaForTesting"
         const val CORRUPT_SHADER_DESCRIPTOR_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptShaderDescriptorTypeForTesting"
         const val CORRUPT_SHADER_DESCRIPTOR_PAYLOAD_COUNT_PROPERTY =
@@ -394,6 +397,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_TINT_COLOR_FILTER_DESCRIPTOR_BLEND_MODE_CORRUPTED"
         private const val COLOR_MATRIX_FILTER_DESCRIPTOR_PAYLOAD_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_COLOR_MATRIX_FILTER_DESCRIPTOR_PAYLOAD_CORRUPTED"
+        private const val BLUR_IMAGE_FILTER_DESCRIPTOR_SIGMA_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_BLUR_IMAGE_FILTER_DESCRIPTOR_SIGMA_CORRUPTED"
         private const val SHADER_DESCRIPTOR_TYPE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SHADER_DESCRIPTOR_TYPE_CORRUPTED"
         private const val SHADER_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED_MARKER =
@@ -483,6 +488,8 @@ class JbrSkiaSwingLayer(
         private val tintColorFilterDescriptorBlendModeCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val colorMatrixFilterDescriptorPayloadCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val blurImageFilterDescriptorSigmaCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorPayloadCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -910,6 +917,40 @@ class JbrSkiaSwingLayer(
                         return copyOf().also { stream ->
                             stream[argsStart + 9] = FLOAT_NAN_BITS
                             Logger.info { COLOR_MATRIX_FILTER_DESCRIPTOR_PAYLOAD_CORRUPTED_MARKER }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptBlurImageFilterDescriptorSigmaForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_BLUR_IMAGE_FILTER_DESCRIPTOR_SIGMA_PROPERTY)) return this
+            if (!blurImageFilterDescriptorSigmaCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 7 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val sigmaOffset = when {
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER && payloadIntCount == 3 ->
+                            argsStart + 5
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER_WITH_INPUT &&
+                            payloadIntCount == 5 -> argsStart + 7
+                        else -> -1
+                    }
+                    if (sigmaOffset >= 0 && sigmaOffset < recordEnd) {
+                        return copyOf().also { stream ->
+                            stream[sigmaOffset] = FLOAT_NAN_BITS
+                            Logger.info { BLUR_IMAGE_FILTER_DESCRIPTOR_SIGMA_CORRUPTED_MARKER }
                         }
                     }
                 }
