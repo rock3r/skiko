@@ -210,6 +210,7 @@ class JbrSkiaSwingLayer(
                 .corruptStampedPathEffectDescriptorAdvanceForTestingIfRequested()
                 .corruptStampedPathEffectDescriptorZeroAdvanceForTestingIfRequested()
                 .corruptStampedPathEffectDescriptorPhaseForTestingIfRequested()
+                .corruptStampedPathEffectDescriptorNegativePhaseForTestingIfRequested()
                 .corruptStampedPathEffectDescriptorStyleForTestingIfRequested()
                 .corruptStampedPathEffectDescriptorFillTypeForTestingIfRequested()
                 .corruptStampedPathEffectDescriptorPathDataLengthForTestingIfRequested()
@@ -363,6 +364,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptStampedPathEffectDescriptorZeroAdvanceForTesting"
         const val CORRUPT_STAMPED_PATH_EFFECT_DESCRIPTOR_PHASE_PROPERTY =
             "skiko.jbr.interop.corruptStampedPathEffectDescriptorPhaseForTesting"
+        const val CORRUPT_STAMPED_PATH_EFFECT_DESCRIPTOR_NEGATIVE_PHASE_PROPERTY =
+            "skiko.jbr.interop.corruptStampedPathEffectDescriptorNegativePhaseForTesting"
         const val CORRUPT_STAMPED_PATH_EFFECT_DESCRIPTOR_STYLE_PROPERTY =
             "skiko.jbr.interop.corruptStampedPathEffectDescriptorStyleForTesting"
         const val CORRUPT_STAMPED_PATH_EFFECT_DESCRIPTOR_FILL_TYPE_PROPERTY =
@@ -438,6 +441,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_STAMPED_PATH_EFFECT_DESCRIPTOR_ZERO_ADVANCE_CORRUPTED"
         private const val STAMPED_PATH_EFFECT_DESCRIPTOR_PHASE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_STAMPED_PATH_EFFECT_DESCRIPTOR_PHASE_CORRUPTED"
+        private const val STAMPED_PATH_EFFECT_DESCRIPTOR_NEGATIVE_PHASE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_STAMPED_PATH_EFFECT_DESCRIPTOR_NEGATIVE_PHASE_CORRUPTED"
         private const val STAMPED_PATH_EFFECT_DESCRIPTOR_STYLE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_STAMPED_PATH_EFFECT_DESCRIPTOR_STYLE_CORRUPTED"
         private const val STAMPED_PATH_EFFECT_DESCRIPTOR_FILL_TYPE_CORRUPTED_MARKER =
@@ -496,6 +501,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_BLEND_MODE_PLUS = 1
         private const val COMMAND_EFFECT_DESCRIPTOR_COLOR_MATRIX_FILTER = 2
         private const val FLOAT_NAN_BITS = 0x7fc00000
+        private const val FLOAT_NEGATIVE_ONE_BITS = -0x40800000
         private const val COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER = 4
         private const val COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER = 5
         private const val COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER_WITH_INPUT = 6
@@ -547,6 +553,8 @@ class JbrSkiaSwingLayer(
         private val stampedPathEffectDescriptorZeroAdvanceCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val stampedPathEffectDescriptorPhaseCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val stampedPathEffectDescriptorNegativePhaseCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val stampedPathEffectDescriptorStyleCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
@@ -1190,6 +1198,33 @@ class JbrSkiaSwingLayer(
                         return copyOf().also { stream ->
                             stream[argsStart + 6] = FLOAT_NAN_BITS
                             Logger.info { STAMPED_PATH_EFFECT_DESCRIPTOR_PHASE_CORRUPTED_MARKER }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptStampedPathEffectDescriptorNegativePhaseForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_STAMPED_PATH_EFFECT_DESCRIPTOR_NEGATIVE_PHASE_PROPERTY)) return this
+            if (!stampedPathEffectDescriptorNegativePhaseCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 6 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    if (descriptorType == COMMAND_EFFECT_DESCRIPTOR_STAMPED_PATH_EFFECT && payloadIntCount >= 5) {
+                        return copyOf().also { stream ->
+                            stream[argsStart + 6] = FLOAT_NEGATIVE_ONE_BITS
+                            Logger.info { STAMPED_PATH_EFFECT_DESCRIPTOR_NEGATIVE_PHASE_CORRUPTED_MARKER }
                         }
                     }
                 }
