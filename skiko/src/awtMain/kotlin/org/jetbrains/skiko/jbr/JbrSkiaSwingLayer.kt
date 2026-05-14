@@ -208,6 +208,7 @@ class JbrSkiaSwingLayer(
                 .corruptCornerPathEffectDescriptorRadiusForTestingIfRequested()
                 .corruptStampedPathEffectDescriptorAdvanceForTestingIfRequested()
                 .corruptStampedPathEffectDescriptorPhaseForTestingIfRequested()
+                .corruptStampedPathEffectDescriptorStyleForTestingIfRequested()
                 .corruptShaderDescriptorTypeForTestingIfRequested()
                 .corruptShaderDescriptorPayloadCountForTestingIfRequested()
                 .corruptTransformedShaderDescriptorPayloadCountForTestingIfRequested()
@@ -354,6 +355,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptStampedPathEffectDescriptorAdvanceForTesting"
         const val CORRUPT_STAMPED_PATH_EFFECT_DESCRIPTOR_PHASE_PROPERTY =
             "skiko.jbr.interop.corruptStampedPathEffectDescriptorPhaseForTesting"
+        const val CORRUPT_STAMPED_PATH_EFFECT_DESCRIPTOR_STYLE_PROPERTY =
+            "skiko.jbr.interop.corruptStampedPathEffectDescriptorStyleForTesting"
         const val CORRUPT_SHADER_DESCRIPTOR_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptShaderDescriptorTypeForTesting"
         const val CORRUPT_SHADER_DESCRIPTOR_PAYLOAD_COUNT_PROPERTY =
@@ -419,6 +422,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_STAMPED_PATH_EFFECT_DESCRIPTOR_ADVANCE_CORRUPTED"
         private const val STAMPED_PATH_EFFECT_DESCRIPTOR_PHASE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_STAMPED_PATH_EFFECT_DESCRIPTOR_PHASE_CORRUPTED"
+        private const val STAMPED_PATH_EFFECT_DESCRIPTOR_STYLE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_STAMPED_PATH_EFFECT_DESCRIPTOR_STYLE_CORRUPTED"
         private const val SHADER_DESCRIPTOR_TYPE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SHADER_DESCRIPTOR_TYPE_CORRUPTED"
         private const val SHADER_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED_MARKER =
@@ -518,6 +523,8 @@ class JbrSkiaSwingLayer(
         private val stampedPathEffectDescriptorAdvanceCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val stampedPathEffectDescriptorPhaseCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val stampedPathEffectDescriptorStyleCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorPayloadCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -1094,6 +1101,33 @@ class JbrSkiaSwingLayer(
                         return copyOf().also { stream ->
                             stream[argsStart + 6] = FLOAT_NAN_BITS
                             Logger.info { STAMPED_PATH_EFFECT_DESCRIPTOR_PHASE_CORRUPTED_MARKER }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptStampedPathEffectDescriptorStyleForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_STAMPED_PATH_EFFECT_DESCRIPTOR_STYLE_PROPERTY)) return this
+            if (!stampedPathEffectDescriptorStyleCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 7 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    if (descriptorType == COMMAND_EFFECT_DESCRIPTOR_STAMPED_PATH_EFFECT && payloadIntCount >= 5) {
+                        return copyOf().also { stream ->
+                            stream[argsStart + 7] = 99
+                            Logger.info { STAMPED_PATH_EFFECT_DESCRIPTOR_STYLE_CORRUPTED_MARKER }
                         }
                     }
                 }
