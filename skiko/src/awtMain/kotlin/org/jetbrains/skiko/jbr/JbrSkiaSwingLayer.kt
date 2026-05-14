@@ -395,6 +395,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptPerlinNoiseShaderFrequencyForTesting"
         const val CORRUPT_PERLIN_NOISE_SHADER_OCTAVES_PROPERTY =
             "skiko.jbr.interop.corruptPerlinNoiseShaderOctavesForTesting"
+        const val CORRUPT_PERLIN_NOISE_SHADER_ZERO_OCTAVES_PROPERTY =
+            "skiko.jbr.interop.corruptPerlinNoiseShaderZeroOctavesForTesting"
         const val CORRUPT_PERLIN_NOISE_SHADER_TILE_SIZE_PROPERTY =
             "skiko.jbr.interop.corruptPerlinNoiseShaderTileSizeForTesting"
         const val CORRUPT_PERLIN_NOISE_SHADER_NEGATIVE_TILE_SIZE_PROPERTY =
@@ -480,6 +482,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_FREQUENCY_CORRUPTED"
         private const val PERLIN_NOISE_SHADER_OCTAVES_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_OCTAVES_CORRUPTED"
+        private const val PERLIN_NOISE_SHADER_ZERO_OCTAVES_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_ZERO_OCTAVES_CORRUPTED"
         private const val PERLIN_NOISE_SHADER_TILE_SIZE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_TILE_SIZE_CORRUPTED"
         private const val PERLIN_NOISE_SHADER_NEGATIVE_TILE_SIZE_CORRUPTED_MARKER =
@@ -595,6 +599,7 @@ class JbrSkiaSwingLayer(
         private val perlinNoiseShaderKindCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val perlinNoiseShaderFrequencyCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val perlinNoiseShaderOctavesCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val perlinNoiseShaderZeroOctavesCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val perlinNoiseShaderTileSizeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val perlinNoiseShaderNegativeTileSizeCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
@@ -1541,6 +1546,13 @@ class JbrSkiaSwingLayer(
                     PerlinNoiseShaderCorruption(1, 0, perlinNoiseShaderFrequencyCorruptedForTesting, PERLIN_NOISE_SHADER_FREQUENCY_CORRUPTED_MARKER)
                 java.lang.Boolean.getBoolean(CORRUPT_PERLIN_NOISE_SHADER_OCTAVES_PROPERTY) ->
                     PerlinNoiseShaderCorruption(3, 17, perlinNoiseShaderOctavesCorruptedForTesting, PERLIN_NOISE_SHADER_OCTAVES_CORRUPTED_MARKER)
+                java.lang.Boolean.getBoolean(CORRUPT_PERLIN_NOISE_SHADER_ZERO_OCTAVES_PROPERTY) ->
+                    PerlinNoiseShaderCorruption(
+                        3,
+                        0,
+                        perlinNoiseShaderZeroOctavesCorruptedForTesting,
+                        PERLIN_NOISE_SHADER_ZERO_OCTAVES_CORRUPTED_MARKER
+                    )
                 java.lang.Boolean.getBoolean(CORRUPT_PERLIN_NOISE_SHADER_TILE_SIZE_PROPERTY) ->
                     PerlinNoiseShaderCorruption(5, 4097, perlinNoiseShaderTileSizeCorruptedForTesting, PERLIN_NOISE_SHADER_TILE_SIZE_CORRUPTED_MARKER)
                 java.lang.Boolean.getBoolean(CORRUPT_PERLIN_NOISE_SHADER_NEGATIVE_TILE_SIZE_PROPERTY) ->
