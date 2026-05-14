@@ -221,6 +221,7 @@ class JbrSkiaSwingLayer(
                 .corruptShaderDescriptorPayloadCountForTestingIfRequested()
                 .corruptTransformedShaderDescriptorPayloadCountForTestingIfRequested()
                 .corruptShaderDescriptorRecordLengthForTestingIfRequested()
+                .corruptLinearGradientShaderDescriptorTileModeForTestingIfRequested()
                 .corruptRadialGradientShaderDescriptorRadiusForTestingIfRequested()
                 .corruptImageShaderDescriptorWidthForTestingIfRequested()
                 .corruptPerlinNoiseShaderDescriptorForTestingIfRequested()
@@ -391,6 +392,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptTransformedShaderDescriptorPayloadCountForTesting"
         const val CORRUPT_SHADER_DESCRIPTOR_RECORD_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptShaderDescriptorRecordLengthForTesting"
+        const val CORRUPT_LINEAR_GRADIENT_SHADER_DESCRIPTOR_TILE_MODE_PROPERTY =
+            "skiko.jbr.interop.corruptLinearGradientShaderDescriptorTileModeForTesting"
         const val CORRUPT_RADIAL_GRADIENT_SHADER_DESCRIPTOR_RADIUS_PROPERTY =
             "skiko.jbr.interop.corruptRadialGradientShaderDescriptorRadiusForTesting"
         const val CORRUPT_IMAGE_SHADER_DESCRIPTOR_WIDTH_PROPERTY =
@@ -482,6 +485,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_TRANSFORMED_SHADER_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED"
         private const val SHADER_DESCRIPTOR_RECORD_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SHADER_DESCRIPTOR_RECORD_LENGTH_CORRUPTED"
+        private const val LINEAR_GRADIENT_SHADER_DESCRIPTOR_TILE_MODE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_LINEAR_GRADIENT_SHADER_DESCRIPTOR_TILE_MODE_CORRUPTED"
         private const val RADIAL_GRADIENT_SHADER_DESCRIPTOR_RADIUS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RADIAL_GRADIENT_SHADER_DESCRIPTOR_RADIUS_CORRUPTED"
         private const val IMAGE_SHADER_DESCRIPTOR_WIDTH_CORRUPTED_MARKER =
@@ -543,6 +548,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_EFFECT_DESCRIPTOR_CORNER_PATH_EFFECT = 9
         private const val COMMAND_EFFECT_DESCRIPTOR_STAMPED_PATH_EFFECT = 10
         private const val COMMAND_EFFECT_DESCRIPTOR_CHAIN_PATH_EFFECT = 11
+        private const val COMMAND_SHADER_DESCRIPTOR_LINEAR_GRADIENT = 1
         private const val COMMAND_SHADER_DESCRIPTOR_RADIAL_GRADIENT = 2
         private const val COMMAND_SHADER_DESCRIPTOR_IMAGE = 4
         private const val COMMAND_SHADER_DESCRIPTOR_COMPOSITE = 5
@@ -608,6 +614,8 @@ class JbrSkiaSwingLayer(
         private val transformedShaderDescriptorPayloadCountCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorRecordLengthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val linearGradientShaderDescriptorTileModeCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
         private val radialGradientShaderDescriptorRadiusCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageShaderDescriptorWidthCorruptedForTesting =
@@ -1547,6 +1555,38 @@ class JbrSkiaSwingLayer(
                     return copyOf().also { stream ->
                         stream[offset + 1] = (recordLengthInts - 1) * Int.SIZE_BYTES
                         Logger.info { SHADER_DESCRIPTOR_RECORD_LENGTH_CORRUPTED_MARKER }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptLinearGradientShaderDescriptorTileModeForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_LINEAR_GRADIENT_SHADER_DESCRIPTOR_TILE_MODE_PROPERTY)) return this
+            if (!linearGradientShaderDescriptorTileModeCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 5 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val payloadStart = argsStart + 5
+                    val payloadEnd = payloadStart + payloadIntCount
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_LINEAR_GRADIENT &&
+                        payloadIntCount >= 6 &&
+                        payloadEnd <= recordEnd
+                    ) {
+                        return copyOf().also { stream ->
+                            stream[payloadStart + 4] = 99
+                            Logger.info { LINEAR_GRADIENT_SHADER_DESCRIPTOR_TILE_MODE_CORRUPTED_MARKER }
+                        }
                     }
                 }
                 offset = recordEnd
