@@ -205,6 +205,7 @@ class JbrSkiaSwingLayer(
                 .corruptShaderDescriptorPayloadCountForTestingIfRequested()
                 .corruptTransformedShaderDescriptorPayloadCountForTestingIfRequested()
                 .corruptShaderDescriptorRecordLengthForTestingIfRequested()
+                .corruptPerlinNoiseShaderDescriptorForTestingIfRequested()
                 .corruptDescriptorVersionForTestingIfRequested()
                 .corruptColorFilterHandleTypeForTestingIfRequested()
                 .corruptImageFilterHandleTypeForTestingIfRequested()
@@ -340,6 +341,14 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptTransformedShaderDescriptorPayloadCountForTesting"
         const val CORRUPT_SHADER_DESCRIPTOR_RECORD_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptShaderDescriptorRecordLengthForTesting"
+        const val CORRUPT_PERLIN_NOISE_SHADER_KIND_PROPERTY =
+            "skiko.jbr.interop.corruptPerlinNoiseShaderKindForTesting"
+        const val CORRUPT_PERLIN_NOISE_SHADER_FREQUENCY_PROPERTY =
+            "skiko.jbr.interop.corruptPerlinNoiseShaderFrequencyForTesting"
+        const val CORRUPT_PERLIN_NOISE_SHADER_OCTAVES_PROPERTY =
+            "skiko.jbr.interop.corruptPerlinNoiseShaderOctavesForTesting"
+        const val CORRUPT_PERLIN_NOISE_SHADER_TILE_SIZE_PROPERTY =
+            "skiko.jbr.interop.corruptPerlinNoiseShaderTileSizeForTesting"
         const val CORRUPT_DESCRIPTOR_VERSION_PROPERTY = "skiko.jbr.interop.corruptDescriptorVersionForTesting"
         const val CORRUPT_COLOR_FILTER_HANDLE_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptColorFilterHandleTypeForTesting"
@@ -383,6 +392,14 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_TRANSFORMED_SHADER_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED"
         private const val SHADER_DESCRIPTOR_RECORD_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SHADER_DESCRIPTOR_RECORD_LENGTH_CORRUPTED"
+        private const val PERLIN_NOISE_SHADER_KIND_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_KIND_CORRUPTED"
+        private const val PERLIN_NOISE_SHADER_FREQUENCY_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_FREQUENCY_CORRUPTED"
+        private const val PERLIN_NOISE_SHADER_OCTAVES_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_OCTAVES_CORRUPTED"
+        private const val PERLIN_NOISE_SHADER_TILE_SIZE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_TILE_SIZE_CORRUPTED"
         private const val DESCRIPTOR_VERSION_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_VERSION_CORRUPTED"
         private const val COLOR_FILTER_HANDLE_TYPE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_COLOR_FILTER_HANDLE_TYPE_CORRUPTED"
@@ -429,6 +446,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT = 6
         private const val COMMAND_SHADER_DESCRIPTOR_COLOR_FILTER = 7
         private const val COMMAND_SHADER_DESCRIPTOR_TRANSFORM = 8
+        private const val COMMAND_SHADER_DESCRIPTOR_PERLIN_NOISE = 10
         private const val COMMAND_STREAM_MAGIC = 1246972723
         private const val COMMAND_STREAM_HEADER_SIZE = 6
         private const val COMMAND_STREAM_FLAGS_NONE = 0
@@ -455,6 +473,10 @@ class JbrSkiaSwingLayer(
         private val transformedShaderDescriptorPayloadCountCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorRecordLengthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val perlinNoiseShaderKindCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val perlinNoiseShaderFrequencyCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val perlinNoiseShaderOctavesCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val perlinNoiseShaderTileSizeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorVersionCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val colorFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -465,6 +487,13 @@ class JbrSkiaSwingLayer(
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectSourceCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectChildTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+
+        private data class PerlinNoiseShaderCorruption(
+            val payloadOffset: Int,
+            val value: Int,
+            val once: java.util.concurrent.atomic.AtomicBoolean,
+            val marker: String,
+        )
 
         private fun logRenderModeOnce(renderDelegate: SkikoRenderDelegate) {
             if (loggedRenderMode.compareAndSet(false, true)) {
@@ -907,6 +936,48 @@ class JbrSkiaSwingLayer(
                     return copyOf().also { stream ->
                         stream[offset + 1] = (recordLengthInts - 1) * Int.SIZE_BYTES
                         Logger.info { SHADER_DESCRIPTOR_RECORD_LENGTH_CORRUPTED_MARKER }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptPerlinNoiseShaderDescriptorForTestingIfRequested(): IntArray {
+            val corruption = when {
+                java.lang.Boolean.getBoolean(CORRUPT_PERLIN_NOISE_SHADER_KIND_PROPERTY) ->
+                    PerlinNoiseShaderCorruption(0, 2, perlinNoiseShaderKindCorruptedForTesting, PERLIN_NOISE_SHADER_KIND_CORRUPTED_MARKER)
+                java.lang.Boolean.getBoolean(CORRUPT_PERLIN_NOISE_SHADER_FREQUENCY_PROPERTY) ->
+                    PerlinNoiseShaderCorruption(1, 0, perlinNoiseShaderFrequencyCorruptedForTesting, PERLIN_NOISE_SHADER_FREQUENCY_CORRUPTED_MARKER)
+                java.lang.Boolean.getBoolean(CORRUPT_PERLIN_NOISE_SHADER_OCTAVES_PROPERTY) ->
+                    PerlinNoiseShaderCorruption(3, 17, perlinNoiseShaderOctavesCorruptedForTesting, PERLIN_NOISE_SHADER_OCTAVES_CORRUPTED_MARKER)
+                java.lang.Boolean.getBoolean(CORRUPT_PERLIN_NOISE_SHADER_TILE_SIZE_PROPERTY) ->
+                    PerlinNoiseShaderCorruption(5, 4097, perlinNoiseShaderTileSizeCorruptedForTesting, PERLIN_NOISE_SHADER_TILE_SIZE_CORRUPTED_MARKER)
+                else -> null
+            } ?: return this
+            if (!corruption.once.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 5 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val payloadStart = argsStart + 5
+                    val payloadEnd = payloadStart + payloadIntCount
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_PERLIN_NOISE &&
+                        payloadIntCount == 7 &&
+                        payloadEnd <= recordEnd
+                    ) {
+                        return copyOf().also { stream ->
+                            stream[payloadStart + corruption.payloadOffset] = corruption.value
+                            Logger.info { corruption.marker }
+                        }
                     }
                 }
                 offset = recordEnd
