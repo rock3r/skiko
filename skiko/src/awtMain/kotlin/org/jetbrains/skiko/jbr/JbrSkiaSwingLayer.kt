@@ -436,6 +436,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptPerlinNoiseShaderTileHeightForTesting"
         const val CORRUPT_PERLIN_NOISE_SHADER_NEGATIVE_TILE_SIZE_PROPERTY =
             "skiko.jbr.interop.corruptPerlinNoiseShaderNegativeTileSizeForTesting"
+        const val CORRUPT_PERLIN_NOISE_SHADER_NEGATIVE_TILE_HEIGHT_PROPERTY =
+            "skiko.jbr.interop.corruptPerlinNoiseShaderNegativeTileHeightForTesting"
         const val CORRUPT_DESCRIPTOR_VERSION_PROPERTY = "skiko.jbr.interop.corruptDescriptorVersionForTesting"
         const val CORRUPT_COLOR_FILTER_HANDLE_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptColorFilterHandleTypeForTesting"
@@ -547,6 +549,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_TILE_HEIGHT_CORRUPTED"
         private const val PERLIN_NOISE_SHADER_NEGATIVE_TILE_SIZE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_NEGATIVE_TILE_SIZE_CORRUPTED"
+        private const val PERLIN_NOISE_SHADER_NEGATIVE_TILE_HEIGHT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_NEGATIVE_TILE_HEIGHT_CORRUPTED"
         private const val DESCRIPTOR_VERSION_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_VERSION_CORRUPTED"
         private const val COLOR_FILTER_HANDLE_TYPE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_COLOR_FILTER_HANDLE_TYPE_CORRUPTED"
@@ -688,6 +692,8 @@ class JbrSkiaSwingLayer(
         private val perlinNoiseShaderTileSizeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val perlinNoiseShaderTileHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val perlinNoiseShaderNegativeTileSizeCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val perlinNoiseShaderNegativeTileHeightCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorVersionCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val colorFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -2012,6 +2018,13 @@ class JbrSkiaSwingLayer(
                         -1,
                         perlinNoiseShaderNegativeTileSizeCorruptedForTesting,
                         PERLIN_NOISE_SHADER_NEGATIVE_TILE_SIZE_CORRUPTED_MARKER
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_PERLIN_NOISE_SHADER_NEGATIVE_TILE_HEIGHT_PROPERTY) ->
+                    PerlinNoiseShaderCorruption(
+                        6,
+                        -1,
+                        perlinNoiseShaderNegativeTileHeightCorruptedForTesting,
+                        PERLIN_NOISE_SHADER_NEGATIVE_TILE_HEIGHT_CORRUPTED_MARKER
                     )
                 else -> null
             } ?: return this
