@@ -201,6 +201,7 @@ class JbrSkiaSwingLayer(
                 .corruptEffectDescriptorVersionForTestingIfRequested()
                 .corruptEffectDescriptorPayloadCountForTestingIfRequested()
                 .corruptEffectDescriptorRecordLengthForTestingIfRequested()
+                .corruptLightingFilterDescriptorPayloadCountForTestingIfRequested()
                 .corruptTintColorFilterDescriptorBlendModeForTestingIfRequested()
                 .corruptColorMatrixFilterDescriptorPayloadForTestingIfRequested()
                 .corruptBlurImageFilterDescriptorSigmaForTestingIfRequested()
@@ -362,6 +363,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptEffectDescriptorPayloadCountForTesting"
         const val CORRUPT_EFFECT_DESCRIPTOR_RECORD_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptEffectDescriptorRecordLengthForTesting"
+        const val CORRUPT_LIGHTING_FILTER_DESCRIPTOR_PAYLOAD_COUNT_PROPERTY =
+            "skiko.jbr.interop.corruptLightingFilterDescriptorPayloadCountForTesting"
         const val CORRUPT_TINT_COLOR_FILTER_DESCRIPTOR_BLEND_MODE_PROPERTY =
             "skiko.jbr.interop.corruptTintColorFilterDescriptorBlendModeForTesting"
         const val CORRUPT_COLOR_MATRIX_FILTER_DESCRIPTOR_PAYLOAD_PROPERTY =
@@ -479,6 +482,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_EFFECT_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED"
         private const val EFFECT_DESCRIPTOR_RECORD_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_EFFECT_DESCRIPTOR_RECORD_LENGTH_CORRUPTED"
+        private const val LIGHTING_FILTER_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_LIGHTING_FILTER_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED"
         private const val TINT_COLOR_FILTER_DESCRIPTOR_BLEND_MODE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_TINT_COLOR_FILTER_DESCRIPTOR_BLEND_MODE_CORRUPTED"
         private const val COLOR_MATRIX_FILTER_DESCRIPTOR_PAYLOAD_CORRUPTED_MARKER =
@@ -596,6 +601,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_EFFECT_DESCRIPTOR_TINT_COLOR_FILTER = 1
         private const val COMMAND_BLEND_MODE_PLUS = 1
         private const val COMMAND_EFFECT_DESCRIPTOR_COLOR_MATRIX_FILTER = 2
+        private const val COMMAND_EFFECT_DESCRIPTOR_LIGHTING_FILTER = 3
         private const val FLOAT_NAN_BITS = 0x7fc00000
         private const val FLOAT_NEGATIVE_ONE_BITS = -0x40800000
         private const val COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER = 4
@@ -636,6 +642,8 @@ class JbrSkiaSwingLayer(
         private val effectDescriptorVersionCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectDescriptorPayloadCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectDescriptorRecordLengthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val lightingFilterDescriptorPayloadCountCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
         private val tintColorFilterDescriptorBlendModeCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val colorMatrixFilterDescriptorPayloadCorruptedForTesting =
@@ -1073,6 +1081,37 @@ class JbrSkiaSwingLayer(
                     return copyOf().also { stream ->
                         stream[offset + 1] = (recordLengthInts - 1) * Int.SIZE_BYTES
                         Logger.info { EFFECT_DESCRIPTOR_RECORD_LENGTH_CORRUPTED_MARKER }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptLightingFilterDescriptorPayloadCountForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_LIGHTING_FILTER_DESCRIPTOR_PAYLOAD_COUNT_PROPERTY)) return this
+            if (!lightingFilterDescriptorPayloadCountCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 7 <= recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    if (descriptorType == COMMAND_EFFECT_DESCRIPTOR_LIGHTING_FILTER &&
+                        payloadIntCount == 2 &&
+                        recordEnd + 1 <= commandEnd
+                    ) {
+                        return copyOf().also { stream ->
+                            stream[offset + 1] = (recordLengthInts + 1) * Int.SIZE_BYTES
+                            stream[argsStart + 4] = 3
+                            Logger.info { LIGHTING_FILTER_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED_MARKER }
+                        }
                     }
                 }
                 offset = recordEnd
