@@ -223,6 +223,7 @@ class JbrSkiaSwingLayer(
                 .corruptShaderDescriptorPayloadCountForTestingIfRequested()
                 .corruptTransformedShaderDescriptorPayloadCountForTestingIfRequested()
                 .corruptShaderDescriptorRecordLengthForTestingIfRequested()
+                .corruptCompositeShaderDescriptorBlendModeForTestingIfRequested()
                 .corruptLinearGradientShaderDescriptorTileModeForTestingIfRequested()
                 .corruptLinearGradientShaderDescriptorStopOrderForTestingIfRequested()
                 .corruptRadialGradientShaderDescriptorRadiusForTestingIfRequested()
@@ -408,6 +409,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptTransformedShaderDescriptorPayloadCountForTesting"
         const val CORRUPT_SHADER_DESCRIPTOR_RECORD_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptShaderDescriptorRecordLengthForTesting"
+        const val CORRUPT_COMPOSITE_SHADER_DESCRIPTOR_BLEND_MODE_PROPERTY =
+            "skiko.jbr.interop.corruptCompositeShaderDescriptorBlendModeForTesting"
         const val CORRUPT_LINEAR_GRADIENT_SHADER_DESCRIPTOR_TILE_MODE_PROPERTY =
             "skiko.jbr.interop.corruptLinearGradientShaderDescriptorTileModeForTesting"
         const val CORRUPT_LINEAR_GRADIENT_SHADER_DESCRIPTOR_STOP_ORDER_PROPERTY =
@@ -529,6 +532,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_TRANSFORMED_SHADER_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED"
         private const val SHADER_DESCRIPTOR_RECORD_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SHADER_DESCRIPTOR_RECORD_LENGTH_CORRUPTED"
+        private const val COMPOSITE_SHADER_DESCRIPTOR_BLEND_MODE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_COMPOSITE_SHADER_DESCRIPTOR_BLEND_MODE_CORRUPTED"
         private const val LINEAR_GRADIENT_SHADER_DESCRIPTOR_TILE_MODE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_LINEAR_GRADIENT_SHADER_DESCRIPTOR_TILE_MODE_CORRUPTED"
         private const val LINEAR_GRADIENT_SHADER_DESCRIPTOR_STOP_ORDER_CORRUPTED_MARKER =
@@ -688,6 +693,8 @@ class JbrSkiaSwingLayer(
         private val transformedShaderDescriptorPayloadCountCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorRecordLengthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val compositeShaderDescriptorBlendModeCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
         private val linearGradientShaderDescriptorTileModeCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val linearGradientShaderDescriptorStopOrderCorruptedForTesting =
@@ -1714,6 +1721,33 @@ class JbrSkiaSwingLayer(
                     return copyOf().also { stream ->
                         stream[offset + 1] = (recordLengthInts - 1) * Int.SIZE_BYTES
                         Logger.info { SHADER_DESCRIPTOR_RECORD_LENGTH_CORRUPTED_MARKER }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptCompositeShaderDescriptorBlendModeForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_COMPOSITE_SHADER_DESCRIPTOR_BLEND_MODE_PROPERTY)) return this
+            if (!compositeShaderDescriptorBlendModeCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 9 <= recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_COMPOSITE && payloadIntCount == 5) {
+                        return copyOf().also { stream ->
+                            stream[argsStart + 9] = 99
+                            Logger.info { COMPOSITE_SHADER_DESCRIPTOR_BLEND_MODE_CORRUPTED_MARKER }
+                        }
                     }
                 }
                 offset = recordEnd
