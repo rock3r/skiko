@@ -231,6 +231,7 @@ class JbrSkiaSwingLayer(
                 .corruptImageShaderDescriptorWidthForTestingIfRequested()
                 .corruptImageShaderDescriptorMaxWidthForTestingIfRequested()
                 .corruptImageShaderDescriptorHeightForTestingIfRequested()
+                .corruptImageShaderDescriptorMaxHeightForTestingIfRequested()
                 .corruptImageShaderDescriptorTileModeXForTestingIfRequested()
                 .corruptImageShaderDescriptorTileModeYForTestingIfRequested()
                 .corruptPerlinNoiseShaderDescriptorForTestingIfRequested()
@@ -421,6 +422,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptImageShaderDescriptorMaxWidthForTesting"
         const val CORRUPT_IMAGE_SHADER_DESCRIPTOR_HEIGHT_PROPERTY =
             "skiko.jbr.interop.corruptImageShaderDescriptorHeightForTesting"
+        const val CORRUPT_IMAGE_SHADER_DESCRIPTOR_MAX_HEIGHT_PROPERTY =
+            "skiko.jbr.interop.corruptImageShaderDescriptorMaxHeightForTesting"
         const val CORRUPT_IMAGE_SHADER_DESCRIPTOR_TILE_MODE_X_PROPERTY =
             "skiko.jbr.interop.corruptImageShaderDescriptorTileModeXForTesting"
         const val CORRUPT_IMAGE_SHADER_DESCRIPTOR_TILE_MODE_Y_PROPERTY =
@@ -536,6 +539,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_IMAGE_SHADER_DESCRIPTOR_MAX_WIDTH_CORRUPTED"
         private const val IMAGE_SHADER_DESCRIPTOR_HEIGHT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_SHADER_DESCRIPTOR_HEIGHT_CORRUPTED"
+        private const val IMAGE_SHADER_DESCRIPTOR_MAX_HEIGHT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_IMAGE_SHADER_DESCRIPTOR_MAX_HEIGHT_CORRUPTED"
         private const val IMAGE_SHADER_DESCRIPTOR_TILE_MODE_X_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_SHADER_DESCRIPTOR_TILE_MODE_X_CORRUPTED"
         private const val IMAGE_SHADER_DESCRIPTOR_TILE_MODE_Y_CORRUPTED_MARKER =
@@ -687,6 +692,8 @@ class JbrSkiaSwingLayer(
         private val imageShaderDescriptorMaxWidthCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageShaderDescriptorHeightCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageShaderDescriptorMaxHeightCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageShaderDescriptorTileModeXCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
@@ -1955,6 +1962,38 @@ class JbrSkiaSwingLayer(
                         return copyOf().also { stream ->
                             stream[payloadStart + 3] = 0
                             Logger.info { IMAGE_SHADER_DESCRIPTOR_HEIGHT_CORRUPTED_MARKER }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptImageShaderDescriptorMaxHeightForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_SHADER_DESCRIPTOR_MAX_HEIGHT_PROPERTY)) return this
+            if (!imageShaderDescriptorMaxHeightCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 5 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val payloadStart = argsStart + 5
+                    val payloadEnd = payloadStart + payloadIntCount
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_IMAGE &&
+                        payloadIntCount == 6 &&
+                        payloadEnd <= recordEnd
+                    ) {
+                        return copyOf().also { stream ->
+                            stream[payloadStart + 3] = 4097
+                            Logger.info { IMAGE_SHADER_DESCRIPTOR_MAX_HEIGHT_CORRUPTED_MARKER }
                         }
                     }
                 }
