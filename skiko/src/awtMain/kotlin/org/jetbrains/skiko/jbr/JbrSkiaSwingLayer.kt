@@ -228,6 +228,7 @@ class JbrSkiaSwingLayer(
                 .corruptImageShaderDescriptorWidthForTestingIfRequested()
                 .corruptImageShaderDescriptorHeightForTestingIfRequested()
                 .corruptImageShaderDescriptorTileModeXForTestingIfRequested()
+                .corruptImageShaderDescriptorTileModeYForTestingIfRequested()
                 .corruptPerlinNoiseShaderDescriptorForTestingIfRequested()
                 .corruptDescriptorVersionForTestingIfRequested()
                 .corruptColorFilterHandleTypeForTestingIfRequested()
@@ -410,6 +411,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptImageShaderDescriptorHeightForTesting"
         const val CORRUPT_IMAGE_SHADER_DESCRIPTOR_TILE_MODE_X_PROPERTY =
             "skiko.jbr.interop.corruptImageShaderDescriptorTileModeXForTesting"
+        const val CORRUPT_IMAGE_SHADER_DESCRIPTOR_TILE_MODE_Y_PROPERTY =
+            "skiko.jbr.interop.corruptImageShaderDescriptorTileModeYForTesting"
         const val CORRUPT_PERLIN_NOISE_SHADER_KIND_PROPERTY =
             "skiko.jbr.interop.corruptPerlinNoiseShaderKindForTesting"
         const val CORRUPT_PERLIN_NOISE_SHADER_FREQUENCY_PROPERTY =
@@ -511,6 +514,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_IMAGE_SHADER_DESCRIPTOR_HEIGHT_CORRUPTED"
         private const val IMAGE_SHADER_DESCRIPTOR_TILE_MODE_X_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_SHADER_DESCRIPTOR_TILE_MODE_X_CORRUPTED"
+        private const val IMAGE_SHADER_DESCRIPTOR_TILE_MODE_Y_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_IMAGE_SHADER_DESCRIPTOR_TILE_MODE_Y_CORRUPTED"
         private const val PERLIN_NOISE_SHADER_KIND_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_KIND_CORRUPTED"
         private const val PERLIN_NOISE_SHADER_FREQUENCY_CORRUPTED_MARKER =
@@ -648,6 +653,8 @@ class JbrSkiaSwingLayer(
         private val imageShaderDescriptorHeightCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageShaderDescriptorTileModeXCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageShaderDescriptorTileModeYCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val perlinNoiseShaderKindCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val perlinNoiseShaderFrequencyCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -1807,6 +1814,38 @@ class JbrSkiaSwingLayer(
                         return copyOf().also { stream ->
                             stream[payloadStart + 4] = 99
                             Logger.info { IMAGE_SHADER_DESCRIPTOR_TILE_MODE_X_CORRUPTED_MARKER }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptImageShaderDescriptorTileModeYForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_SHADER_DESCRIPTOR_TILE_MODE_Y_PROPERTY)) return this
+            if (!imageShaderDescriptorTileModeYCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 5 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val payloadStart = argsStart + 5
+                    val payloadEnd = payloadStart + payloadIntCount
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_IMAGE &&
+                        payloadIntCount == 6 &&
+                        payloadEnd <= recordEnd
+                    ) {
+                        return copyOf().also { stream ->
+                            stream[payloadStart + 5] = 99
+                            Logger.info { IMAGE_SHADER_DESCRIPTOR_TILE_MODE_Y_CORRUPTED_MARKER }
                         }
                     }
                 }
