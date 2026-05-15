@@ -432,6 +432,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptPerlinNoiseShaderZeroOctavesForTesting"
         const val CORRUPT_PERLIN_NOISE_SHADER_TILE_SIZE_PROPERTY =
             "skiko.jbr.interop.corruptPerlinNoiseShaderTileSizeForTesting"
+        const val CORRUPT_PERLIN_NOISE_SHADER_TILE_HEIGHT_PROPERTY =
+            "skiko.jbr.interop.corruptPerlinNoiseShaderTileHeightForTesting"
         const val CORRUPT_PERLIN_NOISE_SHADER_NEGATIVE_TILE_SIZE_PROPERTY =
             "skiko.jbr.interop.corruptPerlinNoiseShaderNegativeTileSizeForTesting"
         const val CORRUPT_DESCRIPTOR_VERSION_PROPERTY = "skiko.jbr.interop.corruptDescriptorVersionForTesting"
@@ -541,6 +543,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_ZERO_OCTAVES_CORRUPTED"
         private const val PERLIN_NOISE_SHADER_TILE_SIZE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_TILE_SIZE_CORRUPTED"
+        private const val PERLIN_NOISE_SHADER_TILE_HEIGHT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_TILE_HEIGHT_CORRUPTED"
         private const val PERLIN_NOISE_SHADER_NEGATIVE_TILE_SIZE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_PERLIN_NOISE_SHADER_NEGATIVE_TILE_SIZE_CORRUPTED"
         private const val DESCRIPTOR_VERSION_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_VERSION_CORRUPTED"
@@ -682,6 +686,7 @@ class JbrSkiaSwingLayer(
         private val perlinNoiseShaderOctavesCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val perlinNoiseShaderZeroOctavesCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val perlinNoiseShaderTileSizeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val perlinNoiseShaderTileHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val perlinNoiseShaderNegativeTileSizeCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorVersionCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -1994,6 +1999,13 @@ class JbrSkiaSwingLayer(
                     )
                 java.lang.Boolean.getBoolean(CORRUPT_PERLIN_NOISE_SHADER_TILE_SIZE_PROPERTY) ->
                     PerlinNoiseShaderCorruption(5, 4097, perlinNoiseShaderTileSizeCorruptedForTesting, PERLIN_NOISE_SHADER_TILE_SIZE_CORRUPTED_MARKER)
+                java.lang.Boolean.getBoolean(CORRUPT_PERLIN_NOISE_SHADER_TILE_HEIGHT_PROPERTY) ->
+                    PerlinNoiseShaderCorruption(
+                        6,
+                        4097,
+                        perlinNoiseShaderTileHeightCorruptedForTesting,
+                        PERLIN_NOISE_SHADER_TILE_HEIGHT_CORRUPTED_MARKER
+                    )
                 java.lang.Boolean.getBoolean(CORRUPT_PERLIN_NOISE_SHADER_NEGATIVE_TILE_SIZE_PROPERTY) ->
                     PerlinNoiseShaderCorruption(
                         5,
