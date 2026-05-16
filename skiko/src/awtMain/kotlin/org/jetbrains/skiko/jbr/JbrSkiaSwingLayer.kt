@@ -257,6 +257,7 @@ class JbrSkiaSwingLayer(
                 .corruptRuntimeEffectColorFilterNegativeNamedChildCountForTestingIfRequested()
                 .corruptRuntimeEffectShaderSkslLengthForTestingIfRequested()
                 .corruptRuntimeEffectShaderUniformFloatCountForTestingIfRequested()
+                .corruptRuntimeEffectShaderNegativeUniformFloatCountForTestingIfRequested()
                 .corruptRuntimeEffectShaderChildCountForTestingIfRequested()
                 .corruptRuntimeEffectShaderNamedUniformCountForTestingIfRequested()
                 .corruptRuntimeEffectShaderNamedChildCountForTestingIfRequested()
@@ -510,6 +511,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptRuntimeEffectShaderSkslLengthForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SHADER_UNIFORM_FLOAT_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptRuntimeEffectShaderUniformFloatCountForTesting"
+        const val CORRUPT_RUNTIME_EFFECT_SHADER_NEGATIVE_UNIFORM_FLOAT_COUNT_PROPERTY =
+            "skiko.jbr.interop.corruptRuntimeEffectShaderNegativeUniformFloatCountForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SHADER_CHILD_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptRuntimeEffectShaderChildCountForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SHADER_NAMED_UNIFORM_COUNT_PROPERTY =
@@ -663,6 +666,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SHADER_SKSL_LENGTH_CORRUPTED"
         private const val RUNTIME_EFFECT_SHADER_UNIFORM_FLOAT_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SHADER_UNIFORM_FLOAT_COUNT_CORRUPTED"
+        private const val RUNTIME_EFFECT_SHADER_NEGATIVE_UNIFORM_FLOAT_COUNT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SHADER_NEGATIVE_UNIFORM_FLOAT_COUNT_CORRUPTED"
         private const val RUNTIME_EFFECT_SHADER_CHILD_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SHADER_CHILD_COUNT_CORRUPTED"
         private const val RUNTIME_EFFECT_SHADER_NAMED_UNIFORM_COUNT_CORRUPTED_MARKER =
@@ -845,6 +850,8 @@ class JbrSkiaSwingLayer(
         private val runtimeEffectShaderSkslLengthCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectShaderUniformFloatCountCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val runtimeEffectShaderNegativeUniformFloatCountCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectShaderChildCountCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3132,6 +3139,42 @@ class JbrSkiaSwingLayer(
                         return copyOf().also { stream ->
                             stream[payloadStart + 1] = 257
                             Logger.info { RUNTIME_EFFECT_SHADER_UNIFORM_FLOAT_COUNT_CORRUPTED_MARKER }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptRuntimeEffectShaderNegativeUniformFloatCountForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_RUNTIME_EFFECT_SHADER_NEGATIVE_UNIFORM_FLOAT_COUNT_PROPERTY)) {
+                return this
+            }
+            if (!runtimeEffectShaderNegativeUniformFloatCountCorruptedForTesting.compareAndSet(false, true)) {
+                return this
+            }
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 6 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val payloadStart = argsStart + 5
+                    val payloadEnd = payloadStart + payloadIntCount
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT &&
+                        payloadIntCount >= 7 &&
+                        payloadEnd <= recordEnd
+                    ) {
+                        return copyOf().also { stream ->
+                            stream[payloadStart + 1] = -1
+                            Logger.info { RUNTIME_EFFECT_SHADER_NEGATIVE_UNIFORM_FLOAT_COUNT_CORRUPTED_MARKER }
                         }
                     }
                 }
