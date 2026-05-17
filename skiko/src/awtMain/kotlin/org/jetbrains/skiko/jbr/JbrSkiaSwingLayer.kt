@@ -282,6 +282,7 @@ class JbrSkiaSwingLayer(
                 .corruptShaderHandleTypeForTestingIfRequested()
                 .corruptShaderChildMissingForTestingIfRequested()
                 .corruptRuntimeEffectColorFilterSkslLengthForTestingIfRequested()
+                .corruptRuntimeEffectShaderSourceCodeForTestingIfRequested()
                 .corruptRuntimeEffectColorFilterUniformFloatCountForTestingIfRequested()
                 .corruptRuntimeEffectColorFilterNegativeUniformFloatCountForTestingIfRequested()
                 .corruptRuntimeEffectColorFilterChildCountForTestingIfRequested()
@@ -671,6 +672,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptShaderChildMissingForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SHADER_SOURCE_HASH_PROPERTY =
             "skiko.jbr.interop.corruptRuntimeEffectShaderSourceHashForTesting"
+        const val CORRUPT_RUNTIME_EFFECT_SHADER_SOURCE_CODE_PROPERTY =
+            "skiko.jbr.interop.corruptRuntimeEffectShaderSourceCodeForTesting"
         const val CORRUPT_RUNTIME_EFFECT_COLOR_FILTER_SKSL_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptRuntimeEffectColorFilterSkslLengthForTesting"
         const val CORRUPT_RUNTIME_EFFECT_COLOR_FILTER_UNIFORM_FLOAT_COUNT_PROPERTY =
@@ -976,6 +979,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_SHADER_CHILD_MISSING_CORRUPTED"
         private const val RUNTIME_EFFECT_SHADER_SOURCE_HASH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SHADER_SOURCE_HASH_CORRUPTED"
+        private const val RUNTIME_EFFECT_SHADER_SOURCE_CODE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SHADER_SOURCE_CODE_CORRUPTED"
         private const val RUNTIME_EFFECT_COLOR_FILTER_SKSL_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_COLOR_FILTER_SKSL_LENGTH_CORRUPTED"
         private const val RUNTIME_EFFECT_COLOR_FILTER_UNIFORM_FLOAT_COUNT_CORRUPTED_MARKER =
@@ -1325,6 +1330,8 @@ class JbrSkiaSwingLayer(
         private val shaderHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderChildMissingCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectShaderSourceHashCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val runtimeEffectShaderSourceCodeCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectColorFilterSkslLengthCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
@@ -4574,6 +4581,79 @@ class JbrSkiaSwingLayer(
                 offset = recordEnd
             }
             return this
+        }
+
+        private fun IntArray.corruptRuntimeEffectShaderSourceCodeForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_RUNTIME_EFFECT_SHADER_SOURCE_CODE_PROPERTY)) return this
+            if (!runtimeEffectShaderSourceCodeCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 5 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val payloadStart = argsStart + 5
+                    val payloadEnd = payloadStart + payloadIntCount
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT &&
+                        payloadIntCount >= 7 &&
+                        payloadEnd <= recordEnd
+                    ) {
+                        corruptRuntimeEffectShaderDescriptorSourceCode(payloadStart, payloadEnd)?.let {
+                            return it
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptRuntimeEffectShaderDescriptorSourceCode(
+            payloadStart: Int,
+            payloadEnd: Int,
+        ): IntArray? {
+            val payload = copyOfRange(payloadStart, payloadEnd)
+            val skslLength = payload[0]
+            val childCount = payload[2]
+            val namedUniformCount = payload[3]
+            val namedChildCount = payload[4]
+            if (skslLength <= 0) return null
+
+            var schemaOffset = 7 + childCount * 2
+            repeat(namedUniformCount) {
+                if (schemaOffset + 3 > payload.size) return null
+                val nameLength = payload[schemaOffset + 2]
+                schemaOffset += 3 + nameLength
+            }
+            repeat(namedChildCount) {
+                if (schemaOffset + 2 > payload.size) return null
+                val nameLength = payload[schemaOffset + 1]
+                schemaOffset += 2 + nameLength
+            }
+            val skslStart = schemaOffset
+            val skslEnd = skslStart + skslLength
+            if (skslEnd > payload.size) return null
+
+            val replacementPayload = payload.copyOf()
+            replacementPayload[skslStart] = 0
+            val sourceHash = replacementPayload
+                .copyOfRange(skslStart, skslEnd)
+                .map { it.toChar() }
+                .joinToString("")
+                .shaderSourceHashForTesting()
+            replacementPayload[5] = sourceHash.highIntForTesting()
+            replacementPayload[6] = sourceHash.lowIntForTesting()
+
+            val corrupted = copyOf()
+            replacementPayload.copyInto(corrupted, destinationOffset = payloadStart)
+            Logger.info { RUNTIME_EFFECT_SHADER_SOURCE_CODE_CORRUPTED_MARKER }
+            return corrupted
         }
 
         private fun IntArray.corruptRuntimeEffectShaderSkslLengthForTestingIfRequested(): IntArray {
