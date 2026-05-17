@@ -216,10 +216,12 @@ class JbrSkiaSwingLayer(
                 .corruptRadialGradientPathStopOrderForTestingIfRequested()
                 .corruptRadialGradientPathFillTypeForTestingIfRequested()
                 .corruptRadialGradientPathDataLengthForTestingIfRequested()
+                .corruptRadialGradientPathVerbForTestingIfRequested()
                 .corruptSweepGradientPathColorCountForTestingIfRequested()
                 .corruptSweepGradientPathStopOrderForTestingIfRequested()
                 .corruptSweepGradientPathFillTypeForTestingIfRequested()
                 .corruptSweepGradientPathDataLengthForTestingIfRequested()
+                .corruptSweepGradientPathVerbForTestingIfRequested()
                 .corruptDescriptorUseForTestingIfRequested()
                 .corruptDescriptorUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildUseAfterEvictForTestingIfRequested()
@@ -481,6 +483,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptSweepGradientPathFillTypeForTesting"
         const val CORRUPT_SWEEP_GRADIENT_PATH_DATA_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptSweepGradientPathDataLengthForTesting"
+        const val CORRUPT_SWEEP_GRADIENT_PATH_VERB_PROPERTY =
+            "skiko.jbr.interop.corruptSweepGradientPathVerbForTesting"
         const val CORRUPT_RADIAL_GRADIENT_RADIUS_PROPERTY =
             "skiko.jbr.interop.corruptRadialGradientRadiusForTesting"
         const val CORRUPT_RADIAL_GRADIENT_ROUND_RECT_RADIUS_PROPERTY =
@@ -525,6 +529,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptRadialGradientPathFillTypeForTesting"
         const val CORRUPT_RADIAL_GRADIENT_PATH_DATA_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptRadialGradientPathDataLengthForTesting"
+        const val CORRUPT_RADIAL_GRADIENT_PATH_VERB_PROPERTY =
+            "skiko.jbr.interop.corruptRadialGradientPathVerbForTesting"
         const val CORRUPT_DESCRIPTOR_USE_PROPERTY = "skiko.jbr.interop.corruptDescriptorUseForTesting"
         const val CORRUPT_DESCRIPTOR_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptDescriptorUseAfterEvictForTesting"
@@ -772,6 +778,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_SWEEP_GRADIENT_PATH_FILL_TYPE_CORRUPTED"
         private const val SWEEP_GRADIENT_PATH_DATA_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SWEEP_GRADIENT_PATH_DATA_LENGTH_CORRUPTED"
+        private const val SWEEP_GRADIENT_PATH_VERB_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SWEEP_GRADIENT_PATH_VERB_CORRUPTED"
         private const val RADIAL_GRADIENT_RADIUS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RADIAL_GRADIENT_RADIUS_CORRUPTED"
         private const val RADIAL_GRADIENT_ROUND_RECT_RADIUS_CORRUPTED_MARKER =
@@ -816,6 +824,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_RADIAL_GRADIENT_PATH_FILL_TYPE_CORRUPTED"
         private const val RADIAL_GRADIENT_PATH_DATA_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RADIAL_GRADIENT_PATH_DATA_LENGTH_CORRUPTED"
+        private const val RADIAL_GRADIENT_PATH_VERB_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_RADIAL_GRADIENT_PATH_VERB_CORRUPTED"
         private const val DESCRIPTOR_USE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_CORRUPTED"
         private const val DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED"
@@ -1127,6 +1137,8 @@ class JbrSkiaSwingLayer(
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val sweepGradientPathDataLengthCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
+        private val sweepGradientPathVerbCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
         private val radialGradientRadiusCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val radialGradientRoundRectRadiusCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
@@ -1169,6 +1181,8 @@ class JbrSkiaSwingLayer(
         private val radialGradientPathFillTypeCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val radialGradientPathDataLengthCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val radialGradientPathVerbCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -1996,6 +2010,16 @@ class JbrSkiaSwingLayer(
                 )
             )
 
+        private fun IntArray.corruptRadialGradientPathVerbForTestingIfRequested(): IntArray =
+            corruptPathVerbForTestingIfRequested(
+                pathVerbCorruptionForTesting(
+                    command = COMMAND_FILL_PATH_RADIAL_GRADIENT,
+                    property = CORRUPT_RADIAL_GRADIENT_PATH_VERB_PROPERTY,
+                    once = radialGradientPathVerbCorruptedForTesting,
+                    marker = RADIAL_GRADIENT_PATH_VERB_CORRUPTED_MARKER,
+                )
+            )
+
         private fun IntArray.corruptSweepGradientPathColorCountForTestingIfRequested(): IntArray =
             corruptGradientPathForTestingIfRequested(
                 gradientPathCorruptionForTesting(
@@ -2041,6 +2065,16 @@ class JbrSkiaSwingLayer(
                     replacement = -1,
                     once = sweepGradientPathDataLengthCorruptedForTesting,
                     marker = SWEEP_GRADIENT_PATH_DATA_LENGTH_CORRUPTED_MARKER,
+                )
+            )
+
+        private fun IntArray.corruptSweepGradientPathVerbForTestingIfRequested(): IntArray =
+            corruptPathVerbForTestingIfRequested(
+                pathVerbCorruptionForTesting(
+                    command = COMMAND_FILL_PATH_SWEEP_GRADIENT,
+                    property = CORRUPT_SWEEP_GRADIENT_PATH_VERB_PROPERTY,
+                    once = sweepGradientPathVerbCorruptedForTesting,
+                    marker = SWEEP_GRADIENT_PATH_VERB_CORRUPTED_MARKER,
                 )
             )
 
