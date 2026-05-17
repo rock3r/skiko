@@ -198,6 +198,7 @@ class JbrSkiaSwingLayer(
                 .corruptDrawPathVerbForTestingIfRequested()
                 .corruptDrawPathPathEffectVerbForTestingIfRequested()
                 .corruptStrokePathDashPathEffectVerbForTestingIfRequested()
+                .corruptDrawShadowPathVerbForTestingIfRequested()
                 .corruptLinearGradientStrokeWidthForTestingIfRequested()
                 .corruptLinearGradientTileModeForTestingIfRequested()
                 .corruptLinearGradientColorCountForTestingIfRequested()
@@ -424,6 +425,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptDrawPathPathEffectVerbForTesting"
         const val CORRUPT_STROKE_PATH_DASH_PATH_EFFECT_VERB_PROPERTY =
             "skiko.jbr.interop.corruptStrokePathDashPathEffectVerbForTesting"
+        const val CORRUPT_DRAW_SHADOW_PATH_VERB_PROPERTY =
+            "skiko.jbr.interop.corruptDrawShadowPathVerbForTesting"
         const val CORRUPT_LINEAR_GRADIENT_STROKE_WIDTH_PROPERTY =
             "skiko.jbr.interop.corruptLinearGradientStrokeWidthForTesting"
         const val CORRUPT_LINEAR_GRADIENT_ROUND_RECT_STROKE_WIDTH_PROPERTY =
@@ -729,6 +732,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_DRAW_PATH_PATH_EFFECT_VERB_CORRUPTED"
         private const val STROKE_PATH_DASH_PATH_EFFECT_VERB_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_STROKE_PATH_DASH_PATH_EFFECT_VERB_CORRUPTED"
+        private const val DRAW_SHADOW_PATH_VERB_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_DRAW_SHADOW_PATH_VERB_CORRUPTED"
         private const val LINEAR_GRADIENT_STROKE_WIDTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_LINEAR_GRADIENT_STROKE_WIDTH_CORRUPTED"
         private const val LINEAR_GRADIENT_ROUND_RECT_STROKE_WIDTH_CORRUPTED_MARKER =
@@ -1025,6 +1030,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_DRAW_PATH = 21
         private const val COMMAND_STROKE_PATH_DASH_PATH_EFFECT = 61
         private const val COMMAND_DRAW_PATH_PATH_EFFECT_REF = 62
+        private const val COMMAND_DRAW_SHADOW_PATH = 64
         private const val COMMAND_FILL_RECT_LINEAR_GRADIENT = 24
         private const val COMMAND_FILL_ROUND_RECT_LINEAR_GRADIENT = 25
         private const val COMMAND_FILL_RECT_RADIAL_GRADIENT = 26
@@ -1099,6 +1105,7 @@ class JbrSkiaSwingLayer(
         private val drawPathPathEffectVerbCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val strokePathDashPathEffectVerbCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
+        private val drawShadowPathVerbCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val linearGradientStrokeWidthCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val linearGradientRoundRectStrokeWidthCorruptedForTesting =
@@ -1762,6 +1769,32 @@ class JbrSkiaSwingLayer(
                                 stream[pathHeaderOffset + 2] = 99
                                 Logger.info { STROKE_PATH_DASH_PATH_EFFECT_VERB_CORRUPTED_MARKER }
                             }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptDrawShadowPathVerbForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_DRAW_SHADOW_PATH_VERB_PROPERTY)) return this
+            if (!drawShadowPathVerbCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DRAW_SHADOW_PATH && argsStart + 12 < recordEnd) {
+                    val pathDataLength = this[argsStart + 11]
+                    if (pathDataLength > 0 && argsStart + 12 + pathDataLength == recordEnd) {
+                        return copyOf().also { stream ->
+                            stream[argsStart + 12] = 99
+                            Logger.info { DRAW_SHADOW_PATH_VERB_CORRUPTED_MARKER }
                         }
                     }
                 }
