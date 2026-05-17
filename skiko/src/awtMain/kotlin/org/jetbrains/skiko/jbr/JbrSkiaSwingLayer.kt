@@ -203,6 +203,7 @@ class JbrSkiaSwingLayer(
                 .corruptLinearGradientPathStopOrderForTestingIfRequested()
                 .corruptLinearGradientPathFillTypeForTestingIfRequested()
                 .corruptLinearGradientPathDataLengthForTestingIfRequested()
+                .corruptLinearGradientPathVerbForTestingIfRequested()
                 .corruptSweepGradientColorCountForTestingIfRequested()
                 .corruptSweepGradientStopOrderForTestingIfRequested()
                 .corruptRadialGradientRadiusForTestingIfRequested()
@@ -454,6 +455,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptLinearGradientPathFillTypeForTesting"
         const val CORRUPT_LINEAR_GRADIENT_PATH_DATA_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptLinearGradientPathDataLengthForTesting"
+        const val CORRUPT_LINEAR_GRADIENT_PATH_VERB_PROPERTY =
+            "skiko.jbr.interop.corruptLinearGradientPathVerbForTesting"
         const val CORRUPT_SWEEP_GRADIENT_COLOR_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptSweepGradientColorCountForTesting"
         const val CORRUPT_SWEEP_GRADIENT_ROUND_RECT_COLOR_COUNT_PROPERTY =
@@ -743,6 +746,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_LINEAR_GRADIENT_PATH_FILL_TYPE_CORRUPTED"
         private const val LINEAR_GRADIENT_PATH_DATA_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_LINEAR_GRADIENT_PATH_DATA_LENGTH_CORRUPTED"
+        private const val LINEAR_GRADIENT_PATH_VERB_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_LINEAR_GRADIENT_PATH_VERB_CORRUPTED"
         private const val SWEEP_GRADIENT_COLOR_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SWEEP_GRADIENT_COLOR_COUNT_CORRUPTED"
         private const val SWEEP_GRADIENT_ROUND_RECT_COLOR_COUNT_CORRUPTED_MARKER =
@@ -1096,6 +1101,8 @@ class JbrSkiaSwingLayer(
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val linearGradientPathDataLengthCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
+        private val linearGradientPathVerbCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
         private val sweepGradientColorCountCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val sweepGradientRoundRectColorCountCorruptedForTesting =
@@ -1363,6 +1370,12 @@ class JbrSkiaSwingLayer(
             val command: Int,
             val argsOffset: Int,
             val replacement: Int,
+            val once: java.util.concurrent.atomic.AtomicBoolean,
+            val marker: String,
+        )
+
+        private data class PathVerbCorruption(
+            val command: Int,
             val once: java.util.concurrent.atomic.AtomicBoolean,
             val marker: String,
         )
@@ -1901,6 +1914,16 @@ class JbrSkiaSwingLayer(
                 )
             )
 
+        private fun IntArray.corruptLinearGradientPathVerbForTestingIfRequested(): IntArray =
+            corruptPathVerbForTestingIfRequested(
+                pathVerbCorruptionForTesting(
+                    command = COMMAND_FILL_PATH_LINEAR_GRADIENT,
+                    property = CORRUPT_LINEAR_GRADIENT_PATH_VERB_PROPERTY,
+                    once = linearGradientPathVerbCorruptedForTesting,
+                    marker = LINEAR_GRADIENT_PATH_VERB_CORRUPTED_MARKER,
+                )
+            )
+
         private fun IntArray.corruptRadialGradientPathRadiusForTestingIfRequested(): IntArray =
             corruptGradientPathForTestingIfRequested(
                 gradientPathCorruptionForTesting(
@@ -2109,6 +2132,48 @@ class JbrSkiaSwingLayer(
                 if (op == corruption.command && argsStart + corruption.argsOffset < recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart + corruption.argsOffset] = corruption.replacement
+                        if (corruption.once.compareAndSet(false, true)) {
+                            Logger.info { corruption.marker }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun pathVerbCorruptionForTesting(
+            command: Int,
+            property: String,
+            once: java.util.concurrent.atomic.AtomicBoolean,
+            marker: String,
+        ): PathVerbCorruption? =
+            if (java.lang.Boolean.getBoolean(property)) {
+                PathVerbCorruption(
+                    command = command,
+                    once = once,
+                    marker = marker,
+                )
+            } else {
+                null
+            }
+
+        private fun IntArray.corruptPathVerbForTestingIfRequested(
+            corruption: PathVerbCorruption?
+        ): IntArray {
+            corruption ?: return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == corruption.command && argsStart + 2 < recordEnd && this[argsStart + 1] > 0) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + 2] = 99
                         if (corruption.once.compareAndSet(false, true)) {
                             Logger.info { corruption.marker }
                         }
