@@ -198,6 +198,7 @@ class JbrSkiaSwingLayer(
                 .corruptLinearGradientTileModeForTestingIfRequested()
                 .corruptLinearGradientColorCountForTestingIfRequested()
                 .corruptLinearGradientStopOrderForTestingIfRequested()
+                .corruptSweepGradientColorCountForTestingIfRequested()
                 .corruptRadialGradientRadiusForTestingIfRequested()
                 .corruptRadialGradientTileModeForTestingIfRequested()
                 .corruptRadialGradientColorCountForTestingIfRequested()
@@ -427,6 +428,14 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptLinearGradientStrokeStopOrderForTesting"
         const val CORRUPT_LINEAR_GRADIENT_ROUND_RECT_STROKE_STOP_ORDER_PROPERTY =
             "skiko.jbr.interop.corruptLinearGradientRoundRectStrokeStopOrderForTesting"
+        const val CORRUPT_SWEEP_GRADIENT_COLOR_COUNT_PROPERTY =
+            "skiko.jbr.interop.corruptSweepGradientColorCountForTesting"
+        const val CORRUPT_SWEEP_GRADIENT_ROUND_RECT_COLOR_COUNT_PROPERTY =
+            "skiko.jbr.interop.corruptSweepGradientRoundRectColorCountForTesting"
+        const val CORRUPT_SWEEP_GRADIENT_STROKE_COLOR_COUNT_PROPERTY =
+            "skiko.jbr.interop.corruptSweepGradientStrokeColorCountForTesting"
+        const val CORRUPT_SWEEP_GRADIENT_ROUND_RECT_STROKE_COLOR_COUNT_PROPERTY =
+            "skiko.jbr.interop.corruptSweepGradientRoundRectStrokeColorCountForTesting"
         const val CORRUPT_RADIAL_GRADIENT_RADIUS_PROPERTY =
             "skiko.jbr.interop.corruptRadialGradientRadiusForTesting"
         const val CORRUPT_RADIAL_GRADIENT_ROUND_RECT_RADIUS_PROPERTY =
@@ -670,6 +679,14 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_LINEAR_GRADIENT_STROKE_STOP_ORDER_CORRUPTED"
         private const val LINEAR_GRADIENT_ROUND_RECT_STROKE_STOP_ORDER_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_LINEAR_GRADIENT_ROUND_RECT_STROKE_STOP_ORDER_CORRUPTED"
+        private const val SWEEP_GRADIENT_COLOR_COUNT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SWEEP_GRADIENT_COLOR_COUNT_CORRUPTED"
+        private const val SWEEP_GRADIENT_ROUND_RECT_COLOR_COUNT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SWEEP_GRADIENT_ROUND_RECT_COLOR_COUNT_CORRUPTED"
+        private const val SWEEP_GRADIENT_STROKE_COLOR_COUNT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SWEEP_GRADIENT_STROKE_COLOR_COUNT_CORRUPTED"
+        private const val SWEEP_GRADIENT_ROUND_RECT_STROKE_COLOR_COUNT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SWEEP_GRADIENT_ROUND_RECT_STROKE_COLOR_COUNT_CORRUPTED"
         private const val RADIAL_GRADIENT_RADIUS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RADIAL_GRADIENT_RADIUS_CORRUPTED"
         private const val RADIAL_GRADIENT_ROUND_RECT_RADIUS_CORRUPTED_MARKER =
@@ -876,6 +893,8 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_ROUND_RECT_LINEAR_GRADIENT = 25
         private const val COMMAND_FILL_RECT_RADIAL_GRADIENT = 26
         private const val COMMAND_FILL_ROUND_RECT_RADIAL_GRADIENT = 27
+        private const val COMMAND_FILL_RECT_SWEEP_GRADIENT = 30
+        private const val COMMAND_FILL_ROUND_RECT_SWEEP_GRADIENT = 31
         private const val COMMAND_STROKE_RECT_LINEAR_GRADIENT = 35
         private const val COMMAND_STROKE_ROUND_RECT_LINEAR_GRADIENT = 36
         private const val COMMAND_STROKE_RECT_RADIAL_GRADIENT = 37
@@ -971,6 +990,14 @@ class JbrSkiaSwingLayer(
         private val linearGradientStrokeStopOrderCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val linearGradientRoundRectStrokeStopOrderCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val sweepGradientColorCountCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val sweepGradientRoundRectColorCountCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val sweepGradientStrokeColorCountCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val sweepGradientRoundRectStrokeColorCountCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val radialGradientRadiusCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val radialGradientRoundRectRadiusCorruptedForTesting =
@@ -1185,6 +1212,13 @@ class JbrSkiaSwingLayer(
         )
 
         private data class LinearGradientStopOrderCorruption(
+            val command: Int,
+            val argsOffset: Int,
+            val once: java.util.concurrent.atomic.AtomicBoolean,
+            val marker: String,
+        )
+
+        private data class SweepGradientColorCountCorruption(
             val command: Int,
             val argsOffset: Int,
             val once: java.util.concurrent.atomic.AtomicBoolean,
@@ -1647,6 +1681,63 @@ class JbrSkiaSwingLayer(
                         argsOffset = 19,
                         once = linearGradientRoundRectStrokeStopOrderCorruptedForTesting,
                         marker = LINEAR_GRADIENT_ROUND_RECT_STROKE_STOP_ORDER_CORRUPTED_MARKER,
+                    )
+                else -> null
+            }
+
+        private fun IntArray.corruptSweepGradientColorCountForTestingIfRequested(): IntArray {
+            val corruption = sweepGradientColorCountCorruptionForTesting() ?: return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == corruption.command && argsStart + corruption.argsOffset < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + corruption.argsOffset] = 1
+                        if (corruption.once.compareAndSet(false, true)) {
+                            Logger.info { corruption.marker }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun sweepGradientColorCountCorruptionForTesting(): SweepGradientColorCountCorruption? =
+            when {
+                java.lang.Boolean.getBoolean(CORRUPT_SWEEP_GRADIENT_COLOR_COUNT_PROPERTY) ->
+                    SweepGradientColorCountCorruption(
+                        command = COMMAND_FILL_RECT_SWEEP_GRADIENT,
+                        argsOffset = 6,
+                        once = sweepGradientColorCountCorruptedForTesting,
+                        marker = SWEEP_GRADIENT_COLOR_COUNT_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_SWEEP_GRADIENT_ROUND_RECT_COLOR_COUNT_PROPERTY) ->
+                    SweepGradientColorCountCorruption(
+                        command = COMMAND_FILL_ROUND_RECT_SWEEP_GRADIENT,
+                        argsOffset = 8,
+                        once = sweepGradientRoundRectColorCountCorruptedForTesting,
+                        marker = SWEEP_GRADIENT_ROUND_RECT_COLOR_COUNT_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_SWEEP_GRADIENT_STROKE_COLOR_COUNT_PROPERTY) ->
+                    SweepGradientColorCountCorruption(
+                        command = COMMAND_STROKE_RECT_SWEEP_GRADIENT,
+                        argsOffset = 10,
+                        once = sweepGradientStrokeColorCountCorruptedForTesting,
+                        marker = SWEEP_GRADIENT_STROKE_COLOR_COUNT_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_SWEEP_GRADIENT_ROUND_RECT_STROKE_COLOR_COUNT_PROPERTY) ->
+                    SweepGradientColorCountCorruption(
+                        command = COMMAND_STROKE_ROUND_RECT_SWEEP_GRADIENT,
+                        argsOffset = 12,
+                        once = sweepGradientRoundRectStrokeColorCountCorruptedForTesting,
+                        marker = SWEEP_GRADIENT_ROUND_RECT_STROKE_COLOR_COUNT_CORRUPTED_MARKER,
                     )
                 else -> null
             }
