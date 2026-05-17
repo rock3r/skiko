@@ -386,6 +386,16 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptParagraphFontFamilyCountForTesting"
         const val CORRUPT_LINEAR_GRADIENT_STROKE_WIDTH_PROPERTY =
             "skiko.jbr.interop.corruptLinearGradientStrokeWidthForTesting"
+        const val CORRUPT_LINEAR_GRADIENT_ROUND_RECT_STROKE_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptLinearGradientRoundRectStrokeWidthForTesting"
+        const val CORRUPT_RADIAL_GRADIENT_STROKE_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptRadialGradientStrokeWidthForTesting"
+        const val CORRUPT_RADIAL_GRADIENT_ROUND_RECT_STROKE_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptRadialGradientRoundRectStrokeWidthForTesting"
+        const val CORRUPT_SWEEP_GRADIENT_STROKE_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptSweepGradientStrokeWidthForTesting"
+        const val CORRUPT_SWEEP_GRADIENT_ROUND_RECT_STROKE_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptSweepGradientRoundRectStrokeWidthForTesting"
         const val CORRUPT_DESCRIPTOR_USE_PROPERTY = "skiko.jbr.interop.corruptDescriptorUseForTesting"
         const val CORRUPT_DESCRIPTOR_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptDescriptorUseAfterEvictForTesting"
@@ -563,6 +573,16 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_PARAGRAPH_FONT_FAMILY_COUNT_CORRUPTED"
         private const val LINEAR_GRADIENT_STROKE_WIDTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_LINEAR_GRADIENT_STROKE_WIDTH_CORRUPTED"
+        private const val LINEAR_GRADIENT_ROUND_RECT_STROKE_WIDTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_LINEAR_GRADIENT_ROUND_RECT_STROKE_WIDTH_CORRUPTED"
+        private const val RADIAL_GRADIENT_STROKE_WIDTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_RADIAL_GRADIENT_STROKE_WIDTH_CORRUPTED"
+        private const val RADIAL_GRADIENT_ROUND_RECT_STROKE_WIDTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_RADIAL_GRADIENT_ROUND_RECT_STROKE_WIDTH_CORRUPTED"
+        private const val SWEEP_GRADIENT_STROKE_WIDTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SWEEP_GRADIENT_STROKE_WIDTH_CORRUPTED"
+        private const val SWEEP_GRADIENT_ROUND_RECT_STROKE_WIDTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SWEEP_GRADIENT_ROUND_RECT_STROKE_WIDTH_CORRUPTED"
         private const val DESCRIPTOR_USE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_CORRUPTED"
         private const val DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED"
@@ -734,6 +754,11 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_DRAW_TEXT_UTF16 = 17
         private const val COMMAND_DRAW_PARAGRAPH_UTF16 = 19
         private const val COMMAND_STROKE_RECT_LINEAR_GRADIENT = 35
+        private const val COMMAND_STROKE_ROUND_RECT_LINEAR_GRADIENT = 36
+        private const val COMMAND_STROKE_RECT_RADIAL_GRADIENT = 37
+        private const val COMMAND_STROKE_ROUND_RECT_RADIAL_GRADIENT = 38
+        private const val COMMAND_STROKE_RECT_SWEEP_GRADIENT = 39
+        private const val COMMAND_STROKE_ROUND_RECT_SWEEP_GRADIENT = 40
         private const val COMMAND_FILL_RECT_COLOR_FILTER_REF = 47
         private const val COMMAND_EVICT_COLOR_FILTER_HANDLE = 48
         private const val COMMAND_DEFINE_EFFECT_DESCRIPTOR = 49
@@ -789,6 +814,16 @@ class JbrSkiaSwingLayer(
         private val paragraphFontSlantCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val paragraphFontFamilyCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val linearGradientStrokeWidthCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val linearGradientRoundRectStrokeWidthCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val radialGradientStrokeWidthCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val radialGradientRoundRectStrokeWidthCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val sweepGradientStrokeWidthCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val sweepGradientRoundRectStrokeWidthCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -939,6 +974,13 @@ class JbrSkiaSwingLayer(
             val command: Int,
             val argsOffset: Int,
             val value: Int,
+            val once: java.util.concurrent.atomic.AtomicBoolean,
+            val marker: String,
+        )
+
+        private data class GradientStrokeWidthCorruption(
+            val command: Int,
+            val argsOffset: Int,
             val once: java.util.concurrent.atomic.AtomicBoolean,
             val marker: String,
         )
@@ -1141,7 +1183,7 @@ class JbrSkiaSwingLayer(
             }
 
         private fun IntArray.corruptLinearGradientStrokeWidthForTestingIfRequested(): IntArray {
-            if (!java.lang.Boolean.getBoolean(CORRUPT_LINEAR_GRADIENT_STROKE_WIDTH_PROPERTY)) return this
+            val corruption = gradientStrokeWidthCorruptionForTesting() ?: return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -1151,11 +1193,11 @@ class JbrSkiaSwingLayer(
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
-                if (op == COMMAND_STROKE_RECT_LINEAR_GRADIENT && argsStart + 4 < recordEnd) {
+                if (op == corruption.command && argsStart + corruption.argsOffset < recordEnd) {
                     return copyOf().also { stream ->
-                        stream[argsStart + 4] = 0
-                        if (linearGradientStrokeWidthCorruptedForTesting.compareAndSet(false, true)) {
-                            Logger.info { LINEAR_GRADIENT_STROKE_WIDTH_CORRUPTED_MARKER }
+                        stream[argsStart + corruption.argsOffset] = 0
+                        if (corruption.once.compareAndSet(false, true)) {
+                            Logger.info { corruption.marker }
                         }
                     }
                 }
@@ -1163,6 +1205,53 @@ class JbrSkiaSwingLayer(
             }
             return this
         }
+
+        private fun gradientStrokeWidthCorruptionForTesting(): GradientStrokeWidthCorruption? =
+            when {
+                java.lang.Boolean.getBoolean(CORRUPT_LINEAR_GRADIENT_STROKE_WIDTH_PROPERTY) ->
+                    GradientStrokeWidthCorruption(
+                        command = COMMAND_STROKE_RECT_LINEAR_GRADIENT,
+                        argsOffset = 4,
+                        once = linearGradientStrokeWidthCorruptedForTesting,
+                        marker = LINEAR_GRADIENT_STROKE_WIDTH_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_LINEAR_GRADIENT_ROUND_RECT_STROKE_WIDTH_PROPERTY) ->
+                    GradientStrokeWidthCorruption(
+                        command = COMMAND_STROKE_ROUND_RECT_LINEAR_GRADIENT,
+                        argsOffset = 6,
+                        once = linearGradientRoundRectStrokeWidthCorruptedForTesting,
+                        marker = LINEAR_GRADIENT_ROUND_RECT_STROKE_WIDTH_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_RADIAL_GRADIENT_STROKE_WIDTH_PROPERTY) ->
+                    GradientStrokeWidthCorruption(
+                        command = COMMAND_STROKE_RECT_RADIAL_GRADIENT,
+                        argsOffset = 4,
+                        once = radialGradientStrokeWidthCorruptedForTesting,
+                        marker = RADIAL_GRADIENT_STROKE_WIDTH_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_RADIAL_GRADIENT_ROUND_RECT_STROKE_WIDTH_PROPERTY) ->
+                    GradientStrokeWidthCorruption(
+                        command = COMMAND_STROKE_ROUND_RECT_RADIAL_GRADIENT,
+                        argsOffset = 6,
+                        once = radialGradientRoundRectStrokeWidthCorruptedForTesting,
+                        marker = RADIAL_GRADIENT_ROUND_RECT_STROKE_WIDTH_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_SWEEP_GRADIENT_STROKE_WIDTH_PROPERTY) ->
+                    GradientStrokeWidthCorruption(
+                        command = COMMAND_STROKE_RECT_SWEEP_GRADIENT,
+                        argsOffset = 4,
+                        once = sweepGradientStrokeWidthCorruptedForTesting,
+                        marker = SWEEP_GRADIENT_STROKE_WIDTH_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_SWEEP_GRADIENT_ROUND_RECT_STROKE_WIDTH_PROPERTY) ->
+                    GradientStrokeWidthCorruption(
+                        command = COMMAND_STROKE_ROUND_RECT_SWEEP_GRADIENT,
+                        argsOffset = 6,
+                        once = sweepGradientRoundRectStrokeWidthCorruptedForTesting,
+                        marker = SWEEP_GRADIENT_ROUND_RECT_STROKE_WIDTH_CORRUPTED_MARKER,
+                    )
+                else -> null
+            }
 
         private fun IntArray.corruptDescriptorUseForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_DESCRIPTOR_USE_PROPERTY)) return this
