@@ -194,6 +194,7 @@ class JbrSkiaSwingLayer(
             val commandStream = commandFrameCache
                 .frameForRendering(commandFrame.tinyFullSceneForTestingIfRequested())
                 .corruptTextFontSizeForTestingIfRequested()
+                .corruptLinearGradientStrokeWidthForTestingIfRequested()
                 .corruptDescriptorUseForTestingIfRequested()
                 .corruptDescriptorUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildUseAfterEvictForTestingIfRequested()
@@ -383,6 +384,8 @@ class JbrSkiaSwingLayer(
         const val CORRUPT_PARAGRAPH_FONT_SLANT_PROPERTY = "skiko.jbr.interop.corruptParagraphFontSlantForTesting"
         const val CORRUPT_PARAGRAPH_FONT_FAMILY_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptParagraphFontFamilyCountForTesting"
+        const val CORRUPT_LINEAR_GRADIENT_STROKE_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptLinearGradientStrokeWidthForTesting"
         const val CORRUPT_DESCRIPTOR_USE_PROPERTY = "skiko.jbr.interop.corruptDescriptorUseForTesting"
         const val CORRUPT_DESCRIPTOR_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptDescriptorUseAfterEvictForTesting"
@@ -558,6 +561,8 @@ class JbrSkiaSwingLayer(
         private const val PARAGRAPH_FONT_SLANT_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_PARAGRAPH_FONT_SLANT_CORRUPTED"
         private const val PARAGRAPH_FONT_FAMILY_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_PARAGRAPH_FONT_FAMILY_COUNT_CORRUPTED"
+        private const val LINEAR_GRADIENT_STROKE_WIDTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_LINEAR_GRADIENT_STROKE_WIDTH_CORRUPTED"
         private const val DESCRIPTOR_USE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_CORRUPTED"
         private const val DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED"
@@ -728,6 +733,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_STROKE_OVAL = 5
         private const val COMMAND_DRAW_TEXT_UTF16 = 17
         private const val COMMAND_DRAW_PARAGRAPH_UTF16 = 19
+        private const val COMMAND_STROKE_RECT_LINEAR_GRADIENT = 35
         private const val COMMAND_FILL_RECT_COLOR_FILTER_REF = 47
         private const val COMMAND_EVICT_COLOR_FILTER_HANDLE = 48
         private const val COMMAND_DEFINE_EFFECT_DESCRIPTOR = 49
@@ -782,6 +788,8 @@ class JbrSkiaSwingLayer(
         private val paragraphFontWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val paragraphFontSlantCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val paragraphFontFamilyCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val linearGradientStrokeWidthCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -1131,6 +1139,30 @@ class JbrSkiaSwingLayer(
                     )
                 else -> null
             }
+
+        private fun IntArray.corruptLinearGradientStrokeWidthForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_LINEAR_GRADIENT_STROKE_WIDTH_PROPERTY)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_STROKE_RECT_LINEAR_GRADIENT && argsStart + 4 < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + 4] = 0
+                        if (linearGradientStrokeWidthCorruptedForTesting.compareAndSet(false, true)) {
+                            Logger.info { LINEAR_GRADIENT_STROKE_WIDTH_CORRUPTED_MARKER }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
 
         private fun IntArray.corruptDescriptorUseForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_DESCRIPTOR_USE_PROPERTY)) return this
