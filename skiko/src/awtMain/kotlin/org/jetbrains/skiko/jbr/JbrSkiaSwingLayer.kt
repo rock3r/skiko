@@ -377,6 +377,12 @@ class JbrSkiaSwingLayer(
         const val CORRUPT_TEXT_FONT_SLANT_PROPERTY = "skiko.jbr.interop.corruptTextFontSlantForTesting"
         const val CORRUPT_TEXT_FONT_FAMILY_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptTextFontFamilyCountForTesting"
+        const val CORRUPT_PARAGRAPH_FONT_SIZE_PROPERTY = "skiko.jbr.interop.corruptParagraphFontSizeForTesting"
+        const val CORRUPT_PARAGRAPH_FONT_WEIGHT_PROPERTY = "skiko.jbr.interop.corruptParagraphFontWeightForTesting"
+        const val CORRUPT_PARAGRAPH_FONT_WIDTH_PROPERTY = "skiko.jbr.interop.corruptParagraphFontWidthForTesting"
+        const val CORRUPT_PARAGRAPH_FONT_SLANT_PROPERTY = "skiko.jbr.interop.corruptParagraphFontSlantForTesting"
+        const val CORRUPT_PARAGRAPH_FONT_FAMILY_COUNT_PROPERTY =
+            "skiko.jbr.interop.corruptParagraphFontFamilyCountForTesting"
         const val CORRUPT_DESCRIPTOR_USE_PROPERTY = "skiko.jbr.interop.corruptDescriptorUseForTesting"
         const val CORRUPT_DESCRIPTOR_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptDescriptorUseAfterEvictForTesting"
@@ -546,6 +552,12 @@ class JbrSkiaSwingLayer(
         private const val TEXT_FONT_SLANT_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_SLANT_CORRUPTED"
         private const val TEXT_FONT_FAMILY_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_TEXT_FONT_FAMILY_COUNT_CORRUPTED"
+        private const val PARAGRAPH_FONT_SIZE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_PARAGRAPH_FONT_SIZE_CORRUPTED"
+        private const val PARAGRAPH_FONT_WEIGHT_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_PARAGRAPH_FONT_WEIGHT_CORRUPTED"
+        private const val PARAGRAPH_FONT_WIDTH_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_PARAGRAPH_FONT_WIDTH_CORRUPTED"
+        private const val PARAGRAPH_FONT_SLANT_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_PARAGRAPH_FONT_SLANT_CORRUPTED"
+        private const val PARAGRAPH_FONT_FAMILY_COUNT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_PARAGRAPH_FONT_FAMILY_COUNT_CORRUPTED"
         private const val DESCRIPTOR_USE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_CORRUPTED"
         private const val DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED"
@@ -715,6 +727,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
         private const val COMMAND_DRAW_TEXT_UTF16 = 17
+        private const val COMMAND_DRAW_PARAGRAPH_UTF16 = 19
         private const val COMMAND_FILL_RECT_COLOR_FILTER_REF = 47
         private const val COMMAND_EVICT_COLOR_FILTER_HANDLE = 48
         private const val COMMAND_DEFINE_EFFECT_DESCRIPTOR = 49
@@ -764,6 +777,11 @@ class JbrSkiaSwingLayer(
         private val textFontWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val textFontSlantCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val textFontFamilyCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val paragraphFontSizeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val paragraphFontWeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val paragraphFontWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val paragraphFontSlantCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val paragraphFontFamilyCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -910,6 +928,7 @@ class JbrSkiaSwingLayer(
         )
 
         private data class TextCommandCorruption(
+            val command: Int,
             val argsOffset: Int,
             val value: Int,
             val once: java.util.concurrent.atomic.AtomicBoolean,
@@ -1015,7 +1034,7 @@ class JbrSkiaSwingLayer(
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
-                if (op == COMMAND_DRAW_TEXT_UTF16 && argsStart + corruption.argsOffset < recordEnd) {
+                if (op == corruption.command && argsStart + corruption.argsOffset < recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart + corruption.argsOffset] = corruption.value
                         if (corruption.once.compareAndSet(false, true)) {
@@ -1032,6 +1051,7 @@ class JbrSkiaSwingLayer(
             when {
                 java.lang.Boolean.getBoolean(CORRUPT_TEXT_FONT_SIZE_PROPERTY) ->
                     TextCommandCorruption(
+                        command = COMMAND_DRAW_TEXT_UTF16,
                         argsOffset = 2,
                         value = 0,
                         once = textFontSizeCorruptedForTesting,
@@ -1039,6 +1059,7 @@ class JbrSkiaSwingLayer(
                     )
                 java.lang.Boolean.getBoolean(CORRUPT_TEXT_FONT_WEIGHT_PROPERTY) ->
                     TextCommandCorruption(
+                        command = COMMAND_DRAW_TEXT_UTF16,
                         argsOffset = 4,
                         value = 0,
                         once = textFontWeightCorruptedForTesting,
@@ -1046,6 +1067,7 @@ class JbrSkiaSwingLayer(
                     )
                 java.lang.Boolean.getBoolean(CORRUPT_TEXT_FONT_WIDTH_PROPERTY) ->
                     TextCommandCorruption(
+                        command = COMMAND_DRAW_TEXT_UTF16,
                         argsOffset = 5,
                         value = 0,
                         once = textFontWidthCorruptedForTesting,
@@ -1053,6 +1075,7 @@ class JbrSkiaSwingLayer(
                     )
                 java.lang.Boolean.getBoolean(CORRUPT_TEXT_FONT_SLANT_PROPERTY) ->
                     TextCommandCorruption(
+                        command = COMMAND_DRAW_TEXT_UTF16,
                         argsOffset = 6,
                         value = 3,
                         once = textFontSlantCorruptedForTesting,
@@ -1060,10 +1083,51 @@ class JbrSkiaSwingLayer(
                     )
                 java.lang.Boolean.getBoolean(CORRUPT_TEXT_FONT_FAMILY_COUNT_PROPERTY) ->
                     TextCommandCorruption(
+                        command = COMMAND_DRAW_TEXT_UTF16,
                         argsOffset = 7,
                         value = 257,
                         once = textFontFamilyCountCorruptedForTesting,
                         marker = TEXT_FONT_FAMILY_COUNT_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_PARAGRAPH_FONT_SIZE_PROPERTY) ->
+                    TextCommandCorruption(
+                        command = COMMAND_DRAW_PARAGRAPH_UTF16,
+                        argsOffset = 3,
+                        value = 0,
+                        once = paragraphFontSizeCorruptedForTesting,
+                        marker = PARAGRAPH_FONT_SIZE_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_PARAGRAPH_FONT_WEIGHT_PROPERTY) ->
+                    TextCommandCorruption(
+                        command = COMMAND_DRAW_PARAGRAPH_UTF16,
+                        argsOffset = 5,
+                        value = 0,
+                        once = paragraphFontWeightCorruptedForTesting,
+                        marker = PARAGRAPH_FONT_WEIGHT_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_PARAGRAPH_FONT_WIDTH_PROPERTY) ->
+                    TextCommandCorruption(
+                        command = COMMAND_DRAW_PARAGRAPH_UTF16,
+                        argsOffset = 6,
+                        value = 0,
+                        once = paragraphFontWidthCorruptedForTesting,
+                        marker = PARAGRAPH_FONT_WIDTH_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_PARAGRAPH_FONT_SLANT_PROPERTY) ->
+                    TextCommandCorruption(
+                        command = COMMAND_DRAW_PARAGRAPH_UTF16,
+                        argsOffset = 7,
+                        value = 3,
+                        once = paragraphFontSlantCorruptedForTesting,
+                        marker = PARAGRAPH_FONT_SLANT_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_PARAGRAPH_FONT_FAMILY_COUNT_PROPERTY) ->
+                    TextCommandCorruption(
+                        command = COMMAND_DRAW_PARAGRAPH_UTF16,
+                        argsOffset = 8,
+                        value = 257,
+                        once = paragraphFontFamilyCountCorruptedForTesting,
+                        marker = PARAGRAPH_FONT_FAMILY_COUNT_CORRUPTED_MARKER,
                     )
                 else -> null
             }
