@@ -196,6 +196,7 @@ class JbrSkiaSwingLayer(
                 .corruptTextFontSizeForTestingIfRequested()
                 .corruptLinearGradientStrokeWidthForTestingIfRequested()
                 .corruptRadialGradientRadiusForTestingIfRequested()
+                .corruptRadialGradientTileModeForTestingIfRequested()
                 .corruptDescriptorUseForTestingIfRequested()
                 .corruptDescriptorUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildUseAfterEvictForTestingIfRequested()
@@ -405,6 +406,14 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptRadialGradientStrokeRadiusForTesting"
         const val CORRUPT_RADIAL_GRADIENT_ROUND_RECT_STROKE_RADIUS_PROPERTY =
             "skiko.jbr.interop.corruptRadialGradientRoundRectStrokeRadiusForTesting"
+        const val CORRUPT_RADIAL_GRADIENT_TILE_MODE_PROPERTY =
+            "skiko.jbr.interop.corruptRadialGradientTileModeForTesting"
+        const val CORRUPT_RADIAL_GRADIENT_ROUND_RECT_TILE_MODE_PROPERTY =
+            "skiko.jbr.interop.corruptRadialGradientRoundRectTileModeForTesting"
+        const val CORRUPT_RADIAL_GRADIENT_STROKE_TILE_MODE_PROPERTY =
+            "skiko.jbr.interop.corruptRadialGradientStrokeTileModeForTesting"
+        const val CORRUPT_RADIAL_GRADIENT_ROUND_RECT_STROKE_TILE_MODE_PROPERTY =
+            "skiko.jbr.interop.corruptRadialGradientRoundRectStrokeTileModeForTesting"
         const val CORRUPT_DESCRIPTOR_USE_PROPERTY = "skiko.jbr.interop.corruptDescriptorUseForTesting"
         const val CORRUPT_DESCRIPTOR_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptDescriptorUseAfterEvictForTesting"
@@ -600,6 +609,14 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_RADIAL_GRADIENT_STROKE_RADIUS_CORRUPTED"
         private const val RADIAL_GRADIENT_ROUND_RECT_STROKE_RADIUS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RADIAL_GRADIENT_ROUND_RECT_STROKE_RADIUS_CORRUPTED"
+        private const val RADIAL_GRADIENT_TILE_MODE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_RADIAL_GRADIENT_TILE_MODE_CORRUPTED"
+        private const val RADIAL_GRADIENT_ROUND_RECT_TILE_MODE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_RADIAL_GRADIENT_ROUND_RECT_TILE_MODE_CORRUPTED"
+        private const val RADIAL_GRADIENT_STROKE_TILE_MODE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_RADIAL_GRADIENT_STROKE_TILE_MODE_CORRUPTED"
+        private const val RADIAL_GRADIENT_ROUND_RECT_STROKE_TILE_MODE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_RADIAL_GRADIENT_ROUND_RECT_STROKE_TILE_MODE_CORRUPTED"
         private const val DESCRIPTOR_USE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_CORRUPTED"
         private const val DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED"
@@ -851,6 +868,14 @@ class JbrSkiaSwingLayer(
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val radialGradientRoundRectStrokeRadiusCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
+        private val radialGradientTileModeCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val radialGradientRoundRectTileModeCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val radialGradientStrokeTileModeCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val radialGradientRoundRectStrokeTileModeCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -1012,6 +1037,13 @@ class JbrSkiaSwingLayer(
         )
 
         private data class RadialGradientRadiusCorruption(
+            val command: Int,
+            val argsOffset: Int,
+            val once: java.util.concurrent.atomic.AtomicBoolean,
+            val marker: String,
+        )
+
+        private data class RadialGradientTileModeCorruption(
             val command: Int,
             val argsOffset: Int,
             val once: java.util.concurrent.atomic.AtomicBoolean,
@@ -1339,6 +1371,63 @@ class JbrSkiaSwingLayer(
                         argsOffset = 12,
                         once = radialGradientRoundRectStrokeRadiusCorruptedForTesting,
                         marker = RADIAL_GRADIENT_ROUND_RECT_STROKE_RADIUS_CORRUPTED_MARKER,
+                    )
+                else -> null
+            }
+
+        private fun IntArray.corruptRadialGradientTileModeForTestingIfRequested(): IntArray {
+            val corruption = radialGradientTileModeCorruptionForTesting() ?: return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == corruption.command && argsStart + corruption.argsOffset < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + corruption.argsOffset] = 4
+                        if (corruption.once.compareAndSet(false, true)) {
+                            Logger.info { corruption.marker }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun radialGradientTileModeCorruptionForTesting(): RadialGradientTileModeCorruption? =
+            when {
+                java.lang.Boolean.getBoolean(CORRUPT_RADIAL_GRADIENT_TILE_MODE_PROPERTY) ->
+                    RadialGradientTileModeCorruption(
+                        command = COMMAND_FILL_RECT_RADIAL_GRADIENT,
+                        argsOffset = 7,
+                        once = radialGradientTileModeCorruptedForTesting,
+                        marker = RADIAL_GRADIENT_TILE_MODE_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_RADIAL_GRADIENT_ROUND_RECT_TILE_MODE_PROPERTY) ->
+                    RadialGradientTileModeCorruption(
+                        command = COMMAND_FILL_ROUND_RECT_RADIAL_GRADIENT,
+                        argsOffset = 9,
+                        once = radialGradientRoundRectTileModeCorruptedForTesting,
+                        marker = RADIAL_GRADIENT_ROUND_RECT_TILE_MODE_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_RADIAL_GRADIENT_STROKE_TILE_MODE_PROPERTY) ->
+                    RadialGradientTileModeCorruption(
+                        command = COMMAND_STROKE_RECT_RADIAL_GRADIENT,
+                        argsOffset = 11,
+                        once = radialGradientStrokeTileModeCorruptedForTesting,
+                        marker = RADIAL_GRADIENT_STROKE_TILE_MODE_CORRUPTED_MARKER,
+                    )
+                java.lang.Boolean.getBoolean(CORRUPT_RADIAL_GRADIENT_ROUND_RECT_STROKE_TILE_MODE_PROPERTY) ->
+                    RadialGradientTileModeCorruption(
+                        command = COMMAND_STROKE_ROUND_RECT_RADIAL_GRADIENT,
+                        argsOffset = 13,
+                        once = radialGradientRoundRectStrokeTileModeCorruptedForTesting,
+                        marker = RADIAL_GRADIENT_ROUND_RECT_STROKE_TILE_MODE_CORRUPTED_MARKER,
                     )
                 else -> null
             }
