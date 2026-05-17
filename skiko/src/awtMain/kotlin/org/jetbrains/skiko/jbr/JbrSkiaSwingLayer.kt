@@ -197,6 +197,7 @@ class JbrSkiaSwingLayer(
                 .corruptClipPathVerbForTestingIfRequested()
                 .corruptDrawPathVerbForTestingIfRequested()
                 .corruptDrawPathPathEffectVerbForTestingIfRequested()
+                .corruptStrokePathDashPathEffectVerbForTestingIfRequested()
                 .corruptLinearGradientStrokeWidthForTestingIfRequested()
                 .corruptLinearGradientTileModeForTestingIfRequested()
                 .corruptLinearGradientColorCountForTestingIfRequested()
@@ -421,6 +422,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptDrawPathVerbForTesting"
         const val CORRUPT_DRAW_PATH_PATH_EFFECT_VERB_PROPERTY =
             "skiko.jbr.interop.corruptDrawPathPathEffectVerbForTesting"
+        const val CORRUPT_STROKE_PATH_DASH_PATH_EFFECT_VERB_PROPERTY =
+            "skiko.jbr.interop.corruptStrokePathDashPathEffectVerbForTesting"
         const val CORRUPT_LINEAR_GRADIENT_STROKE_WIDTH_PROPERTY =
             "skiko.jbr.interop.corruptLinearGradientStrokeWidthForTesting"
         const val CORRUPT_LINEAR_GRADIENT_ROUND_RECT_STROKE_WIDTH_PROPERTY =
@@ -724,6 +727,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_DRAW_PATH_VERB_CORRUPTED"
         private const val DRAW_PATH_PATH_EFFECT_VERB_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DRAW_PATH_PATH_EFFECT_VERB_CORRUPTED"
+        private const val STROKE_PATH_DASH_PATH_EFFECT_VERB_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_STROKE_PATH_DASH_PATH_EFFECT_VERB_CORRUPTED"
         private const val LINEAR_GRADIENT_STROKE_WIDTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_LINEAR_GRADIENT_STROKE_WIDTH_CORRUPTED"
         private const val LINEAR_GRADIENT_ROUND_RECT_STROKE_WIDTH_CORRUPTED_MARKER =
@@ -1018,6 +1023,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_DRAW_PARAGRAPH_UTF16 = 19
         private const val COMMAND_CLIP_PATH = 20
         private const val COMMAND_DRAW_PATH = 21
+        private const val COMMAND_STROKE_PATH_DASH_PATH_EFFECT = 61
         private const val COMMAND_DRAW_PATH_PATH_EFFECT_REF = 62
         private const val COMMAND_FILL_RECT_LINEAR_GRADIENT = 24
         private const val COMMAND_FILL_ROUND_RECT_LINEAR_GRADIENT = 25
@@ -1091,6 +1097,8 @@ class JbrSkiaSwingLayer(
         private val clipPathVerbCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawPathVerbCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawPathPathEffectVerbCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val strokePathDashPathEffectVerbCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
         private val linearGradientStrokeWidthCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val linearGradientRoundRectStrokeWidthCorruptedForTesting =
@@ -1724,6 +1732,36 @@ class JbrSkiaSwingLayer(
                         return copyOf().also { stream ->
                             stream[argsStart + 10] = 99
                             Logger.info { DRAW_PATH_PATH_EFFECT_VERB_CORRUPTED_MARKER }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptStrokePathDashPathEffectVerbForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_STROKE_PATH_DASH_PATH_EFFECT_VERB_PROPERTY)) return this
+            if (!strokePathDashPathEffectVerbCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_STROKE_PATH_DASH_PATH_EFFECT && argsStart + 9 < recordEnd) {
+                    val intervalCount = this[argsStart + 6]
+                    val pathHeaderOffset = argsStart + 7 + intervalCount
+                    if (intervalCount >= 2 && pathHeaderOffset + 2 < recordEnd) {
+                        val pathDataLength = this[pathHeaderOffset + 1]
+                        if (pathDataLength > 0 && pathHeaderOffset + 2 + pathDataLength == recordEnd) {
+                            return copyOf().also { stream ->
+                                stream[pathHeaderOffset + 2] = 99
+                                Logger.info { STROKE_PATH_DASH_PATH_EFFECT_VERB_CORRUPTED_MARKER }
+                            }
                         }
                     }
                 }
