@@ -231,6 +231,7 @@ class JbrSkiaSwingLayer(
                 .corruptDescriptorUseAfterEvictForTestingIfRequested()
                 .corruptImageUseForTestingIfRequested()
                 .corruptImageUseAfterEvictForTestingIfRequested()
+                .corruptImageRefWidthForTestingIfRequested()
                 .corruptShaderChildUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildMissingForTestingIfRequested()
@@ -596,6 +597,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptImageColorFilterRefUseForTesting"
         const val CORRUPT_IMAGE_COLOR_FILTER_REF_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptImageColorFilterRefUseAfterEvictForTesting"
+        const val CORRUPT_IMAGE_REF_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptImageRefWidthForTesting"
         const val CORRUPT_EFFECT_CHILD_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptEffectChildUseAfterEvictForTesting"
         const val CORRUPT_EFFECT_CHILD_MISSING_PROPERTY =
@@ -978,6 +981,8 @@ class JbrSkiaSwingLayer(
         private const val IMAGE_USE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_IMAGE_USE_CORRUPTED"
         private const val IMAGE_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_USE_AFTER_EVICT_CORRUPTED"
+        private const val IMAGE_REF_WIDTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_IMAGE_REF_WIDTH_CORRUPTED"
         private const val SHADER_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SHADER_CHILD_USE_AFTER_EVICT_CORRUPTED"
         private const val EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
@@ -1418,6 +1423,7 @@ class JbrSkiaSwingLayer(
         private val descriptorUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageUseCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageRefWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildMissingCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectDescriptorTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3160,6 +3166,29 @@ class JbrSkiaSwingLayer(
                     corrupted[3] = corrupted[3] + evict.size
                     Logger.info { "$IMAGE_USE_AFTER_EVICT_CORRUPTED_MARKER op=$op" }
                     return corrupted
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptImageRefWidthForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_REF_WIDTH_PROPERTY)) return this
+            if (!imageRefWidthCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DRAW_IMAGE_REF && argsStart + 10 < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + 10] = stream[argsStart + 10] + 1
+                        Logger.info { "$IMAGE_REF_WIDTH_CORRUPTED_MARKER op=$op" }
+                    }
                 }
                 offset = recordEnd
             }
