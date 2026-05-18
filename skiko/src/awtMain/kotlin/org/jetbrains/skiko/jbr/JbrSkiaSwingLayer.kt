@@ -300,6 +300,7 @@ class JbrSkiaSwingLayer(
                 .corruptRuntimeEffectColorFilterUniformSchemaMaxNameLengthForTestingIfRequested()
                 .corruptRuntimeEffectColorFilterChildNameForTestingIfRequested()
                 .corruptRuntimeEffectColorFilterChildSchemaNameLengthForTestingIfRequested()
+                .corruptRuntimeEffectColorFilterChildSchemaMaxNameLengthForTestingIfRequested()
                 .corruptRuntimeEffectColorFilterChildIndexForTestingIfRequested()
                 .corruptRuntimeEffectColorFilterNegativeChildIndexForTestingIfRequested()
                 .corruptRuntimeEffectShaderSkslLengthForTestingIfRequested()
@@ -319,6 +320,7 @@ class JbrSkiaSwingLayer(
                 .corruptRuntimeEffectShaderUniformSchemaMaxNameLengthForTestingIfRequested()
                 .corruptRuntimeEffectShaderChildNameForTestingIfRequested()
                 .corruptRuntimeEffectShaderChildSchemaNameLengthForTestingIfRequested()
+                .corruptRuntimeEffectShaderChildSchemaMaxNameLengthForTestingIfRequested()
                 .corruptRuntimeEffectShaderChildIndexForTestingIfRequested()
                 .corruptRuntimeEffectShaderNegativeChildIndexForTestingIfRequested()
                 .corruptRuntimeEffectShaderSourceHashForTestingIfRequested()
@@ -734,6 +736,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptRuntimeEffectColorFilterChildNameForTesting"
         const val CORRUPT_RUNTIME_EFFECT_COLOR_FILTER_CHILD_SCHEMA_NAME_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptRuntimeEffectColorFilterChildSchemaNameLengthForTesting"
+        const val CORRUPT_RUNTIME_EFFECT_COLOR_FILTER_CHILD_SCHEMA_MAX_NAME_LENGTH_PROPERTY =
+            "skiko.jbr.interop.corruptRuntimeEffectColorFilterChildSchemaMaxNameLengthForTesting"
         const val CORRUPT_RUNTIME_EFFECT_COLOR_FILTER_CHILD_INDEX_PROPERTY =
             "skiko.jbr.interop.corruptRuntimeEffectColorFilterChildIndexForTesting"
         const val CORRUPT_RUNTIME_EFFECT_COLOR_FILTER_NEGATIVE_CHILD_INDEX_PROPERTY =
@@ -772,6 +776,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptRuntimeEffectShaderChildNameForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SHADER_CHILD_SCHEMA_NAME_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptRuntimeEffectShaderChildSchemaNameLengthForTesting"
+        const val CORRUPT_RUNTIME_EFFECT_SHADER_CHILD_SCHEMA_MAX_NAME_LENGTH_PROPERTY =
+            "skiko.jbr.interop.corruptRuntimeEffectShaderChildSchemaMaxNameLengthForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SHADER_CHILD_INDEX_PROPERTY =
             "skiko.jbr.interop.corruptRuntimeEffectShaderChildIndexForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SHADER_NEGATIVE_CHILD_INDEX_PROPERTY =
@@ -1085,6 +1091,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_COLOR_FILTER_CHILD_NAME_CORRUPTED"
         private const val RUNTIME_EFFECT_COLOR_FILTER_CHILD_SCHEMA_NAME_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_COLOR_FILTER_CHILD_SCHEMA_NAME_LENGTH_CORRUPTED"
+        private const val RUNTIME_EFFECT_COLOR_FILTER_CHILD_SCHEMA_MAX_NAME_LENGTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_COLOR_FILTER_CHILD_SCHEMA_MAX_NAME_LENGTH_CORRUPTED"
         private const val RUNTIME_EFFECT_COLOR_FILTER_CHILD_INDEX_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_COLOR_FILTER_CHILD_INDEX_CORRUPTED"
         private const val RUNTIME_EFFECT_COLOR_FILTER_NEGATIVE_CHILD_INDEX_CORRUPTED_MARKER =
@@ -1123,6 +1131,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SHADER_CHILD_NAME_CORRUPTED"
         private const val RUNTIME_EFFECT_SHADER_CHILD_SCHEMA_NAME_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SHADER_CHILD_SCHEMA_NAME_LENGTH_CORRUPTED"
+        private const val RUNTIME_EFFECT_SHADER_CHILD_SCHEMA_MAX_NAME_LENGTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SHADER_CHILD_SCHEMA_MAX_NAME_LENGTH_CORRUPTED"
         private const val RUNTIME_EFFECT_SHADER_CHILD_INDEX_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SHADER_CHILD_INDEX_CORRUPTED"
         private const val RUNTIME_EFFECT_SHADER_NEGATIVE_CHILD_INDEX_CORRUPTED_MARKER =
@@ -1481,6 +1491,8 @@ class JbrSkiaSwingLayer(
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectColorFilterChildSchemaNameLengthCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
+        private val runtimeEffectColorFilterChildSchemaMaxNameLengthCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectColorFilterChildIndexCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectColorFilterNegativeChildIndexCorruptedForTesting =
@@ -1518,6 +1530,8 @@ class JbrSkiaSwingLayer(
         private val runtimeEffectShaderChildNameCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectShaderChildSchemaNameLengthCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val runtimeEffectShaderChildSchemaMaxNameLengthCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectShaderChildIndexCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
@@ -5608,6 +5622,45 @@ class JbrSkiaSwingLayer(
             return this
         }
 
+        private fun IntArray.corruptRuntimeEffectColorFilterChildSchemaMaxNameLengthForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_RUNTIME_EFFECT_COLOR_FILTER_CHILD_SCHEMA_MAX_NAME_LENGTH_PROPERTY)) {
+                return this
+            }
+            if (!runtimeEffectColorFilterChildSchemaMaxNameLengthCorruptedForTesting.compareAndSet(false, true)) {
+                return this
+            }
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 5 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val payloadStart = argsStart + 5
+                    val payloadEnd = payloadStart + payloadIntCount
+                    if (descriptorType == COMMAND_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER &&
+                        payloadIntCount >= 7 &&
+                        payloadEnd <= recordEnd
+                    ) {
+                        corruptRuntimeEffectDescriptorChildSchemaNameLength(payloadStart, payloadEnd, 65)?.let {
+                            return it.also {
+                                Logger.info {
+                                    RUNTIME_EFFECT_COLOR_FILTER_CHILD_SCHEMA_MAX_NAME_LENGTH_CORRUPTED_MARKER
+                                }
+                            }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
         private fun IntArray.corruptRuntimeEffectColorFilterNegativeChildIndexForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_RUNTIME_EFFECT_COLOR_FILTER_NEGATIVE_CHILD_INDEX_PROPERTY)) {
                 return this
@@ -6218,6 +6271,43 @@ class JbrSkiaSwingLayer(
                         corruptRuntimeEffectDescriptorChildSchemaNameLength(payloadStart, payloadEnd, 0)?.let {
                             return it.also {
                                 Logger.info { RUNTIME_EFFECT_SHADER_CHILD_SCHEMA_NAME_LENGTH_CORRUPTED_MARKER }
+                            }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptRuntimeEffectShaderChildSchemaMaxNameLengthForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_RUNTIME_EFFECT_SHADER_CHILD_SCHEMA_MAX_NAME_LENGTH_PROPERTY)) {
+                return this
+            }
+            if (!runtimeEffectShaderChildSchemaMaxNameLengthCorruptedForTesting.compareAndSet(false, true)) {
+                return this
+            }
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 5 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val payloadStart = argsStart + 5
+                    val payloadEnd = payloadStart + payloadIntCount
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT &&
+                        payloadIntCount >= 7 &&
+                        payloadEnd <= recordEnd
+                    ) {
+                        corruptRuntimeEffectDescriptorChildSchemaNameLength(payloadStart, payloadEnd, 65)?.let {
+                            return it.also {
+                                Logger.info { RUNTIME_EFFECT_SHADER_CHILD_SCHEMA_MAX_NAME_LENGTH_CORRUPTED_MARKER }
                             }
                         }
                     }
