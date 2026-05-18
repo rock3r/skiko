@@ -588,6 +588,14 @@ class JbrSkiaSwingLayer(
         const val CORRUPT_IMAGE_USE_PROPERTY = "skiko.jbr.interop.corruptImageUseForTesting"
         const val CORRUPT_IMAGE_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptImageUseAfterEvictForTesting"
+        const val CORRUPT_IMAGE_COLOR_FILTER_USE_PROPERTY =
+            "skiko.jbr.interop.corruptImageColorFilterUseForTesting"
+        const val CORRUPT_IMAGE_COLOR_FILTER_USE_AFTER_EVICT_PROPERTY =
+            "skiko.jbr.interop.corruptImageColorFilterUseAfterEvictForTesting"
+        const val CORRUPT_IMAGE_COLOR_FILTER_REF_USE_PROPERTY =
+            "skiko.jbr.interop.corruptImageColorFilterRefUseForTesting"
+        const val CORRUPT_IMAGE_COLOR_FILTER_REF_USE_AFTER_EVICT_PROPERTY =
+            "skiko.jbr.interop.corruptImageColorFilterRefUseAfterEvictForTesting"
         const val CORRUPT_EFFECT_CHILD_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptEffectChildUseAfterEvictForTesting"
         const val CORRUPT_EFFECT_CHILD_MISSING_PROPERTY =
@@ -1225,9 +1233,11 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_STROKE_ROUND_RECT_RADIAL_GRADIENT = 38
         private const val COMMAND_STROKE_RECT_SWEEP_GRADIENT = 39
         private const val COMMAND_STROKE_ROUND_RECT_SWEEP_GRADIENT = 40
+        private const val COMMAND_DRAW_IMAGE_REF_COLOR_FILTER = 45
         private const val COMMAND_FILL_RECT_COLOR_FILTER_REF = 47
         private const val COMMAND_EVICT_COLOR_FILTER_HANDLE = 48
         private const val COMMAND_DEFINE_EFFECT_DESCRIPTOR = 49
+        private const val COMMAND_DRAW_IMAGE_REF_COLOR_FILTER_REF = 53
         private const val COMMAND_SAVE_LAYER_IMAGE_FILTER_REF = 55
         private const val COMMAND_DEFINE_SHADER_DESCRIPTOR = 56
         private const val COMMAND_EVICT_SHADER_HANDLE = 57
@@ -3082,8 +3092,28 @@ class JbrSkiaSwingLayer(
             return this
         }
 
+        private fun imageUseTargetOpForTesting(): Int? =
+            when {
+                java.lang.Boolean.getBoolean(CORRUPT_IMAGE_USE_PROPERTY) -> COMMAND_DRAW_IMAGE_REF
+                java.lang.Boolean.getBoolean(CORRUPT_IMAGE_COLOR_FILTER_USE_PROPERTY) ->
+                    COMMAND_DRAW_IMAGE_REF_COLOR_FILTER
+                java.lang.Boolean.getBoolean(CORRUPT_IMAGE_COLOR_FILTER_REF_USE_PROPERTY) ->
+                    COMMAND_DRAW_IMAGE_REF_COLOR_FILTER_REF
+                else -> null
+            }
+
+        private fun imageUseAfterEvictTargetOpForTesting(): Int? =
+            when {
+                java.lang.Boolean.getBoolean(CORRUPT_IMAGE_USE_AFTER_EVICT_PROPERTY) -> COMMAND_DRAW_IMAGE_REF
+                java.lang.Boolean.getBoolean(CORRUPT_IMAGE_COLOR_FILTER_USE_AFTER_EVICT_PROPERTY) ->
+                    COMMAND_DRAW_IMAGE_REF_COLOR_FILTER
+                java.lang.Boolean.getBoolean(CORRUPT_IMAGE_COLOR_FILTER_REF_USE_AFTER_EVICT_PROPERTY) ->
+                    COMMAND_DRAW_IMAGE_REF_COLOR_FILTER_REF
+                else -> null
+            }
+
         private fun IntArray.corruptImageUseForTestingIfRequested(): IntArray {
-            if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_USE_PROPERTY)) return this
+            val targetOp = imageUseTargetOpForTesting() ?: return this
             if (!imageUseCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
@@ -3094,7 +3124,7 @@ class JbrSkiaSwingLayer(
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
-                if (op == COMMAND_DRAW_IMAGE_REF && argsStart + 9 < recordEnd) {
+                if (op == targetOp && argsStart + 9 < recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart + 8] = Int.MAX_VALUE
                         stream[argsStart + 9] = Int.MAX_VALUE
@@ -3107,7 +3137,7 @@ class JbrSkiaSwingLayer(
         }
 
         private fun IntArray.corruptImageUseAfterEvictForTestingIfRequested(): IntArray {
-            if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_USE_AFTER_EVICT_PROPERTY)) return this
+            val targetOp = imageUseAfterEvictTargetOpForTesting() ?: return this
             if (!imageUseAfterEvictCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
@@ -3118,7 +3148,7 @@ class JbrSkiaSwingLayer(
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
-                if (op == COMMAND_DRAW_IMAGE_REF && argsStart + 9 < recordEnd) {
+                if (op == targetOp && argsStart + 9 < recordEnd) {
                     val evict = intArrayOf(
                         COMMAND_EVICT_IMAGE_CACHE_KEY,
                         5 * Int.SIZE_BYTES,
