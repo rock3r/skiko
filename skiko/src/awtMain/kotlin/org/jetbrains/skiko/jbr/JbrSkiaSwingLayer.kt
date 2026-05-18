@@ -232,6 +232,7 @@ class JbrSkiaSwingLayer(
                 .corruptImageUseForTestingIfRequested()
                 .corruptImageUseAfterEvictForTestingIfRequested()
                 .corruptImageRefWidthForTestingIfRequested()
+                .corruptImageRefHeightForTestingIfRequested()
                 .corruptShaderChildUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildMissingForTestingIfRequested()
@@ -599,6 +600,16 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptImageColorFilterRefUseAfterEvictForTesting"
         const val CORRUPT_IMAGE_REF_WIDTH_PROPERTY =
             "skiko.jbr.interop.corruptImageRefWidthForTesting"
+        const val CORRUPT_IMAGE_REF_HEIGHT_PROPERTY =
+            "skiko.jbr.interop.corruptImageRefHeightForTesting"
+        const val CORRUPT_IMAGE_COLOR_FILTER_REF_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptImageColorFilterRefWidthForTesting"
+        const val CORRUPT_IMAGE_COLOR_FILTER_REF_HEIGHT_PROPERTY =
+            "skiko.jbr.interop.corruptImageColorFilterRefHeightForTesting"
+        const val CORRUPT_IMAGE_COLOR_FILTER_DESCRIPTOR_REF_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptImageColorFilterDescriptorRefWidthForTesting"
+        const val CORRUPT_IMAGE_COLOR_FILTER_DESCRIPTOR_REF_HEIGHT_PROPERTY =
+            "skiko.jbr.interop.corruptImageColorFilterDescriptorRefHeightForTesting"
         const val CORRUPT_EFFECT_CHILD_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptEffectChildUseAfterEvictForTesting"
         const val CORRUPT_EFFECT_CHILD_MISSING_PROPERTY =
@@ -983,6 +994,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_IMAGE_USE_AFTER_EVICT_CORRUPTED"
         private const val IMAGE_REF_WIDTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_REF_WIDTH_CORRUPTED"
+        private const val IMAGE_REF_HEIGHT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_IMAGE_REF_HEIGHT_CORRUPTED"
         private const val SHADER_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SHADER_CHILD_USE_AFTER_EVICT_CORRUPTED"
         private const val EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
@@ -1424,6 +1437,7 @@ class JbrSkiaSwingLayer(
         private val imageUseCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageRefWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageRefHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildMissingCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectDescriptorTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3118,6 +3132,26 @@ class JbrSkiaSwingLayer(
                 else -> null
             }
 
+        private fun imageRefWidthTargetOpForTesting(): Int? =
+            when {
+                java.lang.Boolean.getBoolean(CORRUPT_IMAGE_REF_WIDTH_PROPERTY) -> COMMAND_DRAW_IMAGE_REF
+                java.lang.Boolean.getBoolean(CORRUPT_IMAGE_COLOR_FILTER_REF_WIDTH_PROPERTY) ->
+                    COMMAND_DRAW_IMAGE_REF_COLOR_FILTER
+                java.lang.Boolean.getBoolean(CORRUPT_IMAGE_COLOR_FILTER_DESCRIPTOR_REF_WIDTH_PROPERTY) ->
+                    COMMAND_DRAW_IMAGE_REF_COLOR_FILTER_REF
+                else -> null
+            }
+
+        private fun imageRefHeightTargetOpForTesting(): Int? =
+            when {
+                java.lang.Boolean.getBoolean(CORRUPT_IMAGE_REF_HEIGHT_PROPERTY) -> COMMAND_DRAW_IMAGE_REF
+                java.lang.Boolean.getBoolean(CORRUPT_IMAGE_COLOR_FILTER_REF_HEIGHT_PROPERTY) ->
+                    COMMAND_DRAW_IMAGE_REF_COLOR_FILTER
+                java.lang.Boolean.getBoolean(CORRUPT_IMAGE_COLOR_FILTER_DESCRIPTOR_REF_HEIGHT_PROPERTY) ->
+                    COMMAND_DRAW_IMAGE_REF_COLOR_FILTER_REF
+                else -> null
+            }
+
         private fun IntArray.corruptImageUseForTestingIfRequested(): IntArray {
             val targetOp = imageUseTargetOpForTesting() ?: return this
             if (!imageUseCorruptedForTesting.compareAndSet(false, true)) return this
@@ -3173,7 +3207,7 @@ class JbrSkiaSwingLayer(
         }
 
         private fun IntArray.corruptImageRefWidthForTestingIfRequested(): IntArray {
-            if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_REF_WIDTH_PROPERTY)) return this
+            val targetOp = imageRefWidthTargetOpForTesting() ?: return this
             if (!imageRefWidthCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
@@ -3184,10 +3218,33 @@ class JbrSkiaSwingLayer(
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
-                if (op == COMMAND_DRAW_IMAGE_REF && argsStart + 10 < recordEnd) {
+                if (op == targetOp && argsStart + 10 < recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart + 10] = stream[argsStart + 10] + 1
                         Logger.info { "$IMAGE_REF_WIDTH_CORRUPTED_MARKER op=$op" }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptImageRefHeightForTestingIfRequested(): IntArray {
+            val targetOp = imageRefHeightTargetOpForTesting() ?: return this
+            if (!imageRefHeightCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == targetOp && argsStart + 11 < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + 11] = stream[argsStart + 11] + 1
+                        Logger.info { "$IMAGE_REF_HEIGHT_CORRUPTED_MARKER op=$op" }
                     }
                 }
                 offset = recordEnd
