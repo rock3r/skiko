@@ -698,8 +698,12 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptPathEffectHandleTypeForTesting"
         const val CORRUPT_SHADER_HANDLE_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptShaderHandleTypeForTesting"
+        const val CORRUPT_COMPOSITE_SHADER_SRC_HANDLE_TYPE_PROPERTY =
+            "skiko.jbr.interop.corruptCompositeShaderSrcHandleTypeForTesting"
         const val CORRUPT_SHADER_CHILD_MISSING_PROPERTY =
             "skiko.jbr.interop.corruptShaderChildMissingForTesting"
+        const val CORRUPT_COMPOSITE_SHADER_SRC_CHILD_MISSING_PROPERTY =
+            "skiko.jbr.interop.corruptCompositeShaderSrcChildMissingForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SHADER_SOURCE_HASH_PROPERTY =
             "skiko.jbr.interop.corruptRuntimeEffectShaderSourceHashForTesting"
         const val CORRUPT_RUNTIME_EFFECT_COLOR_FILTER_SOURCE_HASH_PROPERTY =
@@ -4646,7 +4650,8 @@ class JbrSkiaSwingLayer(
         }
 
         private fun IntArray.corruptShaderHandleTypeForTestingIfRequested(): IntArray {
-            if (!java.lang.Boolean.getBoolean(CORRUPT_SHADER_HANDLE_TYPE_PROPERTY)) return this
+            val corruptCompositeSrc = java.lang.Boolean.getBoolean(CORRUPT_COMPOSITE_SHADER_SRC_HANDLE_TYPE_PROPERTY)
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SHADER_HANDLE_TYPE_PROPERTY) && !corruptCompositeSrc) return this
             if (!shaderHandleTypeCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
@@ -4679,9 +4684,11 @@ class JbrSkiaSwingLayer(
                         }
                     } else if (descriptorType == COMMAND_SHADER_DESCRIPTOR_COMPOSITE && payloadIntCount == 5) {
                         return copyOf().also { stream ->
-                            stream[argsStart + 5] = colorFilterHandle.first
-                            stream[argsStart + 6] = colorFilterHandle.second
-                            Logger.info { "$SHADER_HANDLE_TYPE_CORRUPTED_MARKER target=compositeShaderDstChild" }
+                            val childHandleOffset = if (corruptCompositeSrc) argsStart + 7 else argsStart + 5
+                            val target = if (corruptCompositeSrc) "compositeShaderSrcChild" else "compositeShaderDstChild"
+                            stream[childHandleOffset] = colorFilterHandle.first
+                            stream[childHandleOffset + 1] = colorFilterHandle.second
+                            Logger.info { "$SHADER_HANDLE_TYPE_CORRUPTED_MARKER target=$target" }
                         }
                     } else if (descriptorType == COMMAND_SHADER_DESCRIPTOR_TRANSFORM && payloadIntCount == 11) {
                         return copyOf().also { stream ->
@@ -4703,7 +4710,8 @@ class JbrSkiaSwingLayer(
         }
 
         private fun IntArray.corruptShaderChildMissingForTestingIfRequested(): IntArray {
-            if (!java.lang.Boolean.getBoolean(CORRUPT_SHADER_CHILD_MISSING_PROPERTY)) return this
+            val corruptCompositeSrc = java.lang.Boolean.getBoolean(CORRUPT_COMPOSITE_SHADER_SRC_CHILD_MISSING_PROPERTY)
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SHADER_CHILD_MISSING_PROPERTY) && !corruptCompositeSrc) return this
             if (!shaderChildMissingCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
@@ -4725,7 +4733,7 @@ class JbrSkiaSwingLayer(
                             if (childCount <= 0 || payloadStart + 8 > recordEnd) null else "runtimeEffectShaderChild"
                         }
                         descriptorType == COMMAND_SHADER_DESCRIPTOR_COMPOSITE && payloadIntCount == 5 ->
-                            "compositeShaderDstChild"
+                            if (corruptCompositeSrc) "compositeShaderSrcChild" else "compositeShaderDstChild"
                         descriptorType == COMMAND_SHADER_DESCRIPTOR_COLOR_FILTER && payloadIntCount == 4 ->
                             "shaderColorFilterShaderChild"
                         descriptorType == COMMAND_SHADER_DESCRIPTOR_TRANSFORM && payloadIntCount == 11 ->
@@ -4735,7 +4743,11 @@ class JbrSkiaSwingLayer(
                     if (target != null) {
                         return copyOf().also { stream ->
                             val childHandleOffset =
-                                if (descriptorType == COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT) argsStart + 12 else argsStart + 5
+                                when {
+                                    descriptorType == COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT -> argsStart + 12
+                                    descriptorType == COMMAND_SHADER_DESCRIPTOR_COMPOSITE && corruptCompositeSrc -> argsStart + 7
+                                    else -> argsStart + 5
+                                }
                             stream[childHandleOffset] = 0x7f00_0001
                             stream[childHandleOffset + 1] = 0x7f00_0002
                             Logger.info { "$SHADER_CHILD_MISSING_CORRUPTED_MARKER target=$target" }
