@@ -305,6 +305,7 @@ class JbrSkiaSwingLayer(
                 .corruptRuntimeEffectColorFilterChildSchemaNameRangeForTestingIfRequested()
                 .corruptRuntimeEffectColorFilterChildIndexForTestingIfRequested()
                 .corruptRuntimeEffectColorFilterNegativeChildIndexForTestingIfRequested()
+                .corruptRuntimeEffectColorFilterDuplicateChildIndexForTestingIfRequested()
                 .corruptRuntimeEffectShaderSkslLengthForTestingIfRequested()
                 .corruptRuntimeEffectShaderUniformFloatCountForTestingIfRequested()
                 .corruptRuntimeEffectShaderNegativeUniformFloatCountForTestingIfRequested()
@@ -327,6 +328,7 @@ class JbrSkiaSwingLayer(
                 .corruptRuntimeEffectShaderChildSchemaNameRangeForTestingIfRequested()
                 .corruptRuntimeEffectShaderChildIndexForTestingIfRequested()
                 .corruptRuntimeEffectShaderNegativeChildIndexForTestingIfRequested()
+                .corruptRuntimeEffectShaderDuplicateChildIndexForTestingIfRequested()
                 .corruptRuntimeEffectShaderSourceHashForTestingIfRequested()
                 .corruptRuntimeEffectColorFilterSourceHashForTestingIfRequested()
                 .corruptRuntimeEffectSourceForTestingIfRequested()
@@ -750,6 +752,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptRuntimeEffectColorFilterChildIndexForTesting"
         const val CORRUPT_RUNTIME_EFFECT_COLOR_FILTER_NEGATIVE_CHILD_INDEX_PROPERTY =
             "skiko.jbr.interop.corruptRuntimeEffectColorFilterNegativeChildIndexForTesting"
+        const val CORRUPT_RUNTIME_EFFECT_COLOR_FILTER_DUPLICATE_CHILD_INDEX_PROPERTY =
+            "skiko.jbr.interop.corruptRuntimeEffectColorFilterDuplicateChildIndexForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SHADER_SKSL_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptRuntimeEffectShaderSkslLengthForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SHADER_UNIFORM_FLOAT_COUNT_PROPERTY =
@@ -794,6 +798,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptRuntimeEffectShaderChildIndexForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SHADER_NEGATIVE_CHILD_INDEX_PROPERTY =
             "skiko.jbr.interop.corruptRuntimeEffectShaderNegativeChildIndexForTesting"
+        const val CORRUPT_RUNTIME_EFFECT_SHADER_DUPLICATE_CHILD_INDEX_PROPERTY =
+            "skiko.jbr.interop.corruptRuntimeEffectShaderDuplicateChildIndexForTesting"
         const val CORRUPT_RUNTIME_EFFECT_SOURCE_PROPERTY = "skiko.jbr.interop.corruptRuntimeEffectSourceForTesting"
         const val CORRUPT_RUNTIME_EFFECT_CHILD_TYPE_PROPERTY = "skiko.jbr.interop.corruptRuntimeEffectChildTypeForTesting"
         const val FORCE_TINY_FULL_SCENE_ONCE_PROPERTY = "skiko.jbr.interop.forceTinyFullSceneOnceForTesting"
@@ -1113,6 +1119,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_COLOR_FILTER_CHILD_INDEX_CORRUPTED"
         private const val RUNTIME_EFFECT_COLOR_FILTER_NEGATIVE_CHILD_INDEX_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_COLOR_FILTER_NEGATIVE_CHILD_INDEX_CORRUPTED"
+        private const val RUNTIME_EFFECT_COLOR_FILTER_DUPLICATE_CHILD_INDEX_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_COLOR_FILTER_DUPLICATE_CHILD_INDEX_CORRUPTED"
         private const val RUNTIME_EFFECT_SHADER_SKSL_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SHADER_SKSL_LENGTH_CORRUPTED"
         private const val RUNTIME_EFFECT_SHADER_UNIFORM_FLOAT_COUNT_CORRUPTED_MARKER =
@@ -1157,6 +1165,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SHADER_CHILD_INDEX_CORRUPTED"
         private const val RUNTIME_EFFECT_SHADER_NEGATIVE_CHILD_INDEX_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SHADER_NEGATIVE_CHILD_INDEX_CORRUPTED"
+        private const val RUNTIME_EFFECT_SHADER_DUPLICATE_CHILD_INDEX_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SHADER_DUPLICATE_CHILD_INDEX_CORRUPTED"
         private const val RUNTIME_EFFECT_SOURCE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_RUNTIME_EFFECT_SOURCE_CORRUPTED"
         private const val RUNTIME_EFFECT_CHILD_TYPE_CORRUPTED_MARKER =
@@ -1521,6 +1531,8 @@ class JbrSkiaSwingLayer(
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectColorFilterNegativeChildIndexCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
+        private val runtimeEffectColorFilterDuplicateChildIndexCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectShaderSkslLengthCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectShaderUniformFloatCountCorruptedForTesting =
@@ -1564,6 +1576,8 @@ class JbrSkiaSwingLayer(
         private val runtimeEffectShaderChildIndexCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectShaderNegativeChildIndexCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val runtimeEffectShaderDuplicateChildIndexCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectSourceCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectChildTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -5800,6 +5814,43 @@ class JbrSkiaSwingLayer(
             return this
         }
 
+        private fun IntArray.corruptRuntimeEffectColorFilterDuplicateChildIndexForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_RUNTIME_EFFECT_COLOR_FILTER_DUPLICATE_CHILD_INDEX_PROPERTY)) {
+                return this
+            }
+            if (!runtimeEffectColorFilterDuplicateChildIndexCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 5 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val payloadStart = argsStart + 5
+                    val payloadEnd = payloadStart + payloadIntCount
+                    if (descriptorType == COMMAND_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER &&
+                        payloadIntCount >= 7 &&
+                        payloadEnd <= recordEnd
+                    ) {
+                        corruptRuntimeEffectDescriptorDuplicateChildIndex(payloadStart, payloadEnd)?.let {
+                            return it.also {
+                                Logger.info {
+                                    RUNTIME_EFFECT_COLOR_FILTER_DUPLICATE_CHILD_INDEX_CORRUPTED_MARKER
+                                }
+                            }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
         private fun IntArray.corruptRuntimeEffectShaderUniformFloatCountForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_RUNTIME_EFFECT_SHADER_UNIFORM_FLOAT_COUNT_PROPERTY)) return this
             if (!runtimeEffectShaderUniformFloatCountCorruptedForTesting.compareAndSet(false, true)) return this
@@ -6524,6 +6575,39 @@ class JbrSkiaSwingLayer(
             return this
         }
 
+        private fun IntArray.corruptRuntimeEffectShaderDuplicateChildIndexForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_RUNTIME_EFFECT_SHADER_DUPLICATE_CHILD_INDEX_PROPERTY)) return this
+            if (!runtimeEffectShaderDuplicateChildIndexCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 5 < recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val payloadStart = argsStart + 5
+                    val payloadEnd = payloadStart + payloadIntCount
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT &&
+                        payloadIntCount >= 7 &&
+                        payloadEnd <= recordEnd
+                    ) {
+                        corruptRuntimeEffectDescriptorDuplicateChildIndex(payloadStart, payloadEnd)?.let {
+                            return it.also {
+                                Logger.info { RUNTIME_EFFECT_SHADER_DUPLICATE_CHILD_INDEX_CORRUPTED_MARKER }
+                            }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
         private fun IntArray.corruptRuntimeEffectDescriptorChildName(
             payloadStart: Int,
             payloadEnd: Int,
@@ -6653,6 +6737,32 @@ class JbrSkiaSwingLayer(
             if (schemaOffset + 2 > payloadEnd) return null
             return copyOf().also { stream ->
                 stream[schemaOffset] = referencedChildIndex ?: childCount
+            }
+        }
+
+        private fun IntArray.corruptRuntimeEffectDescriptorDuplicateChildIndex(
+            payloadStart: Int,
+            payloadEnd: Int,
+        ): IntArray? {
+            val childCount = this[payloadStart + 2]
+            val namedUniformCount = this[payloadStart + 3]
+            val namedChildCount = this[payloadStart + 4]
+            if (childCount <= 1 || namedUniformCount < 0 || namedChildCount <= 1) return null
+            var schemaOffset = payloadStart + 7 + childCount * 2
+            repeat(namedUniformCount) {
+                if (schemaOffset + 3 > payloadEnd) return null
+                val uniformNameLength = this[schemaOffset + 2]
+                if (uniformNameLength < 0) return null
+                schemaOffset += 3 + uniformNameLength
+            }
+            if (schemaOffset + 2 > payloadEnd) return null
+            val firstChildIndex = this[schemaOffset]
+            val firstNameLength = this[schemaOffset + 1]
+            if (firstChildIndex < 0 || firstChildIndex >= childCount || firstNameLength < 0) return null
+            val secondSchemaOffset = schemaOffset + 2 + firstNameLength
+            if (secondSchemaOffset + 2 > payloadEnd) return null
+            return copyOf().also { stream ->
+                stream[secondSchemaOffset] = firstChildIndex
             }
         }
 
