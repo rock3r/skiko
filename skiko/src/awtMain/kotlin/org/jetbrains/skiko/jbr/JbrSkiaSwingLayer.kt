@@ -233,6 +233,7 @@ class JbrSkiaSwingLayer(
                 .corruptImageUseAfterEvictForTestingIfRequested()
                 .corruptImageRefWidthForTestingIfRequested()
                 .corruptImageRefHeightForTestingIfRequested()
+                .corruptImageDefinePixelCountForTestingIfRequested()
                 .corruptShaderChildUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildMissingForTestingIfRequested()
@@ -610,6 +611,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptImageColorFilterDescriptorRefWidthForTesting"
         const val CORRUPT_IMAGE_COLOR_FILTER_DESCRIPTOR_REF_HEIGHT_PROPERTY =
             "skiko.jbr.interop.corruptImageColorFilterDescriptorRefHeightForTesting"
+        const val CORRUPT_IMAGE_DEFINE_PIXEL_COUNT_PROPERTY =
+            "skiko.jbr.interop.corruptImageDefinePixelCountForTesting"
         const val CORRUPT_EFFECT_CHILD_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptEffectChildUseAfterEvictForTesting"
         const val CORRUPT_EFFECT_CHILD_MISSING_PROPERTY =
@@ -996,6 +999,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_IMAGE_REF_WIDTH_CORRUPTED"
         private const val IMAGE_REF_HEIGHT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_REF_HEIGHT_CORRUPTED"
+        private const val IMAGE_DEFINE_PIXEL_COUNT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_IMAGE_DEFINE_PIXEL_COUNT_CORRUPTED"
         private const val SHADER_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SHADER_CHILD_USE_AFTER_EVICT_CORRUPTED"
         private const val EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
@@ -1227,6 +1232,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_STROKE_LINE = 3
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
+        private const val COMMAND_DEFINE_IMAGE_ARGB = 15
         private const val COMMAND_DRAW_IMAGE_REF = 16
         private const val COMMAND_DRAW_TEXT_UTF16 = 17
         private const val COMMAND_DRAW_PARAGRAPH_UTF16 = 19
@@ -1438,6 +1444,7 @@ class JbrSkiaSwingLayer(
         private val imageUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageRefWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageRefHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageDefinePixelCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildMissingCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectDescriptorTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3245,6 +3252,29 @@ class JbrSkiaSwingLayer(
                     return copyOf().also { stream ->
                         stream[argsStart + 11] = stream[argsStart + 11] + 1
                         Logger.info { "$IMAGE_REF_HEIGHT_CORRUPTED_MARKER op=$op" }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptImageDefinePixelCountForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_DEFINE_PIXEL_COUNT_PROPERTY)) return this
+            if (!imageDefinePixelCountCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_IMAGE_ARGB && argsStart + 4 < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + 4] = stream[argsStart + 4] + 1
+                        Logger.info { "$IMAGE_DEFINE_PIXEL_COUNT_CORRUPTED_MARKER op=$op" }
                     }
                 }
                 offset = recordEnd
