@@ -229,6 +229,8 @@ class JbrSkiaSwingLayer(
                 .corruptSweepGradientPathVerbForTestingIfRequested()
                 .corruptDescriptorUseForTestingIfRequested()
                 .corruptDescriptorUseAfterEvictForTestingIfRequested()
+                .corruptImageUseForTestingIfRequested()
+                .corruptImageUseAfterEvictForTestingIfRequested()
                 .corruptShaderChildUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildMissingForTestingIfRequested()
@@ -583,6 +585,9 @@ class JbrSkiaSwingLayer(
         const val CORRUPT_DESCRIPTOR_USE_PROPERTY = "skiko.jbr.interop.corruptDescriptorUseForTesting"
         const val CORRUPT_DESCRIPTOR_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptDescriptorUseAfterEvictForTesting"
+        const val CORRUPT_IMAGE_USE_PROPERTY = "skiko.jbr.interop.corruptImageUseForTesting"
+        const val CORRUPT_IMAGE_USE_AFTER_EVICT_PROPERTY =
+            "skiko.jbr.interop.corruptImageUseAfterEvictForTesting"
         const val CORRUPT_EFFECT_CHILD_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptEffectChildUseAfterEvictForTesting"
         const val CORRUPT_EFFECT_CHILD_MISSING_PROPERTY =
@@ -962,6 +967,9 @@ class JbrSkiaSwingLayer(
         private const val DESCRIPTOR_USE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_CORRUPTED"
         private const val DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED"
+        private const val IMAGE_USE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_IMAGE_USE_CORRUPTED"
+        private const val IMAGE_USE_AFTER_EVICT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_IMAGE_USE_AFTER_EVICT_CORRUPTED"
         private const val SHADER_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SHADER_CHILD_USE_AFTER_EVICT_CORRUPTED"
         private const val EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
@@ -1193,6 +1201,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_STROKE_LINE = 3
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
+        private const val COMMAND_DRAW_IMAGE_REF = 16
         private const val COMMAND_DRAW_TEXT_UTF16 = 17
         private const val COMMAND_DRAW_PARAGRAPH_UTF16 = 19
         private const val COMMAND_CLIP_PATH = 20
@@ -1209,6 +1218,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_RECT_SWEEP_GRADIENT = 30
         private const val COMMAND_FILL_ROUND_RECT_SWEEP_GRADIENT = 31
         private const val COMMAND_FILL_PATH_SWEEP_GRADIENT = 32
+        private const val COMMAND_EVICT_IMAGE_CACHE_KEY = 33
         private const val COMMAND_STROKE_RECT_LINEAR_GRADIENT = 35
         private const val COMMAND_STROKE_ROUND_RECT_LINEAR_GRADIENT = 36
         private const val COMMAND_STROKE_RECT_RADIAL_GRADIENT = 37
@@ -1396,6 +1406,8 @@ class JbrSkiaSwingLayer(
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val descriptorUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageUseCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildMissingCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectDescriptorTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3063,6 +3075,60 @@ class JbrSkiaSwingLayer(
                     val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
                     corrupted[3] = corrupted[3] + evict.size
                     Logger.info { "$DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER op=$op" }
+                    return corrupted
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptImageUseForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_USE_PROPERTY)) return this
+            if (!imageUseCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DRAW_IMAGE_REF && argsStart + 9 < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + 8] = Int.MAX_VALUE
+                        stream[argsStart + 9] = Int.MAX_VALUE
+                        Logger.info { "$IMAGE_USE_CORRUPTED_MARKER op=$op" }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptImageUseAfterEvictForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_USE_AFTER_EVICT_PROPERTY)) return this
+            if (!imageUseAfterEvictCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DRAW_IMAGE_REF && argsStart + 9 < recordEnd) {
+                    val evict = intArrayOf(
+                        COMMAND_EVICT_IMAGE_CACHE_KEY,
+                        5 * Int.SIZE_BYTES,
+                        COMMAND_RECORD_FLAGS_NONE,
+                        this[argsStart + 8],
+                        this[argsStart + 9],
+                    )
+                    val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
+                    corrupted[3] = corrupted[3] + evict.size
+                    Logger.info { "$IMAGE_USE_AFTER_EVICT_CORRUPTED_MARKER op=$op" }
                     return corrupted
                 }
                 offset = recordEnd
