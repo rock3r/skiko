@@ -3048,10 +3048,16 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 9 <= recordEnd) {
                     val descriptorType = this[argsStart + 2]
                     val payloadIntCount = this[argsStart + 4]
-                    if ((descriptorType == COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER_WITH_INPUT ||
-                            descriptorType == COMMAND_EFFECT_DESCRIPTOR_CHAIN_PATH_EFFECT) &&
-                        payloadIntCount == 4
-                    ) {
+                    val target = when {
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER_WITH_INPUT &&
+                            payloadIntCount == 5 -> "blurImageFilterChild"
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER_WITH_INPUT &&
+                            payloadIntCount == 4 -> "offsetImageFilterChild"
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_CHAIN_PATH_EFFECT &&
+                            payloadIntCount == 4 -> "chainPathEffectChild"
+                        else -> null
+                    }
+                    if (target != null) {
                         val evict = intArrayOf(
                             COMMAND_EVICT_COLOR_FILTER_HANDLE,
                             5 * Int.SIZE_BYTES,
@@ -3059,11 +3065,6 @@ class JbrSkiaSwingLayer(
                             this[argsStart + 5],
                             this[argsStart + 6],
                         )
-                        val target = if (descriptorType == COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER_WITH_INPUT) {
-                            "offsetImageFilterChild"
-                        } else {
-                            "chainPathEffectChild"
-                        }
                         val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
                         corrupted[3] = corrupted[3] + evict.size
                         Logger.info { "$EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER target=$target" }
@@ -3099,6 +3100,8 @@ class JbrSkiaSwingLayer(
                         }
                         descriptorType == COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER_WITH_INPUT &&
                             payloadIntCount == 4 -> "offsetImageFilterChild"
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER_WITH_INPUT &&
+                            payloadIntCount == 5 -> "blurImageFilterChild"
                         descriptorType == COMMAND_EFFECT_DESCRIPTOR_CHAIN_PATH_EFFECT &&
                             payloadIntCount == 4 -> "chainPathEffectChild"
                         else -> null
