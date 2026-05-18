@@ -3118,26 +3118,51 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 9 <= recordEnd) {
                     val descriptorType = this[argsStart + 2]
                     val payloadIntCount = this[argsStart + 4]
-                    val target = when {
+                    val targetAndOffset = when {
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER && payloadIntCount >= 9 -> {
+                            val payloadStart = argsStart + 5
+                            val childCount = this[payloadStart + 2]
+                            if (childCount <= 0 || payloadStart + 8 > recordEnd) null else
+                                "runtimeEffectColorFilterChild" to argsStart + 12
+                        }
                         descriptorType == COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER_WITH_INPUT &&
-                            payloadIntCount == 5 -> "blurImageFilterChild"
+                            payloadIntCount == 5 -> "blurImageFilterChild" to argsStart + 5
                         descriptorType == COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER_WITH_INPUT &&
-                            payloadIntCount == 4 -> "offsetImageFilterChild"
+                            payloadIntCount == 4 -> "offsetImageFilterChild" to argsStart + 5
                         descriptorType == COMMAND_EFFECT_DESCRIPTOR_CHAIN_PATH_EFFECT &&
-                            payloadIntCount == 4 -> "chainPathEffectChild"
+                            payloadIntCount == 4 -> "chainPathEffectChild" to argsStart + 5
                         else -> null
                     }
-                    if (target != null) {
+                    if (targetAndOffset != null) {
+                        val (target, childHandleOffset) = targetAndOffset
                         val evict = intArrayOf(
                             COMMAND_EVICT_COLOR_FILTER_HANDLE,
                             5 * Int.SIZE_BYTES,
                             COMMAND_RECORD_FLAGS_NONE,
-                            this[argsStart + 5],
-                            this[argsStart + 6],
+                            this[childHandleOffset],
+                            this[childHandleOffset + 1],
                         )
                         val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
                         corrupted[3] = corrupted[3] + evict.size
                         Logger.info { "$EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER target=$target" }
+                        return corrupted
+                    }
+                } else if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 9 <= recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    if (descriptorType == COMMAND_SHADER_DESCRIPTOR_COLOR_FILTER && payloadIntCount == 4) {
+                        val evict = intArrayOf(
+                            COMMAND_EVICT_COLOR_FILTER_HANDLE,
+                            5 * Int.SIZE_BYTES,
+                            COMMAND_RECORD_FLAGS_NONE,
+                            this[argsStart + 7],
+                            this[argsStart + 8],
+                        )
+                        val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
+                        corrupted[3] = corrupted[3] + evict.size
+                        Logger.info {
+                            "$EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER target=shaderColorFilterEffectChild"
+                        }
                         return corrupted
                     }
                 }
