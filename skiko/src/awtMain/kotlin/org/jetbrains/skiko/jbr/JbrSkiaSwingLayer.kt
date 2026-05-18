@@ -4579,13 +4579,18 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 9 <= recordEnd) {
                     val descriptorType = this[argsStart + 2]
                     val payloadIntCount = this[argsStart + 4]
-                    if (descriptorType == COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER_WITH_INPUT &&
-                        payloadIntCount == 4
-                    ) {
+                    val target = when {
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_BLUR_IMAGE_FILTER_WITH_INPUT &&
+                            payloadIntCount == 5 -> "blurImageFilterChild"
+                        descriptorType == COMMAND_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER_WITH_INPUT &&
+                            payloadIntCount == 4 -> "offsetImageFilterChild"
+                        else -> null
+                    }
+                    if (target != null) {
                         return copyOf().also { stream ->
                             stream[argsStart + 5] = colorFilterHandle.first
                             stream[argsStart + 6] = colorFilterHandle.second
-                            Logger.info { "$IMAGE_FILTER_HANDLE_TYPE_CORRUPTED_MARKER target=offsetImageFilterChild" }
+                            Logger.info { "$IMAGE_FILTER_HANDLE_TYPE_CORRUPTED_MARKER target=$target" }
                         }
                     }
                 } else if (op == COMMAND_SAVE_LAYER_IMAGE_FILTER_REF && argsStart + 7 <= recordEnd) {
