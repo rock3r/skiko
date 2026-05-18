@@ -233,6 +233,7 @@ class JbrSkiaSwingLayer(
                 .corruptImageUseAfterEvictForTestingIfRequested()
                 .corruptImageRefWidthForTestingIfRequested()
                 .corruptImageRefHeightForTestingIfRequested()
+                .corruptImageRefAlphaForTestingIfRequested()
                 .corruptImageDefinePixelCountForTestingIfRequested()
                 .corruptShaderChildUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildUseAfterEvictForTestingIfRequested()
@@ -611,6 +612,12 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptImageColorFilterDescriptorRefWidthForTesting"
         const val CORRUPT_IMAGE_COLOR_FILTER_DESCRIPTOR_REF_HEIGHT_PROPERTY =
             "skiko.jbr.interop.corruptImageColorFilterDescriptorRefHeightForTesting"
+        const val CORRUPT_IMAGE_REF_ALPHA_PROPERTY =
+            "skiko.jbr.interop.corruptImageRefAlphaForTesting"
+        const val CORRUPT_IMAGE_COLOR_FILTER_REF_ALPHA_PROPERTY =
+            "skiko.jbr.interop.corruptImageColorFilterRefAlphaForTesting"
+        const val CORRUPT_IMAGE_COLOR_FILTER_DESCRIPTOR_REF_ALPHA_PROPERTY =
+            "skiko.jbr.interop.corruptImageColorFilterDescriptorRefAlphaForTesting"
         const val CORRUPT_IMAGE_DEFINE_PIXEL_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptImageDefinePixelCountForTesting"
         const val CORRUPT_EFFECT_CHILD_USE_AFTER_EVICT_PROPERTY =
@@ -999,6 +1006,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_IMAGE_REF_WIDTH_CORRUPTED"
         private const val IMAGE_REF_HEIGHT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_REF_HEIGHT_CORRUPTED"
+        private const val IMAGE_REF_ALPHA_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_IMAGE_REF_ALPHA_CORRUPTED"
         private const val IMAGE_DEFINE_PIXEL_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_DEFINE_PIXEL_COUNT_CORRUPTED"
         private const val SHADER_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
@@ -1444,6 +1453,7 @@ class JbrSkiaSwingLayer(
         private val imageUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageRefWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageRefHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageRefAlphaCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageDefinePixelCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildMissingCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3159,6 +3169,16 @@ class JbrSkiaSwingLayer(
                 else -> null
             }
 
+        private fun imageRefAlphaTargetOpForTesting(): Int? =
+            when {
+                java.lang.Boolean.getBoolean(CORRUPT_IMAGE_REF_ALPHA_PROPERTY) -> COMMAND_DRAW_IMAGE_REF
+                java.lang.Boolean.getBoolean(CORRUPT_IMAGE_COLOR_FILTER_REF_ALPHA_PROPERTY) ->
+                    COMMAND_DRAW_IMAGE_REF_COLOR_FILTER
+                java.lang.Boolean.getBoolean(CORRUPT_IMAGE_COLOR_FILTER_DESCRIPTOR_REF_ALPHA_PROPERTY) ->
+                    COMMAND_DRAW_IMAGE_REF_COLOR_FILTER_REF
+                else -> null
+            }
+
         private fun IntArray.corruptImageUseForTestingIfRequested(): IntArray {
             val targetOp = imageUseTargetOpForTesting() ?: return this
             if (!imageUseCorruptedForTesting.compareAndSet(false, true)) return this
@@ -3252,6 +3272,29 @@ class JbrSkiaSwingLayer(
                     return copyOf().also { stream ->
                         stream[argsStart + 11] = stream[argsStart + 11] + 1
                         Logger.info { "$IMAGE_REF_HEIGHT_CORRUPTED_MARKER op=$op" }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptImageRefAlphaForTestingIfRequested(): IntArray {
+            val targetOp = imageRefAlphaTargetOpForTesting() ?: return this
+            if (!imageRefAlphaCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == targetOp && argsStart + 12 < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + 12] = 1001
+                        Logger.info { "$IMAGE_REF_ALPHA_CORRUPTED_MARKER op=$op" }
                     }
                 }
                 offset = recordEnd
