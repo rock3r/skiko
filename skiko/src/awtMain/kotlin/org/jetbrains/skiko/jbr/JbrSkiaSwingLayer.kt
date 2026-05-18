@@ -229,6 +229,7 @@ class JbrSkiaSwingLayer(
                 .corruptSweepGradientPathVerbForTestingIfRequested()
                 .corruptDescriptorUseForTestingIfRequested()
                 .corruptDescriptorUseAfterEvictForTestingIfRequested()
+                .corruptShaderChildUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildMissingForTestingIfRequested()
                 .corruptEffectDescriptorTypeForTestingIfRequested()
@@ -700,6 +701,10 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptShaderHandleTypeForTesting"
         const val CORRUPT_COMPOSITE_SHADER_SRC_HANDLE_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptCompositeShaderSrcHandleTypeForTesting"
+        const val CORRUPT_SHADER_CHILD_USE_AFTER_EVICT_PROPERTY =
+            "skiko.jbr.interop.corruptShaderChildUseAfterEvictForTesting"
+        const val CORRUPT_COMPOSITE_SHADER_SRC_CHILD_USE_AFTER_EVICT_PROPERTY =
+            "skiko.jbr.interop.corruptCompositeShaderSrcChildUseAfterEvictForTesting"
         const val CORRUPT_SHADER_CHILD_MISSING_PROPERTY =
             "skiko.jbr.interop.corruptShaderChildMissingForTesting"
         const val CORRUPT_COMPOSITE_SHADER_SRC_CHILD_MISSING_PROPERTY =
@@ -954,6 +959,8 @@ class JbrSkiaSwingLayer(
         private const val DESCRIPTOR_USE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_CORRUPTED"
         private const val DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED"
+        private const val SHADER_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SHADER_CHILD_USE_AFTER_EVICT_CORRUPTED"
         private const val EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED"
         private const val EFFECT_CHILD_MISSING_CORRUPTED_MARKER =
@@ -1482,6 +1489,7 @@ class JbrSkiaSwingLayer(
         private val imageFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val pathEffectHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val shaderChildUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderChildMissingCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val runtimeEffectShaderSourceHashCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3031,6 +3039,64 @@ class JbrSkiaSwingLayer(
                     corrupted[3] = corrupted[3] + evict.size
                     Logger.info { "$DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER op=$op" }
                     return corrupted
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptShaderChildUseAfterEvictForTestingIfRequested(): IntArray {
+            val corruptCompositeSrc =
+                java.lang.Boolean.getBoolean(CORRUPT_COMPOSITE_SHADER_SRC_CHILD_USE_AFTER_EVICT_PROPERTY)
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SHADER_CHILD_USE_AFTER_EVICT_PROPERTY) && !corruptCompositeSrc) {
+                return this
+            }
+            if (!shaderChildUseAfterEvictCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_SHADER_DESCRIPTOR && argsStart + 7 <= recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    val targetAndOffset = when {
+                        descriptorType == COMMAND_SHADER_DESCRIPTOR_RUNTIME_EFFECT && payloadIntCount >= 9 -> {
+                            val payloadStart = argsStart + 5
+                            val childCount = this[payloadStart + 2]
+                            if (childCount <= 0 || payloadStart + 8 > recordEnd) null else
+                                "runtimeEffectShaderChild" to argsStart + 12
+                        }
+                        descriptorType == COMMAND_SHADER_DESCRIPTOR_COMPOSITE && payloadIntCount == 5 ->
+                            if (corruptCompositeSrc) {
+                                "compositeShaderSrcChild" to argsStart + 7
+                            } else {
+                                "compositeShaderDstChild" to argsStart + 5
+                            }
+                        descriptorType == COMMAND_SHADER_DESCRIPTOR_COLOR_FILTER && payloadIntCount == 4 ->
+                            "shaderColorFilterShaderChild" to argsStart + 5
+                        descriptorType == COMMAND_SHADER_DESCRIPTOR_TRANSFORM && payloadIntCount == 11 ->
+                            "transformedShaderChild" to argsStart + 5
+                        else -> null
+                    }
+                    if (targetAndOffset != null) {
+                        val (target, childHandleOffset) = targetAndOffset
+                        val evict = intArrayOf(
+                            COMMAND_EVICT_SHADER_HANDLE,
+                            5 * Int.SIZE_BYTES,
+                            COMMAND_RECORD_FLAGS_NONE,
+                            this[childHandleOffset],
+                            this[childHandleOffset + 1],
+                        )
+                        val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
+                        corrupted[3] = corrupted[3] + evict.size
+                        Logger.info { "$SHADER_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER target=$target" }
+                        return corrupted
+                    }
                 }
                 offset = recordEnd
             }
