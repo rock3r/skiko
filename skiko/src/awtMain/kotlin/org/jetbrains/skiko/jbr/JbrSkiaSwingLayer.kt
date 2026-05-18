@@ -280,6 +280,7 @@ class JbrSkiaSwingLayer(
                 .corruptColorFilterHandleTypeForTestingIfRequested()
                 .corruptImageFilterHandleTypeForTestingIfRequested()
                 .corruptPathEffectHandleTypeForTestingIfRequested()
+                .corruptPathEffectUseHandleTypeForTestingIfRequested()
                 .corruptShaderHandleTypeForTestingIfRequested()
                 .corruptShaderChildMissingForTestingIfRequested()
                 .corruptRuntimeEffectColorFilterSkslLengthForTestingIfRequested()
@@ -697,6 +698,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptImageFilterHandleTypeForTesting"
         const val CORRUPT_PATH_EFFECT_HANDLE_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptPathEffectHandleTypeForTesting"
+        const val CORRUPT_PATH_EFFECT_USE_HANDLE_TYPE_PROPERTY =
+            "skiko.jbr.interop.corruptPathEffectUseHandleTypeForTesting"
         const val CORRUPT_SHADER_HANDLE_TYPE_PROPERTY =
             "skiko.jbr.interop.corruptShaderHandleTypeForTesting"
         const val CORRUPT_COMPOSITE_SHADER_SRC_HANDLE_TYPE_PROPERTY =
@@ -1488,6 +1491,7 @@ class JbrSkiaSwingLayer(
         private val colorFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageFilterHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val pathEffectHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val pathEffectUseHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderHandleTypeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderChildUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderChildMissingCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -2979,6 +2983,15 @@ class JbrSkiaSwingLayer(
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
                 when (op) {
+                    COMMAND_DRAW_PATH_PATH_EFFECT_REF -> {
+                        if (argsStart + 7 < recordEnd) {
+                            return copyOf().also { stream ->
+                                stream[argsStart + 6] = Int.MAX_VALUE
+                                stream[argsStart + 7] = Int.MAX_VALUE
+                                Logger.info { "$DESCRIPTOR_USE_CORRUPTED_MARKER op=$op" }
+                            }
+                        }
+                    }
                     COMMAND_FILL_RECT_SHADER_REF -> {
                         if (argsStart + 1 < recordEnd) {
                             return copyOf().also { stream ->
@@ -3015,7 +3028,19 @@ class JbrSkiaSwingLayer(
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
-                if (op == COMMAND_FILL_RECT_SHADER_REF && argsStart + 1 < recordEnd) {
+                if (op == COMMAND_DRAW_PATH_PATH_EFFECT_REF && argsStart + 7 < recordEnd) {
+                    val evict = intArrayOf(
+                        COMMAND_EVICT_COLOR_FILTER_HANDLE,
+                        5 * Int.SIZE_BYTES,
+                        COMMAND_RECORD_FLAGS_NONE,
+                        this[argsStart + 6],
+                        this[argsStart + 7],
+                    )
+                    val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
+                    corrupted[3] = corrupted[3] + evict.size
+                    Logger.info { "$DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER op=$op" }
+                    return corrupted
+                } else if (op == COMMAND_FILL_RECT_SHADER_REF && argsStart + 1 < recordEnd) {
                     val evict = intArrayOf(
                         COMMAND_EVICT_SHADER_HANDLE,
                         5 * Int.SIZE_BYTES,
@@ -4733,6 +4758,37 @@ class JbrSkiaSwingLayer(
                             stream[argsStart + 6] = colorFilterHandle.second
                             Logger.info { "$PATH_EFFECT_HANDLE_TYPE_CORRUPTED_MARKER target=chainPathEffectChild" }
                         }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptPathEffectUseHandleTypeForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_PATH_EFFECT_USE_HANDLE_TYPE_PROPERTY)) return this
+            if (!pathEffectUseHandleTypeCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+
+            val colorFilterHandle = firstEffectDescriptorHandle(commandEnd) { descriptorType ->
+                descriptorType == COMMAND_EFFECT_DESCRIPTOR_TINT_COLOR_FILTER ||
+                    descriptorType == COMMAND_EFFECT_DESCRIPTOR_COLOR_MATRIX_FILTER ||
+                    descriptorType == COMMAND_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER
+            } ?: return this
+
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DRAW_PATH_PATH_EFFECT_REF && argsStart + 7 < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + 6] = colorFilterHandle.first
+                        stream[argsStart + 7] = colorFilterHandle.second
+                        Logger.info { "$PATH_EFFECT_HANDLE_TYPE_CORRUPTED_MARKER target=drawPathPathEffect" }
                     }
                 }
                 offset = recordEnd
