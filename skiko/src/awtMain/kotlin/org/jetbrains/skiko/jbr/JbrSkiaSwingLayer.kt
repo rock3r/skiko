@@ -235,6 +235,7 @@ class JbrSkiaSwingLayer(
                 .corruptImageRefHeightForTestingIfRequested()
                 .corruptImageRefAlphaForTestingIfRequested()
                 .corruptImageRefFilterQualityForTestingIfRequested()
+                .corruptImageColorFilterBlendModeForTestingIfRequested()
                 .corruptImageDefinePixelCountForTestingIfRequested()
                 .corruptShaderChildUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildUseAfterEvictForTestingIfRequested()
@@ -625,6 +626,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptImageColorFilterRefFilterQualityForTesting"
         const val CORRUPT_IMAGE_COLOR_FILTER_DESCRIPTOR_REF_FILTER_QUALITY_PROPERTY =
             "skiko.jbr.interop.corruptImageColorFilterDescriptorRefFilterQualityForTesting"
+        const val CORRUPT_IMAGE_COLOR_FILTER_BLEND_MODE_PROPERTY =
+            "skiko.jbr.interop.corruptImageColorFilterBlendModeForTesting"
         const val CORRUPT_IMAGE_DEFINE_PIXEL_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptImageDefinePixelCountForTesting"
         const val CORRUPT_EFFECT_CHILD_USE_AFTER_EVICT_PROPERTY =
@@ -1017,6 +1020,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_IMAGE_REF_ALPHA_CORRUPTED"
         private const val IMAGE_REF_FILTER_QUALITY_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_REF_FILTER_QUALITY_CORRUPTED"
+        private const val IMAGE_COLOR_FILTER_BLEND_MODE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_IMAGE_COLOR_FILTER_BLEND_MODE_CORRUPTED"
         private const val IMAGE_DEFINE_PIXEL_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_DEFINE_PIXEL_COUNT_CORRUPTED"
         private const val SHADER_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
@@ -1464,6 +1469,7 @@ class JbrSkiaSwingLayer(
         private val imageRefHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageRefAlphaCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageRefFilterQualityCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageColorFilterBlendModeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageDefinePixelCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildMissingCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3338,6 +3344,29 @@ class JbrSkiaSwingLayer(
                     return copyOf().also { stream ->
                         stream[argsStart + 13] = 4
                         Logger.info { "$IMAGE_REF_FILTER_QUALITY_CORRUPTED_MARKER op=$op" }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptImageColorFilterBlendModeForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_COLOR_FILTER_BLEND_MODE_PROPERTY)) return this
+            if (!imageColorFilterBlendModeCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_DRAW_IMAGE_REF_COLOR_FILTER && argsStart + 15 < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + 15] = Int.MAX_VALUE
+                        Logger.info { IMAGE_COLOR_FILTER_BLEND_MODE_CORRUPTED_MARKER }
                     }
                 }
                 offset = recordEnd
