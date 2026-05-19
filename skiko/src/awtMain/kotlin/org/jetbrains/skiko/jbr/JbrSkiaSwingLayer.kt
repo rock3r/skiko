@@ -367,6 +367,8 @@ class JbrSkiaSwingLayer(
                 .corruptRuntimeEffectSourceForTestingIfRequested()
                 .corruptRuntimeEffectChildTypeForTestingIfRequested()
                 .corruptCommandRecordFlagsForTestingIfRequested()
+                .corruptCommandCoordinateSpaceForTestingIfRequested()
+                .corruptCommandPaintFormatForTestingIfRequested()
                 .corruptForTestingIfRequested()
             commandStreamFallbackReason(commandStream)?.let { reason ->
                 JbrSkiaInterop.logFallback(reason)
@@ -471,6 +473,9 @@ class JbrSkiaSwingLayer(
         const val RENDER_TO_TEXTURE_PROPERTY = "skiko.jbr.interop.renderToTexture"
         const val CORRUPT_COMMAND_STREAM_PROPERTY = "skiko.jbr.interop.corruptCommandStream"
         const val CORRUPT_COMMAND_RECORD_FLAGS_PROPERTY = "skiko.jbr.interop.corruptCommandRecordFlagsForTesting"
+        const val CORRUPT_COMMAND_COORDINATE_SPACE_PROPERTY =
+            "skiko.jbr.interop.corruptCommandCoordinateSpaceForTesting"
+        const val CORRUPT_COMMAND_PAINT_FORMAT_PROPERTY = "skiko.jbr.interop.corruptCommandPaintFormatForTesting"
         const val CORRUPT_TEXT_FONT_SIZE_PROPERTY = "skiko.jbr.interop.corruptTextFontSizeForTesting"
         const val CORRUPT_TEXT_FONT_WEIGHT_PROPERTY = "skiko.jbr.interop.corruptTextFontWeightForTesting"
         const val CORRUPT_TEXT_FONT_WIDTH_PROPERTY = "skiko.jbr.interop.corruptTextFontWidthForTesting"
@@ -939,6 +944,10 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_COMMAND_STREAM_FLAGS_CORRUPTED"
         private const val COMMAND_RECORD_FLAGS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_COMMAND_RECORD_FLAGS_CORRUPTED"
+        private const val COMMAND_COORDINATE_SPACE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_COMMAND_COORDINATE_SPACE_CORRUPTED"
+        private const val COMMAND_PAINT_FORMAT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_COMMAND_PAINT_FORMAT_CORRUPTED"
         private const val TEXT_FONT_SIZE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_SIZE_CORRUPTED"
         private const val TEXT_FONT_WEIGHT_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_WEIGHT_CORRUPTED"
         private const val TEXT_FONT_WIDTH_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_WIDTH_CORRUPTED"
@@ -2039,6 +2048,24 @@ class JbrSkiaSwingLayer(
             return copyOf().also { stream ->
                 stream[COMMAND_STREAM_HEADER_SIZE + 2] = 2
                 Logger.info { COMMAND_RECORD_FLAGS_CORRUPTED_MARKER }
+            }
+        }
+
+        private fun IntArray.corruptCommandCoordinateSpaceForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_COMMAND_COORDINATE_SPACE_PROPERTY)) return this
+            if (size <= 4) return this
+            return copyOf().also { stream ->
+                stream[4] = 0
+                Logger.info { COMMAND_COORDINATE_SPACE_CORRUPTED_MARKER }
+            }
+        }
+
+        private fun IntArray.corruptCommandPaintFormatForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_COMMAND_PAINT_FORMAT_PROPERTY)) return this
+            if (size <= 5) return this
+            return copyOf().also { stream ->
+                stream[5] = 0
+                Logger.info { COMMAND_PAINT_FORMAT_CORRUPTED_MARKER }
             }
         }
 
