@@ -240,6 +240,8 @@ class JbrSkiaSwingLayer(
                 .corruptSaveLayerAlphaForTestingIfRequested()
                 .corruptSaveLayerImageFilterWidthForTestingIfRequested()
                 .corruptSaveLayerImageFilterHeightForTestingIfRequested()
+                .corruptSaveLayerColorFilterRefAlphaForTestingIfRequested()
+                .corruptSaveLayerBlendColorFilterRefAlphaForTestingIfRequested()
                 .corruptSaveLayerColorFilterBlendModeForTestingIfRequested()
                 .corruptSaveLayerBlendModeForTestingIfRequested()
                 .corruptSaveLayerBlendColorFilterBlendModeForTestingIfRequested()
@@ -642,6 +644,10 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptSaveLayerImageFilterWidthForTesting"
         const val CORRUPT_SAVE_LAYER_IMAGE_FILTER_HEIGHT_PROPERTY =
             "skiko.jbr.interop.corruptSaveLayerImageFilterHeightForTesting"
+        const val CORRUPT_SAVE_LAYER_COLOR_FILTER_REF_ALPHA_PROPERTY =
+            "skiko.jbr.interop.corruptSaveLayerColorFilterRefAlphaForTesting"
+        const val CORRUPT_SAVE_LAYER_BLEND_COLOR_FILTER_REF_ALPHA_PROPERTY =
+            "skiko.jbr.interop.corruptSaveLayerBlendColorFilterRefAlphaForTesting"
         const val CORRUPT_SAVE_LAYER_COLOR_FILTER_BLEND_MODE_PROPERTY =
             "skiko.jbr.interop.corruptSaveLayerColorFilterBlendModeForTesting"
         const val CORRUPT_SAVE_LAYER_BLEND_MODE_PROPERTY =
@@ -1048,6 +1054,10 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_SAVE_LAYER_IMAGE_FILTER_WIDTH_CORRUPTED"
         private const val SAVE_LAYER_IMAGE_FILTER_HEIGHT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SAVE_LAYER_IMAGE_FILTER_HEIGHT_CORRUPTED"
+        private const val SAVE_LAYER_COLOR_FILTER_REF_ALPHA_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SAVE_LAYER_COLOR_FILTER_REF_ALPHA_CORRUPTED"
+        private const val SAVE_LAYER_BLEND_COLOR_FILTER_REF_ALPHA_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SAVE_LAYER_BLEND_COLOR_FILTER_REF_ALPHA_CORRUPTED"
         private const val SAVE_LAYER_COLOR_FILTER_BLEND_MODE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SAVE_LAYER_COLOR_FILTER_BLEND_MODE_CORRUPTED"
         private const val SAVE_LAYER_BLEND_MODE_CORRUPTED_MARKER =
@@ -1510,6 +1520,9 @@ class JbrSkiaSwingLayer(
         private val saveLayerAlphaCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerImageFilterWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerImageFilterHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val saveLayerColorFilterRefAlphaCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val saveLayerBlendColorFilterRefAlphaCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerColorFilterBlendModeCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerBlendModeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3563,6 +3576,50 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_SAVE_LAYER_IMAGE_FILTER_REF && argsStart + argsOffset < recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart + argsOffset] = -1
+                        Logger.info { marker }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptSaveLayerColorFilterRefAlphaForTestingIfRequested(): IntArray =
+            corruptSaveLayerRefAlphaForTestingIfRequested(
+                property = CORRUPT_SAVE_LAYER_COLOR_FILTER_REF_ALPHA_PROPERTY,
+                once = saveLayerColorFilterRefAlphaCorruptedForTesting,
+                targetOp = COMMAND_SAVE_LAYER_COLOR_FILTER_REF,
+                marker = SAVE_LAYER_COLOR_FILTER_REF_ALPHA_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptSaveLayerBlendColorFilterRefAlphaForTestingIfRequested(): IntArray =
+            corruptSaveLayerRefAlphaForTestingIfRequested(
+                property = CORRUPT_SAVE_LAYER_BLEND_COLOR_FILTER_REF_ALPHA_PROPERTY,
+                once = saveLayerBlendColorFilterRefAlphaCorruptedForTesting,
+                targetOp = COMMAND_SAVE_LAYER_BLEND_COLOR_FILTER_REF,
+                marker = SAVE_LAYER_BLEND_COLOR_FILTER_REF_ALPHA_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptSaveLayerRefAlphaForTestingIfRequested(
+            property: String,
+            once: java.util.concurrent.atomic.AtomicBoolean,
+            targetOp: Int,
+            marker: String,
+        ): IntArray {
+            if (!java.lang.Boolean.getBoolean(property)) return this
+            if (!once.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == targetOp && argsStart + 4 < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + 4] = 1001
                         Logger.info { marker }
                     }
                 }
