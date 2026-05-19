@@ -933,6 +933,8 @@ class JbrSkiaSwingLayer(
         const val FORCE_TINY_FULL_SCENE_ONCE_PROPERTY = "skiko.jbr.interop.forceTinyFullSceneOnceForTesting"
         const val FORCE_CONTEXT_CHANGE_ONCE_PROPERTY = "skiko.jbr.interop.forceContextChangeOnceForTesting"
         private const val TINY_FULL_SCENE_INJECTED_MARKER = "SKIKO_JBR_INTEROP_TINY_FULL_SCENE_INJECTED"
+        private const val COMMAND_STREAM_FLAGS_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_COMMAND_STREAM_FLAGS_CORRUPTED"
         private const val TEXT_FONT_SIZE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_SIZE_CORRUPTED"
         private const val TEXT_FONT_WEIGHT_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_WEIGHT_CORRUPTED"
         private const val TEXT_FONT_WIDTH_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_WIDTH_CORRUPTED"
@@ -2021,6 +2023,7 @@ class JbrSkiaSwingLayer(
             return copyOf().also { stream ->
                 if (stream.size > 2) {
                     stream[2] = 1
+                    Logger.info { COMMAND_STREAM_FLAGS_CORRUPTED_MARKER }
                 }
             }
         }
