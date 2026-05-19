@@ -3135,6 +3135,15 @@ class JbrSkiaSwingLayer(
                             }
                         }
                     }
+                    COMMAND_SAVE_LAYER_IMAGE_FILTER_REF -> {
+                        if (argsStart + 6 < recordEnd) {
+                            return copyOf().also { stream ->
+                                stream[argsStart + 5] = Int.MAX_VALUE
+                                stream[argsStart + 6] = Int.MAX_VALUE
+                                Logger.info { "$DESCRIPTOR_USE_CORRUPTED_MARKER op=$op" }
+                            }
+                        }
+                    }
                 }
                 offset = recordEnd
             }
@@ -3208,6 +3217,18 @@ class JbrSkiaSwingLayer(
                         COMMAND_RECORD_FLAGS_NONE,
                         this[argsStart + 6],
                         this[argsStart + 7],
+                    )
+                    val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
+                    corrupted[3] = corrupted[3] + evict.size
+                    Logger.info { "$DESCRIPTOR_USE_AFTER_EVICT_CORRUPTED_MARKER op=$op" }
+                    return corrupted
+                } else if (op == COMMAND_SAVE_LAYER_IMAGE_FILTER_REF && argsStart + 6 < recordEnd) {
+                    val evict = intArrayOf(
+                        COMMAND_EVICT_COLOR_FILTER_HANDLE,
+                        5 * Int.SIZE_BYTES,
+                        COMMAND_RECORD_FLAGS_NONE,
+                        this[argsStart + 5],
+                        this[argsStart + 6],
                     )
                     val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
                     corrupted[3] = corrupted[3] + evict.size
