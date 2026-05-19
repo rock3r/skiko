@@ -236,6 +236,8 @@ class JbrSkiaSwingLayer(
                 .corruptImageRefAlphaForTestingIfRequested()
                 .corruptImageRefFilterQualityForTestingIfRequested()
                 .corruptImageColorFilterBlendModeForTestingIfRequested()
+                .corruptFillRectBlendModeWidthForTestingIfRequested()
+                .corruptFillRectBlendModeHeightForTestingIfRequested()
                 .corruptImageDefinePixelCountForTestingIfRequested()
                 .corruptSaveLayerAlphaForTestingIfRequested()
                 .corruptSaveLayerImageFilterWidthForTestingIfRequested()
@@ -641,6 +643,10 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptImageColorFilterDescriptorRefFilterQualityForTesting"
         const val CORRUPT_IMAGE_COLOR_FILTER_BLEND_MODE_PROPERTY =
             "skiko.jbr.interop.corruptImageColorFilterBlendModeForTesting"
+        const val CORRUPT_FILL_RECT_BLEND_MODE_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptFillRectBlendModeWidthForTesting"
+        const val CORRUPT_FILL_RECT_BLEND_MODE_HEIGHT_PROPERTY =
+            "skiko.jbr.interop.corruptFillRectBlendModeHeightForTesting"
         const val CORRUPT_IMAGE_DEFINE_PIXEL_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptImageDefinePixelCountForTesting"
         const val CORRUPT_SAVE_LAYER_ALPHA_PROPERTY =
@@ -1061,6 +1067,10 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_IMAGE_REF_FILTER_QUALITY_CORRUPTED"
         private const val IMAGE_COLOR_FILTER_BLEND_MODE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_COLOR_FILTER_BLEND_MODE_CORRUPTED"
+        private const val FILL_RECT_BLEND_MODE_WIDTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_FILL_RECT_BLEND_MODE_WIDTH_CORRUPTED"
+        private const val FILL_RECT_BLEND_MODE_HEIGHT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_FILL_RECT_BLEND_MODE_HEIGHT_CORRUPTED"
         private const val IMAGE_DEFINE_PIXEL_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_DEFINE_PIXEL_COUNT_CORRUPTED"
         private const val SAVE_LAYER_ALPHA_CORRUPTED_MARKER =
@@ -1346,6 +1356,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_STROKE_ROUND_RECT_RADIAL_GRADIENT = 38
         private const val COMMAND_STROKE_RECT_SWEEP_GRADIENT = 39
         private const val COMMAND_STROKE_ROUND_RECT_SWEEP_GRADIENT = 40
+        private const val COMMAND_FILL_RECT_BLEND_MODE = 41
         private const val COMMAND_SAVE_LAYER_COLOR_FILTER = 44
         private const val COMMAND_DRAW_IMAGE_REF_COLOR_FILTER = 45
         private const val COMMAND_FILL_RECT_COLOR_FILTER_REF = 47
@@ -1541,6 +1552,8 @@ class JbrSkiaSwingLayer(
         private val imageRefAlphaCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageRefFilterQualityCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageColorFilterBlendModeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val fillRectBlendModeWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val fillRectBlendModeHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageDefinePixelCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerAlphaCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerImageFilterWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3520,6 +3533,50 @@ class JbrSkiaSwingLayer(
                     return copyOf().also { stream ->
                         stream[argsStart + 15] = Int.MAX_VALUE
                         Logger.info { IMAGE_COLOR_FILTER_BLEND_MODE_CORRUPTED_MARKER }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptFillRectBlendModeWidthForTestingIfRequested(): IntArray =
+            corruptFillRectBlendModeDimensionForTestingIfRequested(
+                property = CORRUPT_FILL_RECT_BLEND_MODE_WIDTH_PROPERTY,
+                once = fillRectBlendModeWidthCorruptedForTesting,
+                dimensionArgIndex = 4,
+                marker = FILL_RECT_BLEND_MODE_WIDTH_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptFillRectBlendModeHeightForTestingIfRequested(): IntArray =
+            corruptFillRectBlendModeDimensionForTestingIfRequested(
+                property = CORRUPT_FILL_RECT_BLEND_MODE_HEIGHT_PROPERTY,
+                once = fillRectBlendModeHeightCorruptedForTesting,
+                dimensionArgIndex = 5,
+                marker = FILL_RECT_BLEND_MODE_HEIGHT_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptFillRectBlendModeDimensionForTestingIfRequested(
+            property: String,
+            once: java.util.concurrent.atomic.AtomicBoolean,
+            dimensionArgIndex: Int,
+            marker: String,
+        ): IntArray {
+            if (!java.lang.Boolean.getBoolean(property)) return this
+            if (!once.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_FILL_RECT_BLEND_MODE && argsStart + dimensionArgIndex < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + dimensionArgIndex] = -1
+                        Logger.info { marker }
                     }
                 }
                 offset = recordEnd
