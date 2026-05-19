@@ -239,6 +239,8 @@ class JbrSkiaSwingLayer(
                 .corruptImageDefinePixelCountForTestingIfRequested()
                 .corruptSaveLayerAlphaForTestingIfRequested()
                 .corruptSaveLayerColorFilterBlendModeForTestingIfRequested()
+                .corruptSaveLayerBlendModeForTestingIfRequested()
+                .corruptSaveLayerBlendColorFilterBlendModeForTestingIfRequested()
                 .corruptShaderChildUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildUseAfterEvictForTestingIfRequested()
                 .corruptEffectChildMissingForTestingIfRequested()
@@ -636,6 +638,10 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptSaveLayerAlphaForTesting"
         const val CORRUPT_SAVE_LAYER_COLOR_FILTER_BLEND_MODE_PROPERTY =
             "skiko.jbr.interop.corruptSaveLayerColorFilterBlendModeForTesting"
+        const val CORRUPT_SAVE_LAYER_BLEND_MODE_PROPERTY =
+            "skiko.jbr.interop.corruptSaveLayerBlendModeForTesting"
+        const val CORRUPT_SAVE_LAYER_BLEND_COLOR_FILTER_BLEND_MODE_PROPERTY =
+            "skiko.jbr.interop.corruptSaveLayerBlendColorFilterBlendModeForTesting"
         const val CORRUPT_EFFECT_CHILD_USE_AFTER_EVICT_PROPERTY =
             "skiko.jbr.interop.corruptEffectChildUseAfterEvictForTesting"
         const val CORRUPT_EFFECT_CHILD_MISSING_PROPERTY =
@@ -1034,6 +1040,10 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_SAVE_LAYER_ALPHA_CORRUPTED"
         private const val SAVE_LAYER_COLOR_FILTER_BLEND_MODE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SAVE_LAYER_COLOR_FILTER_BLEND_MODE_CORRUPTED"
+        private const val SAVE_LAYER_BLEND_MODE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SAVE_LAYER_BLEND_MODE_CORRUPTED"
+        private const val SAVE_LAYER_BLEND_COLOR_FILTER_BLEND_MODE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SAVE_LAYER_BLEND_COLOR_FILTER_BLEND_MODE_CORRUPTED"
         private const val SHADER_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SHADER_CHILD_USE_AFTER_EVICT_CORRUPTED"
         private const val EFFECT_CHILD_USE_AFTER_EVICT_CORRUPTED_MARKER =
@@ -1296,6 +1306,8 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_FILL_RECT_COLOR_FILTER_REF = 47
         private const val COMMAND_EVICT_COLOR_FILTER_HANDLE = 48
         private const val COMMAND_DEFINE_EFFECT_DESCRIPTOR = 49
+        private const val COMMAND_SAVE_LAYER_BLEND_MODE = 50
+        private const val COMMAND_SAVE_LAYER_BLEND_COLOR_FILTER = 51
         private const val COMMAND_DRAW_IMAGE_REF_COLOR_FILTER_REF = 53
         private const val COMMAND_SAVE_LAYER_IMAGE_FILTER_REF = 55
         private const val COMMAND_DEFINE_SHADER_DESCRIPTOR = 56
@@ -1485,6 +1497,9 @@ class JbrSkiaSwingLayer(
         private val imageDefinePixelCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerAlphaCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerColorFilterBlendModeCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val saveLayerBlendModeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val saveLayerBlendColorFilterBlendModeCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildUseAfterEvictCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectChildMissingCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3451,6 +3466,52 @@ class JbrSkiaSwingLayer(
                     return copyOf().also { stream ->
                         stream[argsStart + 6] = COMMAND_BLEND_MODE_PLUS
                         Logger.info { SAVE_LAYER_COLOR_FILTER_BLEND_MODE_CORRUPTED_MARKER }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptSaveLayerBlendModeForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_BLEND_MODE_PROPERTY)) return this
+            if (!saveLayerBlendModeCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_SAVE_LAYER_BLEND_MODE && argsStart + 5 < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + 5] = 9999
+                        Logger.info { SAVE_LAYER_BLEND_MODE_CORRUPTED_MARKER }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptSaveLayerBlendColorFilterBlendModeForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_BLEND_COLOR_FILTER_BLEND_MODE_PROPERTY)) return this
+            if (!saveLayerBlendColorFilterBlendModeCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_SAVE_LAYER_BLEND_COLOR_FILTER && argsStart + 7 < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + 7] = COMMAND_BLEND_MODE_PLUS
+                        Logger.info { SAVE_LAYER_BLEND_COLOR_FILTER_BLEND_MODE_CORRUPTED_MARKER }
                     }
                 }
                 offset = recordEnd
