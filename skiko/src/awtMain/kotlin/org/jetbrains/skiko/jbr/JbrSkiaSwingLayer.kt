@@ -1308,7 +1308,9 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_DEFINE_EFFECT_DESCRIPTOR = 49
         private const val COMMAND_SAVE_LAYER_BLEND_MODE = 50
         private const val COMMAND_SAVE_LAYER_BLEND_COLOR_FILTER = 51
+        private const val COMMAND_SAVE_LAYER_COLOR_FILTER_REF = 52
         private const val COMMAND_DRAW_IMAGE_REF_COLOR_FILTER_REF = 53
+        private const val COMMAND_SAVE_LAYER_BLEND_COLOR_FILTER_REF = 54
         private const val COMMAND_SAVE_LAYER_IMAGE_FILTER_REF = 55
         private const val COMMAND_DEFINE_SHADER_DESCRIPTOR = 56
         private const val COMMAND_EVICT_SHADER_HANDLE = 57
@@ -3111,6 +3113,24 @@ class JbrSkiaSwingLayer(
                             return copyOf().also { stream ->
                                 stream[argsStart + 1] = Int.MAX_VALUE
                                 stream[argsStart + 2] = Int.MAX_VALUE
+                                Logger.info { "$DESCRIPTOR_USE_CORRUPTED_MARKER op=$op" }
+                            }
+                        }
+                    }
+                    COMMAND_SAVE_LAYER_COLOR_FILTER_REF -> {
+                        if (argsStart + 6 < recordEnd) {
+                            return copyOf().also { stream ->
+                                stream[argsStart + 5] = Int.MAX_VALUE
+                                stream[argsStart + 6] = Int.MAX_VALUE
+                                Logger.info { "$DESCRIPTOR_USE_CORRUPTED_MARKER op=$op" }
+                            }
+                        }
+                    }
+                    COMMAND_SAVE_LAYER_BLEND_COLOR_FILTER_REF -> {
+                        if (argsStart + 7 < recordEnd) {
+                            return copyOf().also { stream ->
+                                stream[argsStart + 6] = Int.MAX_VALUE
+                                stream[argsStart + 7] = Int.MAX_VALUE
                                 Logger.info { "$DESCRIPTOR_USE_CORRUPTED_MARKER op=$op" }
                             }
                         }
