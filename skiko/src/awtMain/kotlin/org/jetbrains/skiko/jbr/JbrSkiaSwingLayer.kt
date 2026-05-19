@@ -366,6 +366,7 @@ class JbrSkiaSwingLayer(
                 .corruptRuntimeEffectColorFilterSourceHashForTestingIfRequested()
                 .corruptRuntimeEffectSourceForTestingIfRequested()
                 .corruptRuntimeEffectChildTypeForTestingIfRequested()
+                .corruptCommandRecordFlagsForTestingIfRequested()
                 .corruptForTestingIfRequested()
             commandStreamFallbackReason(commandStream)?.let { reason ->
                 JbrSkiaInterop.logFallback(reason)
@@ -469,6 +470,7 @@ class JbrSkiaSwingLayer(
         const val RENDER_PICTURE_PROPERTY = "skiko.jbr.interop.renderPicture"
         const val RENDER_TO_TEXTURE_PROPERTY = "skiko.jbr.interop.renderToTexture"
         const val CORRUPT_COMMAND_STREAM_PROPERTY = "skiko.jbr.interop.corruptCommandStream"
+        const val CORRUPT_COMMAND_RECORD_FLAGS_PROPERTY = "skiko.jbr.interop.corruptCommandRecordFlagsForTesting"
         const val CORRUPT_TEXT_FONT_SIZE_PROPERTY = "skiko.jbr.interop.corruptTextFontSizeForTesting"
         const val CORRUPT_TEXT_FONT_WEIGHT_PROPERTY = "skiko.jbr.interop.corruptTextFontWeightForTesting"
         const val CORRUPT_TEXT_FONT_WIDTH_PROPERTY = "skiko.jbr.interop.corruptTextFontWidthForTesting"
@@ -935,6 +937,8 @@ class JbrSkiaSwingLayer(
         private const val TINY_FULL_SCENE_INJECTED_MARKER = "SKIKO_JBR_INTEROP_TINY_FULL_SCENE_INJECTED"
         private const val COMMAND_STREAM_FLAGS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_COMMAND_STREAM_FLAGS_CORRUPTED"
+        private const val COMMAND_RECORD_FLAGS_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_COMMAND_RECORD_FLAGS_CORRUPTED"
         private const val TEXT_FONT_SIZE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_SIZE_CORRUPTED"
         private const val TEXT_FONT_WEIGHT_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_WEIGHT_CORRUPTED"
         private const val TEXT_FONT_WIDTH_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_WIDTH_CORRUPTED"
@@ -2025,6 +2029,16 @@ class JbrSkiaSwingLayer(
                     stream[2] = 1
                     Logger.info { COMMAND_STREAM_FLAGS_CORRUPTED_MARKER }
                 }
+            }
+        }
+
+        private fun IntArray.corruptCommandRecordFlagsForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_COMMAND_RECORD_FLAGS_PROPERTY)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size || COMMAND_STREAM_HEADER_SIZE + 2 >= commandEnd) return this
+            return copyOf().also { stream ->
+                stream[COMMAND_STREAM_HEADER_SIZE + 2] = 2
+                Logger.info { COMMAND_RECORD_FLAGS_CORRUPTED_MARKER }
             }
         }
 
