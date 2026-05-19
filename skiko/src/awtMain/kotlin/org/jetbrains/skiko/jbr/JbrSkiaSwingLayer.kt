@@ -246,6 +246,7 @@ class JbrSkiaSwingLayer(
                 .corruptSaveLayerBlendColorFilterRefWidthForTestingIfRequested()
                 .corruptSaveLayerBlendColorFilterRefHeightForTestingIfRequested()
                 .corruptSaveLayerBlendColorFilterRefAlphaForTestingIfRequested()
+                .corruptSaveLayerBlendColorFilterRefBlendModeForTestingIfRequested()
                 .corruptSaveLayerColorFilterBlendModeForTestingIfRequested()
                 .corruptSaveLayerBlendModeForTestingIfRequested()
                 .corruptSaveLayerBlendColorFilterBlendModeForTestingIfRequested()
@@ -660,6 +661,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptSaveLayerBlendColorFilterRefWidthForTesting"
         const val CORRUPT_SAVE_LAYER_BLEND_COLOR_FILTER_REF_HEIGHT_PROPERTY =
             "skiko.jbr.interop.corruptSaveLayerBlendColorFilterRefHeightForTesting"
+        const val CORRUPT_SAVE_LAYER_BLEND_COLOR_FILTER_REF_BLEND_MODE_PROPERTY =
+            "skiko.jbr.interop.corruptSaveLayerBlendColorFilterRefBlendModeForTesting"
         const val CORRUPT_SAVE_LAYER_COLOR_FILTER_BLEND_MODE_PROPERTY =
             "skiko.jbr.interop.corruptSaveLayerColorFilterBlendModeForTesting"
         const val CORRUPT_SAVE_LAYER_BLEND_MODE_PROPERTY =
@@ -1078,6 +1081,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_SAVE_LAYER_BLEND_COLOR_FILTER_REF_WIDTH_CORRUPTED"
         private const val SAVE_LAYER_BLEND_COLOR_FILTER_REF_HEIGHT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SAVE_LAYER_BLEND_COLOR_FILTER_REF_HEIGHT_CORRUPTED"
+        private const val SAVE_LAYER_BLEND_COLOR_FILTER_REF_BLEND_MODE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SAVE_LAYER_BLEND_COLOR_FILTER_REF_BLEND_MODE_CORRUPTED"
         private const val SAVE_LAYER_COLOR_FILTER_BLEND_MODE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SAVE_LAYER_COLOR_FILTER_BLEND_MODE_CORRUPTED"
         private const val SAVE_LAYER_BLEND_MODE_CORRUPTED_MARKER =
@@ -1548,6 +1553,8 @@ class JbrSkiaSwingLayer(
         private val saveLayerBlendColorFilterRefWidthCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerBlendColorFilterRefHeightCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val saveLayerBlendColorFilterRefBlendModeCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerColorFilterBlendModeCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3661,6 +3668,31 @@ class JbrSkiaSwingLayer(
                 argsOffset = 3,
                 marker = SAVE_LAYER_BLEND_COLOR_FILTER_REF_HEIGHT_CORRUPTED_MARKER,
             )
+
+        private fun IntArray.corruptSaveLayerBlendColorFilterRefBlendModeForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_BLEND_COLOR_FILTER_REF_BLEND_MODE_PROPERTY)) {
+                return this
+            }
+            if (!saveLayerBlendColorFilterRefBlendModeCorruptedForTesting.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_SAVE_LAYER_BLEND_COLOR_FILTER_REF && argsStart + 5 < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + 5] = Int.MAX_VALUE
+                        Logger.info { SAVE_LAYER_BLEND_COLOR_FILTER_REF_BLEND_MODE_CORRUPTED_MARKER }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
 
         private fun IntArray.corruptSaveLayerRefDimensionForTestingIfRequested(
             property: String,
