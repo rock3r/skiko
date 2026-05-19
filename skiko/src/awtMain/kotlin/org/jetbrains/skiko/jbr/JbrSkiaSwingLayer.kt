@@ -369,6 +369,8 @@ class JbrSkiaSwingLayer(
                 .corruptCommandRecordFlagsForTestingIfRequested()
                 .corruptCommandCoordinateSpaceForTestingIfRequested()
                 .corruptCommandPaintFormatForTestingIfRequested()
+                .corruptCommandPayloadLengthForTestingIfRequested()
+                .corruptCommandRecordLengthForTestingIfRequested()
                 .corruptForTestingIfRequested()
             commandStreamFallbackReason(commandStream)?.let { reason ->
                 JbrSkiaInterop.logFallback(reason)
@@ -476,6 +478,12 @@ class JbrSkiaSwingLayer(
         const val CORRUPT_COMMAND_COORDINATE_SPACE_PROPERTY =
             "skiko.jbr.interop.corruptCommandCoordinateSpaceForTesting"
         const val CORRUPT_COMMAND_PAINT_FORMAT_PROPERTY = "skiko.jbr.interop.corruptCommandPaintFormatForTesting"
+        const val CORRUPT_COMMAND_PAYLOAD_LENGTH_PROPERTY =
+            "skiko.jbr.interop.corruptCommandPayloadLengthForTesting"
+        const val CORRUPT_COMMAND_PAYLOAD_TRUNCATED_PROPERTY =
+            "skiko.jbr.interop.corruptCommandPayloadTruncatedForTesting"
+        const val CORRUPT_COMMAND_PAYLOAD_EXTRA_PROPERTY = "skiko.jbr.interop.corruptCommandPayloadExtraForTesting"
+        const val CORRUPT_COMMAND_RECORD_LENGTH_PROPERTY = "skiko.jbr.interop.corruptCommandRecordLengthForTesting"
         const val CORRUPT_TEXT_FONT_SIZE_PROPERTY = "skiko.jbr.interop.corruptTextFontSizeForTesting"
         const val CORRUPT_TEXT_FONT_WEIGHT_PROPERTY = "skiko.jbr.interop.corruptTextFontWeightForTesting"
         const val CORRUPT_TEXT_FONT_WIDTH_PROPERTY = "skiko.jbr.interop.corruptTextFontWidthForTesting"
@@ -948,6 +956,10 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_COMMAND_COORDINATE_SPACE_CORRUPTED"
         private const val COMMAND_PAINT_FORMAT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_COMMAND_PAINT_FORMAT_CORRUPTED"
+        private const val COMMAND_PAYLOAD_LENGTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_COMMAND_PAYLOAD_LENGTH_CORRUPTED"
+        private const val COMMAND_RECORD_LENGTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_COMMAND_RECORD_LENGTH_CORRUPTED"
         private const val TEXT_FONT_SIZE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_SIZE_CORRUPTED"
         private const val TEXT_FONT_WEIGHT_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_WEIGHT_CORRUPTED"
         private const val TEXT_FONT_WIDTH_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_WIDTH_CORRUPTED"
@@ -2066,6 +2078,37 @@ class JbrSkiaSwingLayer(
             return copyOf().also { stream ->
                 stream[5] = 0
                 Logger.info { COMMAND_PAINT_FORMAT_CORRUPTED_MARKER }
+            }
+        }
+
+        private fun IntArray.corruptCommandPayloadLengthForTestingIfRequested(): IntArray {
+            val negative = java.lang.Boolean.getBoolean(CORRUPT_COMMAND_PAYLOAD_LENGTH_PROPERTY)
+            val truncated = java.lang.Boolean.getBoolean(CORRUPT_COMMAND_PAYLOAD_TRUNCATED_PROPERTY)
+            val extra = java.lang.Boolean.getBoolean(CORRUPT_COMMAND_PAYLOAD_EXTRA_PROPERTY)
+            if (!negative && !truncated && !extra) return this
+            if (size <= 3) return this
+            return copyOf().also { stream ->
+                stream[3] = when {
+                    negative -> -1
+                    truncated -> (stream[3] - 1).coerceAtLeast(0)
+                    else -> stream[3] + 1
+                }
+                val mode = when {
+                    negative -> "negative"
+                    truncated -> "truncated"
+                    else -> "extra"
+                }
+                Logger.info { "$COMMAND_PAYLOAD_LENGTH_CORRUPTED_MARKER mode=$mode" }
+            }
+        }
+
+        private fun IntArray.corruptCommandRecordLengthForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_COMMAND_RECORD_LENGTH_PROPERTY)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size || COMMAND_STREAM_HEADER_SIZE + 1 >= commandEnd) return this
+            return copyOf().also { stream ->
+                stream[COMMAND_STREAM_HEADER_SIZE + 1] = 12
+                Logger.info { COMMAND_RECORD_LENGTH_CORRUPTED_MARKER }
             }
         }
 
