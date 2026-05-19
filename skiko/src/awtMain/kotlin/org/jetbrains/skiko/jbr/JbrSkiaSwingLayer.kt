@@ -241,6 +241,9 @@ class JbrSkiaSwingLayer(
                 .corruptFillRectColorFilterBlendModeForTestingIfRequested()
                 .corruptFillRectColorFilterWidthForTestingIfRequested()
                 .corruptFillRectColorFilterHeightForTestingIfRequested()
+                .corruptFillRectShaderRefHorizontalBoundsForTestingIfRequested()
+                .corruptFillRectShaderRefVerticalBoundsForTestingIfRequested()
+                .corruptFillRectShaderRefAlphaForTestingIfRequested()
                 .corruptImageDefinePixelCountForTestingIfRequested()
                 .corruptSaveLayerAlphaForTestingIfRequested()
                 .corruptSaveLayerImageFilterWidthForTestingIfRequested()
@@ -656,6 +659,12 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptFillRectColorFilterWidthForTesting"
         const val CORRUPT_FILL_RECT_COLOR_FILTER_HEIGHT_PROPERTY =
             "skiko.jbr.interop.corruptFillRectColorFilterHeightForTesting"
+        const val CORRUPT_FILL_RECT_SHADER_REF_HORIZONTAL_BOUNDS_PROPERTY =
+            "skiko.jbr.interop.corruptFillRectShaderRefHorizontalBoundsForTesting"
+        const val CORRUPT_FILL_RECT_SHADER_REF_VERTICAL_BOUNDS_PROPERTY =
+            "skiko.jbr.interop.corruptFillRectShaderRefVerticalBoundsForTesting"
+        const val CORRUPT_FILL_RECT_SHADER_REF_ALPHA_PROPERTY =
+            "skiko.jbr.interop.corruptFillRectShaderRefAlphaForTesting"
         const val CORRUPT_IMAGE_DEFINE_PIXEL_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptImageDefinePixelCountForTesting"
         const val CORRUPT_SAVE_LAYER_ALPHA_PROPERTY =
@@ -1086,6 +1095,12 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_FILL_RECT_COLOR_FILTER_WIDTH_CORRUPTED"
         private const val FILL_RECT_COLOR_FILTER_HEIGHT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_FILL_RECT_COLOR_FILTER_HEIGHT_CORRUPTED"
+        private const val FILL_RECT_SHADER_REF_HORIZONTAL_BOUNDS_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_FILL_RECT_SHADER_REF_HORIZONTAL_BOUNDS_CORRUPTED"
+        private const val FILL_RECT_SHADER_REF_VERTICAL_BOUNDS_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_FILL_RECT_SHADER_REF_VERTICAL_BOUNDS_CORRUPTED"
+        private const val FILL_RECT_SHADER_REF_ALPHA_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_FILL_RECT_SHADER_REF_ALPHA_CORRUPTED"
         private const val IMAGE_DEFINE_PIXEL_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_DEFINE_PIXEL_COUNT_CORRUPTED"
         private const val SAVE_LAYER_ALPHA_CORRUPTED_MARKER =
@@ -1574,6 +1589,11 @@ class JbrSkiaSwingLayer(
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val fillRectColorFilterWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val fillRectColorFilterHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val fillRectShaderRefHorizontalBoundsCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val fillRectShaderRefVerticalBoundsCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val fillRectShaderRefAlphaCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageDefinePixelCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerAlphaCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerImageFilterWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3650,6 +3670,62 @@ class JbrSkiaSwingLayer(
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
                 if (op == COMMAND_FILL_RECT_COLOR_FILTER && argsStart + argIndex < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + argIndex] = value
+                        Logger.info { marker }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptFillRectShaderRefHorizontalBoundsForTestingIfRequested(): IntArray =
+            corruptFillRectShaderRefFieldForTestingIfRequested(
+                property = CORRUPT_FILL_RECT_SHADER_REF_HORIZONTAL_BOUNDS_PROPERTY,
+                once = fillRectShaderRefHorizontalBoundsCorruptedForTesting,
+                argIndex = 4,
+                value = Int.MIN_VALUE,
+                marker = FILL_RECT_SHADER_REF_HORIZONTAL_BOUNDS_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptFillRectShaderRefVerticalBoundsForTestingIfRequested(): IntArray =
+            corruptFillRectShaderRefFieldForTestingIfRequested(
+                property = CORRUPT_FILL_RECT_SHADER_REF_VERTICAL_BOUNDS_PROPERTY,
+                once = fillRectShaderRefVerticalBoundsCorruptedForTesting,
+                argIndex = 5,
+                value = Int.MIN_VALUE,
+                marker = FILL_RECT_SHADER_REF_VERTICAL_BOUNDS_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptFillRectShaderRefAlphaForTestingIfRequested(): IntArray =
+            corruptFillRectShaderRefFieldForTestingIfRequested(
+                property = CORRUPT_FILL_RECT_SHADER_REF_ALPHA_PROPERTY,
+                once = fillRectShaderRefAlphaCorruptedForTesting,
+                argIndex = 6,
+                value = 1001,
+                marker = FILL_RECT_SHADER_REF_ALPHA_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptFillRectShaderRefFieldForTestingIfRequested(
+            property: String,
+            once: java.util.concurrent.atomic.AtomicBoolean,
+            argIndex: Int,
+            value: Int,
+            marker: String,
+        ): IntArray {
+            if (!java.lang.Boolean.getBoolean(property)) return this
+            if (!once.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_FILL_RECT_SHADER_REF && argsStart + argIndex < recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart + argIndex] = value
                         Logger.info { marker }
