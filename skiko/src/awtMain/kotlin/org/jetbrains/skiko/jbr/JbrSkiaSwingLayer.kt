@@ -198,6 +198,8 @@ class JbrSkiaSwingLayer(
                 .corruptDrawPathVerbForTestingIfRequested()
                 .corruptDrawPathPathEffectVerbForTestingIfRequested()
                 .corruptStrokePathDashPathEffectVerbForTestingIfRequested()
+                .corruptStrokePathDashPathEffectIntervalCountForTestingIfRequested()
+                .corruptStrokePathDashPathEffectIntervalForTestingIfRequested()
                 .corruptDrawShadowPathVerbForTestingIfRequested()
                 .corruptLinearGradientStrokeWidthForTestingIfRequested()
                 .corruptLinearGradientTileModeForTestingIfRequested()
@@ -487,6 +489,10 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptDrawPathPathEffectVerbForTesting"
         const val CORRUPT_STROKE_PATH_DASH_PATH_EFFECT_VERB_PROPERTY =
             "skiko.jbr.interop.corruptStrokePathDashPathEffectVerbForTesting"
+        const val CORRUPT_STROKE_PATH_DASH_PATH_EFFECT_INTERVAL_COUNT_PROPERTY =
+            "skiko.jbr.interop.corruptStrokePathDashPathEffectIntervalCountForTesting"
+        const val CORRUPT_STROKE_PATH_DASH_PATH_EFFECT_INTERVAL_PROPERTY =
+            "skiko.jbr.interop.corruptStrokePathDashPathEffectIntervalForTesting"
         const val CORRUPT_DRAW_SHADOW_PATH_VERB_PROPERTY =
             "skiko.jbr.interop.corruptDrawShadowPathVerbForTesting"
         const val CORRUPT_LINEAR_GRADIENT_STROKE_WIDTH_PROPERTY =
@@ -947,6 +953,10 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_DRAW_PATH_PATH_EFFECT_VERB_CORRUPTED"
         private const val STROKE_PATH_DASH_PATH_EFFECT_VERB_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_STROKE_PATH_DASH_PATH_EFFECT_VERB_CORRUPTED"
+        private const val STROKE_PATH_DASH_PATH_EFFECT_INTERVAL_COUNT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_STROKE_PATH_DASH_PATH_EFFECT_INTERVAL_COUNT_CORRUPTED"
+        private const val STROKE_PATH_DASH_PATH_EFFECT_INTERVAL_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_STROKE_PATH_DASH_PATH_EFFECT_INTERVAL_CORRUPTED"
         private const val DRAW_SHADOW_PATH_VERB_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DRAW_SHADOW_PATH_VERB_CORRUPTED"
         private const val LINEAR_GRADIENT_STROKE_WIDTH_CORRUPTED_MARKER =
@@ -1453,6 +1463,10 @@ class JbrSkiaSwingLayer(
         private val drawPathVerbCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawPathPathEffectVerbCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val strokePathDashPathEffectVerbCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val strokePathDashPathEffectIntervalCountCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val strokePathDashPathEffectIntervalCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawShadowPathVerbCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val linearGradientStrokeWidthCorruptedForTesting =
@@ -2221,6 +2235,53 @@ class JbrSkiaSwingLayer(
                                 Logger.info { STROKE_PATH_DASH_PATH_EFFECT_VERB_CORRUPTED_MARKER }
                             }
                         }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptStrokePathDashPathEffectIntervalCountForTestingIfRequested(): IntArray =
+            corruptStrokePathDashPathEffectFieldForTestingIfRequested(
+                property = CORRUPT_STROKE_PATH_DASH_PATH_EFFECT_INTERVAL_COUNT_PROPERTY,
+                once = strokePathDashPathEffectIntervalCountCorruptedForTesting,
+                argIndex = 6,
+                value = 1,
+                marker = STROKE_PATH_DASH_PATH_EFFECT_INTERVAL_COUNT_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptStrokePathDashPathEffectIntervalForTestingIfRequested(): IntArray =
+            corruptStrokePathDashPathEffectFieldForTestingIfRequested(
+                property = CORRUPT_STROKE_PATH_DASH_PATH_EFFECT_INTERVAL_PROPERTY,
+                once = strokePathDashPathEffectIntervalCorruptedForTesting,
+                argIndex = 7,
+                value = 0,
+                marker = STROKE_PATH_DASH_PATH_EFFECT_INTERVAL_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptStrokePathDashPathEffectFieldForTestingIfRequested(
+            property: String,
+            once: java.util.concurrent.atomic.AtomicBoolean,
+            argIndex: Int,
+            value: Int,
+            marker: String,
+        ): IntArray {
+            if (!java.lang.Boolean.getBoolean(property)) return this
+            if (!once.compareAndSet(false, true)) return this
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == COMMAND_STROKE_PATH_DASH_PATH_EFFECT && argsStart + argIndex < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + argIndex] = value
+                        Logger.info { marker }
                     }
                 }
                 offset = recordEnd
