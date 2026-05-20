@@ -371,6 +371,7 @@ class JbrSkiaSwingLayer(
                 .corruptTransformRecordFlagsForTestingIfRequested()
                 .corruptClipOperationForTestingIfRequested()
                 .corruptDrawPointsPointCountForTestingIfRequested()
+                .corruptDrawPointsRecordLengthForTestingIfRequested()
                 .corruptSaveLayerRecordFlagsForTestingIfRequested()
                 .corruptEffectDescriptorRecordFlagsForTestingIfRequested()
                 .corruptShaderDescriptorRecordFlagsForTestingIfRequested()
@@ -503,6 +504,8 @@ class JbrSkiaSwingLayer(
         const val CORRUPT_CLIP_OPERATION_PROPERTY = "skiko.jbr.interop.corruptClipOperationForTesting"
         const val CORRUPT_DRAW_POINTS_POINT_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptDrawPointsPointCountForTesting"
+        const val CORRUPT_DRAW_POINTS_RECORD_LENGTH_PROPERTY =
+            "skiko.jbr.interop.corruptDrawPointsRecordLengthForTesting"
         const val CORRUPT_SAVE_LAYER_RECORD_FLAGS_PROPERTY =
             "skiko.jbr.interop.corruptSaveLayerRecordFlagsForTesting"
         const val CORRUPT_EFFECT_DESCRIPTOR_RECORD_FLAGS_PROPERTY =
@@ -1003,6 +1006,8 @@ class JbrSkiaSwingLayer(
         private const val CLIP_OPERATION_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_CLIP_OPERATION_CORRUPTED"
         private const val DRAW_POINTS_POINT_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DRAW_POINTS_POINT_COUNT_CORRUPTED"
+        private const val DRAW_POINTS_RECORD_LENGTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_DRAW_POINTS_RECORD_LENGTH_CORRUPTED"
         private const val SAVE_LAYER_RECORD_FLAGS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SAVE_LAYER_RECORD_FLAGS_CORRUPTED"
         private const val EFFECT_DESCRIPTOR_RECORD_FLAGS_CORRUPTED_MARKER =
@@ -1549,6 +1554,7 @@ class JbrSkiaSwingLayer(
         private val transformRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val clipOperationCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawPointsPointCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val drawPointsRecordLengthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectDescriptorRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -2241,6 +2247,16 @@ class JbrSkiaSwingLayer(
             )
         }
 
+        private fun IntArray.corruptDrawPointsRecordLengthForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_DRAW_POINTS_RECORD_LENGTH_PROPERTY)) return this
+            return corruptFirstCommandRecordLengthForTesting(
+                command = COMMAND_DRAW_POINTS,
+                deltaBytes = -Int.SIZE_BYTES,
+                marker = DRAW_POINTS_RECORD_LENGTH_CORRUPTED_MARKER,
+                once = drawPointsRecordLengthCorruptedForTesting,
+            )
+        }
+
         private fun IntArray.corruptSaveLayerRecordFlagsForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_RECORD_FLAGS_PROPERTY)) return this
             return corruptFirstCommandRecordFlagsForTesting(
@@ -2348,6 +2364,33 @@ class JbrSkiaSwingLayer(
                 if (op == command) {
                     return copyOf().also { stream ->
                         stream[offset + 2] = value
+                        if (once.compareAndSet(false, true)) {
+                            Logger.info { marker }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptFirstCommandRecordLengthForTesting(
+            command: Int,
+            deltaBytes: Int,
+            marker: String,
+            once: java.util.concurrent.atomic.AtomicBoolean,
+        ): IntArray {
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                if (op == command && recordLengthInts > 3) {
+                    return copyOf().also { stream ->
+                        stream[offset + 1] = (recordLengthInts * Int.SIZE_BYTES) + deltaBytes
                         if (once.compareAndSet(false, true)) {
                             Logger.info { marker }
                         }
