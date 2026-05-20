@@ -372,6 +372,7 @@ class JbrSkiaSwingLayer(
                 .corruptClipOperationForTestingIfRequested()
                 .corruptDrawPointsPointCountForTestingIfRequested()
                 .corruptDrawPointsRecordLengthForTestingIfRequested()
+                .corruptDrawVerticesVertexCountForTestingIfRequested()
                 .corruptSaveLayerRecordFlagsForTestingIfRequested()
                 .corruptEffectDescriptorRecordFlagsForTestingIfRequested()
                 .corruptShaderDescriptorRecordFlagsForTestingIfRequested()
@@ -506,6 +507,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptDrawPointsPointCountForTesting"
         const val CORRUPT_DRAW_POINTS_RECORD_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptDrawPointsRecordLengthForTesting"
+        const val CORRUPT_DRAW_VERTICES_VERTEX_COUNT_PROPERTY =
+            "skiko.jbr.interop.corruptDrawVerticesVertexCountForTesting"
         const val CORRUPT_SAVE_LAYER_RECORD_FLAGS_PROPERTY =
             "skiko.jbr.interop.corruptSaveLayerRecordFlagsForTesting"
         const val CORRUPT_EFFECT_DESCRIPTOR_RECORD_FLAGS_PROPERTY =
@@ -1008,6 +1011,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_DRAW_POINTS_POINT_COUNT_CORRUPTED"
         private const val DRAW_POINTS_RECORD_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DRAW_POINTS_RECORD_LENGTH_CORRUPTED"
+        private const val DRAW_VERTICES_VERTEX_COUNT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_DRAW_VERTICES_VERTEX_COUNT_CORRUPTED"
         private const val SAVE_LAYER_RECORD_FLAGS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SAVE_LAYER_RECORD_FLAGS_CORRUPTED"
         private const val EFFECT_DESCRIPTOR_RECORD_FLAGS_CORRUPTED_MARKER =
@@ -1479,6 +1484,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_DRAW_PATH_PATH_EFFECT_REF = 62
         private const val COMMAND_DRAW_SHADOW_PATH = 64
         private const val COMMAND_DRAW_POINTS = 65
+        private const val COMMAND_DRAW_VERTICES = 67
         private const val COMMAND_FILL_RECT_LINEAR_GRADIENT = 24
         private const val COMMAND_FILL_ROUND_RECT_LINEAR_GRADIENT = 25
         private const val COMMAND_FILL_RECT_RADIAL_GRADIENT = 26
@@ -1555,6 +1561,7 @@ class JbrSkiaSwingLayer(
         private val clipOperationCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawPointsPointCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawPointsRecordLengthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val drawVerticesVertexCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectDescriptorRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -2254,6 +2261,17 @@ class JbrSkiaSwingLayer(
                 deltaBytes = -Int.SIZE_BYTES,
                 marker = DRAW_POINTS_RECORD_LENGTH_CORRUPTED_MARKER,
                 once = drawPointsRecordLengthCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptDrawVerticesVertexCountForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_DRAW_VERTICES_VERTEX_COUNT_PROPERTY)) return this
+            return corruptFirstCommandArgumentForTesting(
+                command = COMMAND_DRAW_VERTICES,
+                argsOffset = 3,
+                value = 2,
+                marker = DRAW_VERTICES_VERTEX_COUNT_CORRUPTED_MARKER,
+                once = drawVerticesVertexCountCorruptedForTesting,
             )
         }
 
