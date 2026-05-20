@@ -367,6 +367,9 @@ class JbrSkiaSwingLayer(
                 .corruptRuntimeEffectSourceForTestingIfRequested()
                 .corruptRuntimeEffectChildTypeForTestingIfRequested()
                 .corruptCommandRecordFlagsForTestingIfRequested()
+                .corruptStrokeCapForTestingIfRequested()
+                .corruptTransformRecordFlagsForTestingIfRequested()
+                .corruptClipOperationForTestingIfRequested()
                 .corruptCommandCoordinateSpaceForTestingIfRequested()
                 .corruptCommandPaintFormatForTestingIfRequested()
                 .corruptCommandPayloadLengthForTestingIfRequested()
@@ -484,6 +487,10 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptCommandPayloadTruncatedForTesting"
         const val CORRUPT_COMMAND_PAYLOAD_EXTRA_PROPERTY = "skiko.jbr.interop.corruptCommandPayloadExtraForTesting"
         const val CORRUPT_COMMAND_RECORD_LENGTH_PROPERTY = "skiko.jbr.interop.corruptCommandRecordLengthForTesting"
+        const val CORRUPT_STROKE_CAP_PROPERTY = "skiko.jbr.interop.corruptStrokeCapForTesting"
+        const val CORRUPT_TRANSFORM_RECORD_FLAGS_PROPERTY =
+            "skiko.jbr.interop.corruptTransformRecordFlagsForTesting"
+        const val CORRUPT_CLIP_OPERATION_PROPERTY = "skiko.jbr.interop.corruptClipOperationForTesting"
         const val CORRUPT_TEXT_FONT_SIZE_PROPERTY = "skiko.jbr.interop.corruptTextFontSizeForTesting"
         const val CORRUPT_TEXT_FONT_WEIGHT_PROPERTY = "skiko.jbr.interop.corruptTextFontWeightForTesting"
         const val CORRUPT_TEXT_FONT_WIDTH_PROPERTY = "skiko.jbr.interop.corruptTextFontWidthForTesting"
@@ -960,6 +967,10 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_COMMAND_PAYLOAD_LENGTH_CORRUPTED"
         private const val COMMAND_RECORD_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_COMMAND_RECORD_LENGTH_CORRUPTED"
+        private const val STROKE_CAP_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_STROKE_CAP_CORRUPTED"
+        private const val TRANSFORM_RECORD_FLAGS_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_TRANSFORM_RECORD_FLAGS_CORRUPTED"
+        private const val CLIP_OPERATION_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_CLIP_OPERATION_CORRUPTED"
         private const val TEXT_FONT_SIZE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_SIZE_CORRUPTED"
         private const val TEXT_FONT_WEIGHT_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_WEIGHT_CORRUPTED"
         private const val TEXT_FONT_WIDTH_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_WIDTH_CORRUPTED"
@@ -1398,6 +1409,10 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_STROKE_LINE = 3
         private const val COMMAND_FILL_OVAL = 4
         private const val COMMAND_STROKE_OVAL = 5
+        private const val COMMAND_SAVE = 7
+        private const val COMMAND_RESTORE = 8
+        private const val COMMAND_CLIP_RECT = 9
+        private const val COMMAND_TRANSLATE = 10
         private const val COMMAND_DEFINE_IMAGE_ARGB = 15
         private const val COMMAND_DRAW_IMAGE_REF = 16
         private const val COMMAND_DRAW_TEXT_UTF16 = 17
@@ -1475,7 +1490,11 @@ class JbrSkiaSwingLayer(
         private const val STROKE_CAP_ROUND = 1
         private const val STROKE_JOIN_MITER = 0
         private const val STROKE_JOIN_ROUND = 1
+        private const val CLIP_OP_INTERSECT = 0
         private val loggedRenderMode = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val strokeCapCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val transformRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val clipOperationCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val textFontSizeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val textFontWeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val textFontWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -1988,6 +2007,10 @@ class JbrSkiaSwingLayer(
             val progressWidth = (width * 0.24f).toInt().coerceAtLeast(120)
             val progressX = ((phase * width).toInt() % width) - progressWidth
             commands.addCommand(COMMAND_FILL_RECT, COMMAND_RECORD_FLAG_ANTIALIAS, 0xffffa657.toInt(), progressX, 24, progressWidth, 36, 0)
+            commands.addCommand(COMMAND_SAVE)
+            commands.addCommand(COMMAND_CLIP_RECT, COMMAND_RECORD_FLAG_ANTIALIAS, 0, 0, width, height, CLIP_OP_INTERSECT)
+            commands.addCommand(COMMAND_TRANSLATE, COMMAND_RECORD_FLAGS_NONE, 0, 0)
+            commands.addCommand(COMMAND_RESTORE)
 
             val lineStep = 86
             val linePhase = (phase * 172f).toInt()
@@ -2110,6 +2133,94 @@ class JbrSkiaSwingLayer(
                 stream[COMMAND_STREAM_HEADER_SIZE + 1] = 12
                 Logger.info { COMMAND_RECORD_LENGTH_CORRUPTED_MARKER }
             }
+        }
+
+        private fun IntArray.corruptStrokeCapForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_STROKE_CAP_PROPERTY)) return this
+            return corruptFirstCommandArgumentForTesting(
+                command = COMMAND_STROKE_LINE,
+                argsOffset = 7,
+                value = 3,
+                marker = STROKE_CAP_CORRUPTED_MARKER,
+                once = strokeCapCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptTransformRecordFlagsForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_TRANSFORM_RECORD_FLAGS_PROPERTY)) return this
+            return corruptFirstCommandRecordFlagsForTesting(
+                command = COMMAND_TRANSLATE,
+                value = COMMAND_RECORD_FLAG_ANTIALIAS,
+                marker = TRANSFORM_RECORD_FLAGS_CORRUPTED_MARKER,
+                once = transformRecordFlagsCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptClipOperationForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_CLIP_OPERATION_PROPERTY)) return this
+            return corruptFirstCommandArgumentForTesting(
+                command = COMMAND_CLIP_RECT,
+                argsOffset = 4,
+                value = 3,
+                marker = CLIP_OPERATION_CORRUPTED_MARKER,
+                once = clipOperationCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptFirstCommandRecordFlagsForTesting(
+            command: Int,
+            value: Int,
+            marker: String,
+            once: java.util.concurrent.atomic.AtomicBoolean,
+        ): IntArray {
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                if (op == command) {
+                    return copyOf().also { stream ->
+                        stream[offset + 2] = value
+                        if (once.compareAndSet(false, true)) {
+                            Logger.info { marker }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
+        private fun IntArray.corruptFirstCommandArgumentForTesting(
+            command: Int,
+            argsOffset: Int,
+            value: Int,
+            marker: String,
+            once: java.util.concurrent.atomic.AtomicBoolean,
+        ): IntArray {
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if (op == command && argsStart + argsOffset < recordEnd) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + argsOffset] = value
+                        if (once.compareAndSet(false, true)) {
+                            Logger.info { marker }
+                        }
+                    }
+                }
+                offset = recordEnd
+            }
+            return this
         }
 
         private fun IntArray.corruptTextFontSizeForTestingIfRequested(): IntArray {
