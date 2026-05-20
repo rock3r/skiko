@@ -371,6 +371,7 @@ class JbrSkiaSwingLayer(
                 .corruptTransformRecordFlagsForTestingIfRequested()
                 .corruptClipOperationForTestingIfRequested()
                 .corruptDrawPointsPointCountForTestingIfRequested()
+                .corruptDrawPointsMaxPointCountForTestingIfRequested()
                 .corruptDrawPointsRecordLengthForTestingIfRequested()
                 .corruptDrawVerticesVertexCountForTestingIfRequested()
                 .corruptDrawVerticesMaxVertexCountForTestingIfRequested()
@@ -511,6 +512,8 @@ class JbrSkiaSwingLayer(
         const val CORRUPT_CLIP_OPERATION_PROPERTY = "skiko.jbr.interop.corruptClipOperationForTesting"
         const val CORRUPT_DRAW_POINTS_POINT_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptDrawPointsPointCountForTesting"
+        const val CORRUPT_DRAW_POINTS_MAX_POINT_COUNT_PROPERTY =
+            "skiko.jbr.interop.corruptDrawPointsMaxPointCountForTesting"
         const val CORRUPT_DRAW_POINTS_RECORD_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptDrawPointsRecordLengthForTesting"
         const val CORRUPT_DRAW_VERTICES_VERTEX_COUNT_PROPERTY =
@@ -1027,6 +1030,8 @@ class JbrSkiaSwingLayer(
         private const val CLIP_OPERATION_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_CLIP_OPERATION_CORRUPTED"
         private const val DRAW_POINTS_POINT_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DRAW_POINTS_POINT_COUNT_CORRUPTED"
+        private const val DRAW_POINTS_MAX_POINT_COUNT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_DRAW_POINTS_MAX_POINT_COUNT_CORRUPTED"
         private const val DRAW_POINTS_RECORD_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DRAW_POINTS_RECORD_LENGTH_CORRUPTED"
         private const val DRAW_VERTICES_VERTEX_COUNT_CORRUPTED_MARKER =
@@ -1590,6 +1595,7 @@ class JbrSkiaSwingLayer(
         private val transformRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val clipOperationCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawPointsPointCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val drawPointsMaxPointCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawPointsRecordLengthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawVerticesVertexCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawVerticesMaxVertexCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -2287,6 +2293,17 @@ class JbrSkiaSwingLayer(
                 value = 0,
                 marker = DRAW_POINTS_POINT_COUNT_CORRUPTED_MARKER,
                 once = drawPointsPointCountCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptDrawPointsMaxPointCountForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_DRAW_POINTS_MAX_POINT_COUNT_PROPERTY)) return this
+            return corruptFirstCommandArgumentForTesting(
+                command = COMMAND_DRAW_POINTS,
+                argsOffset = 5,
+                value = 4097,
+                marker = DRAW_POINTS_MAX_POINT_COUNT_CORRUPTED_MARKER,
+                once = drawPointsMaxPointCountCorruptedForTesting,
             )
         }
 
