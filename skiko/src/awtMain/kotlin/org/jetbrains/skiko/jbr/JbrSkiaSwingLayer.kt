@@ -376,6 +376,8 @@ class JbrSkiaSwingLayer(
                 .corruptImageDefineRecordFlagsForTestingIfRequested()
                 .corruptFontDataRecordFlagsForTestingIfRequested()
                 .corruptImageEvictRecordFlagsForTestingIfRequested()
+                .corruptColorFilterEvictRecordFlagsForTestingIfRequested()
+                .corruptShaderEvictRecordFlagsForTestingIfRequested()
                 .corruptCommandCoordinateSpaceForTestingIfRequested()
                 .corruptCommandPaintFormatForTestingIfRequested()
                 .corruptCommandPayloadLengthForTestingIfRequested()
@@ -509,6 +511,10 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptFontDataRecordFlagsForTesting"
         const val CORRUPT_IMAGE_EVICT_RECORD_FLAGS_PROPERTY =
             "skiko.jbr.interop.corruptImageEvictRecordFlagsForTesting"
+        const val CORRUPT_COLOR_FILTER_EVICT_RECORD_FLAGS_PROPERTY =
+            "skiko.jbr.interop.corruptColorFilterEvictRecordFlagsForTesting"
+        const val CORRUPT_SHADER_EVICT_RECORD_FLAGS_PROPERTY =
+            "skiko.jbr.interop.corruptShaderEvictRecordFlagsForTesting"
         const val CORRUPT_TEXT_FONT_SIZE_PROPERTY = "skiko.jbr.interop.corruptTextFontSizeForTesting"
         const val CORRUPT_TEXT_FONT_WEIGHT_PROPERTY = "skiko.jbr.interop.corruptTextFontWeightForTesting"
         const val CORRUPT_TEXT_FONT_WIDTH_PROPERTY = "skiko.jbr.interop.corruptTextFontWidthForTesting"
@@ -1001,6 +1007,10 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_FONT_DATA_RECORD_FLAGS_CORRUPTED"
         private const val IMAGE_EVICT_RECORD_FLAGS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_EVICT_RECORD_FLAGS_CORRUPTED"
+        private const val COLOR_FILTER_EVICT_RECORD_FLAGS_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_COLOR_FILTER_EVICT_RECORD_FLAGS_CORRUPTED"
+        private const val SHADER_EVICT_RECORD_FLAGS_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SHADER_EVICT_RECORD_FLAGS_CORRUPTED"
         private const val TEXT_FONT_SIZE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_SIZE_CORRUPTED"
         private const val TEXT_FONT_WEIGHT_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_WEIGHT_CORRUPTED"
         private const val TEXT_FONT_WIDTH_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_WIDTH_CORRUPTED"
@@ -1532,6 +1542,8 @@ class JbrSkiaSwingLayer(
         private val imageDefineRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val fontDataRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageEvictRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val colorFilterEvictRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val shaderEvictRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val textFontSizeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val textFontWeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val textFontWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -2261,6 +2273,26 @@ class JbrSkiaSwingLayer(
                 value = COMMAND_RECORD_FLAG_ANTIALIAS,
                 marker = IMAGE_EVICT_RECORD_FLAGS_CORRUPTED_MARKER,
                 once = imageEvictRecordFlagsCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptColorFilterEvictRecordFlagsForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_COLOR_FILTER_EVICT_RECORD_FLAGS_PROPERTY)) return this
+            return corruptFirstCommandRecordFlagsForTesting(
+                command = COMMAND_EVICT_COLOR_FILTER_HANDLE,
+                value = COMMAND_RECORD_FLAG_ANTIALIAS,
+                marker = COLOR_FILTER_EVICT_RECORD_FLAGS_CORRUPTED_MARKER,
+                once = colorFilterEvictRecordFlagsCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptShaderEvictRecordFlagsForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SHADER_EVICT_RECORD_FLAGS_PROPERTY)) return this
+            return corruptFirstCommandRecordFlagsForTesting(
+                command = COMMAND_EVICT_SHADER_HANDLE,
+                value = COMMAND_RECORD_FLAG_ANTIALIAS,
+                marker = SHADER_EVICT_RECORD_FLAGS_CORRUPTED_MARKER,
+                once = shaderEvictRecordFlagsCorruptedForTesting,
             )
         }
 
