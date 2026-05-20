@@ -373,10 +373,12 @@ class JbrSkiaSwingLayer(
                 .corruptDrawPointsPointCountForTestingIfRequested()
                 .corruptDrawPointsRecordLengthForTestingIfRequested()
                 .corruptDrawVerticesVertexCountForTestingIfRequested()
+                .corruptDrawVerticesMaxVertexCountForTestingIfRequested()
                 .corruptDrawVerticesRecordLengthForTestingIfRequested()
                 .corruptDrawVerticesVertexModeForTestingIfRequested()
                 .corruptDrawVerticesBlendModeForTestingIfRequested()
                 .corruptDrawVerticesIndexCountForTestingIfRequested()
+                .corruptDrawVerticesMaxIndexCountForTestingIfRequested()
                 .corruptSaveLayerRecordFlagsForTestingIfRequested()
                 .corruptEffectDescriptorRecordFlagsForTestingIfRequested()
                 .corruptShaderDescriptorRecordFlagsForTestingIfRequested()
@@ -513,6 +515,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptDrawPointsRecordLengthForTesting"
         const val CORRUPT_DRAW_VERTICES_VERTEX_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptDrawVerticesVertexCountForTesting"
+        const val CORRUPT_DRAW_VERTICES_MAX_VERTEX_COUNT_PROPERTY =
+            "skiko.jbr.interop.corruptDrawVerticesMaxVertexCountForTesting"
         const val CORRUPT_DRAW_VERTICES_RECORD_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptDrawVerticesRecordLengthForTesting"
         const val CORRUPT_DRAW_VERTICES_VERTEX_MODE_PROPERTY =
@@ -521,6 +525,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptDrawVerticesBlendModeForTesting"
         const val CORRUPT_DRAW_VERTICES_INDEX_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptDrawVerticesIndexCountForTesting"
+        const val CORRUPT_DRAW_VERTICES_MAX_INDEX_COUNT_PROPERTY =
+            "skiko.jbr.interop.corruptDrawVerticesMaxIndexCountForTesting"
         const val CORRUPT_SAVE_LAYER_RECORD_FLAGS_PROPERTY =
             "skiko.jbr.interop.corruptSaveLayerRecordFlagsForTesting"
         const val CORRUPT_EFFECT_DESCRIPTOR_RECORD_FLAGS_PROPERTY =
@@ -1025,6 +1031,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_DRAW_POINTS_RECORD_LENGTH_CORRUPTED"
         private const val DRAW_VERTICES_VERTEX_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DRAW_VERTICES_VERTEX_COUNT_CORRUPTED"
+        private const val DRAW_VERTICES_MAX_VERTEX_COUNT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_DRAW_VERTICES_MAX_VERTEX_COUNT_CORRUPTED"
         private const val DRAW_VERTICES_RECORD_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DRAW_VERTICES_RECORD_LENGTH_CORRUPTED"
         private const val DRAW_VERTICES_VERTEX_MODE_CORRUPTED_MARKER =
@@ -1033,6 +1041,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_DRAW_VERTICES_BLEND_MODE_CORRUPTED"
         private const val DRAW_VERTICES_INDEX_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DRAW_VERTICES_INDEX_COUNT_CORRUPTED"
+        private const val DRAW_VERTICES_MAX_INDEX_COUNT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_DRAW_VERTICES_MAX_INDEX_COUNT_CORRUPTED"
         private const val SAVE_LAYER_RECORD_FLAGS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SAVE_LAYER_RECORD_FLAGS_CORRUPTED"
         private const val EFFECT_DESCRIPTOR_RECORD_FLAGS_CORRUPTED_MARKER =
@@ -1582,10 +1592,12 @@ class JbrSkiaSwingLayer(
         private val drawPointsPointCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawPointsRecordLengthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawVerticesVertexCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val drawVerticesMaxVertexCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawVerticesRecordLengthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawVerticesVertexModeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawVerticesBlendModeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawVerticesIndexCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val drawVerticesMaxIndexCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectDescriptorRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -2299,6 +2311,17 @@ class JbrSkiaSwingLayer(
             )
         }
 
+        private fun IntArray.corruptDrawVerticesMaxVertexCountForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_DRAW_VERTICES_MAX_VERTEX_COUNT_PROPERTY)) return this
+            return corruptFirstCommandArgumentForTesting(
+                command = COMMAND_DRAW_VERTICES,
+                argsOffset = 3,
+                value = 4097,
+                marker = DRAW_VERTICES_MAX_VERTEX_COUNT_CORRUPTED_MARKER,
+                once = drawVerticesMaxVertexCountCorruptedForTesting,
+            )
+        }
+
         private fun IntArray.corruptDrawVerticesRecordLengthForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_DRAW_VERTICES_RECORD_LENGTH_PROPERTY)) return this
             return corruptFirstCommandRecordLengthForTesting(
@@ -2339,6 +2362,17 @@ class JbrSkiaSwingLayer(
                 value = -1,
                 marker = DRAW_VERTICES_INDEX_COUNT_CORRUPTED_MARKER,
                 once = drawVerticesIndexCountCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptDrawVerticesMaxIndexCountForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_DRAW_VERTICES_MAX_INDEX_COUNT_PROPERTY)) return this
+            return corruptFirstCommandArgumentForTesting(
+                command = COMMAND_DRAW_VERTICES,
+                argsOffset = 4,
+                value = 8193,
+                marker = DRAW_VERTICES_MAX_INDEX_COUNT_CORRUPTED_MARKER,
+                once = drawVerticesMaxIndexCountCorruptedForTesting,
             )
         }
 
