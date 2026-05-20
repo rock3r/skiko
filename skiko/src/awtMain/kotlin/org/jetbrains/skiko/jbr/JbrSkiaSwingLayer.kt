@@ -375,6 +375,7 @@ class JbrSkiaSwingLayer(
                 .corruptShaderDescriptorRecordFlagsForTestingIfRequested()
                 .corruptImageDefineRecordFlagsForTestingIfRequested()
                 .corruptFontDataRecordFlagsForTestingIfRequested()
+                .corruptImageEvictRecordFlagsForTestingIfRequested()
                 .corruptCommandCoordinateSpaceForTestingIfRequested()
                 .corruptCommandPaintFormatForTestingIfRequested()
                 .corruptCommandPayloadLengthForTestingIfRequested()
@@ -506,6 +507,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptImageDefineRecordFlagsForTesting"
         const val CORRUPT_FONT_DATA_RECORD_FLAGS_PROPERTY =
             "skiko.jbr.interop.corruptFontDataRecordFlagsForTesting"
+        const val CORRUPT_IMAGE_EVICT_RECORD_FLAGS_PROPERTY =
+            "skiko.jbr.interop.corruptImageEvictRecordFlagsForTesting"
         const val CORRUPT_TEXT_FONT_SIZE_PROPERTY = "skiko.jbr.interop.corruptTextFontSizeForTesting"
         const val CORRUPT_TEXT_FONT_WEIGHT_PROPERTY = "skiko.jbr.interop.corruptTextFontWeightForTesting"
         const val CORRUPT_TEXT_FONT_WIDTH_PROPERTY = "skiko.jbr.interop.corruptTextFontWidthForTesting"
@@ -996,6 +999,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_IMAGE_DEFINE_RECORD_FLAGS_CORRUPTED"
         private const val FONT_DATA_RECORD_FLAGS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_FONT_DATA_RECORD_FLAGS_CORRUPTED"
+        private const val IMAGE_EVICT_RECORD_FLAGS_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_IMAGE_EVICT_RECORD_FLAGS_CORRUPTED"
         private const val TEXT_FONT_SIZE_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_SIZE_CORRUPTED"
         private const val TEXT_FONT_WEIGHT_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_WEIGHT_CORRUPTED"
         private const val TEXT_FONT_WIDTH_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_TEXT_FONT_WIDTH_CORRUPTED"
@@ -1526,6 +1531,7 @@ class JbrSkiaSwingLayer(
         private val shaderDescriptorRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageDefineRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val fontDataRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageEvictRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val textFontSizeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val textFontWeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val textFontWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -2245,6 +2251,16 @@ class JbrSkiaSwingLayer(
                 value = COMMAND_RECORD_FLAG_ANTIALIAS,
                 marker = FONT_DATA_RECORD_FLAGS_CORRUPTED_MARKER,
                 once = fontDataRecordFlagsCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptImageEvictRecordFlagsForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_EVICT_RECORD_FLAGS_PROPERTY)) return this
+            return corruptFirstCommandRecordFlagsForTesting(
+                command = COMMAND_EVICT_IMAGE_CACHE_KEY,
+                value = COMMAND_RECORD_FLAG_ANTIALIAS,
+                marker = IMAGE_EVICT_RECORD_FLAGS_CORRUPTED_MARKER,
+                once = imageEvictRecordFlagsCorruptedForTesting,
             )
         }
 
