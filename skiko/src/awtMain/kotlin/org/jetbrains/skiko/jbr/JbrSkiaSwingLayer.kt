@@ -374,6 +374,7 @@ class JbrSkiaSwingLayer(
                 .corruptDrawPointsRecordLengthForTestingIfRequested()
                 .corruptDrawVerticesVertexCountForTestingIfRequested()
                 .corruptDrawVerticesRecordLengthForTestingIfRequested()
+                .corruptDrawVerticesVertexModeForTestingIfRequested()
                 .corruptSaveLayerRecordFlagsForTestingIfRequested()
                 .corruptEffectDescriptorRecordFlagsForTestingIfRequested()
                 .corruptShaderDescriptorRecordFlagsForTestingIfRequested()
@@ -512,6 +513,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptDrawVerticesVertexCountForTesting"
         const val CORRUPT_DRAW_VERTICES_RECORD_LENGTH_PROPERTY =
             "skiko.jbr.interop.corruptDrawVerticesRecordLengthForTesting"
+        const val CORRUPT_DRAW_VERTICES_VERTEX_MODE_PROPERTY =
+            "skiko.jbr.interop.corruptDrawVerticesVertexModeForTesting"
         const val CORRUPT_SAVE_LAYER_RECORD_FLAGS_PROPERTY =
             "skiko.jbr.interop.corruptSaveLayerRecordFlagsForTesting"
         const val CORRUPT_EFFECT_DESCRIPTOR_RECORD_FLAGS_PROPERTY =
@@ -1018,6 +1021,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_DRAW_VERTICES_VERTEX_COUNT_CORRUPTED"
         private const val DRAW_VERTICES_RECORD_LENGTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_DRAW_VERTICES_RECORD_LENGTH_CORRUPTED"
+        private const val DRAW_VERTICES_VERTEX_MODE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_DRAW_VERTICES_VERTEX_MODE_CORRUPTED"
         private const val SAVE_LAYER_RECORD_FLAGS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SAVE_LAYER_RECORD_FLAGS_CORRUPTED"
         private const val EFFECT_DESCRIPTOR_RECORD_FLAGS_CORRUPTED_MARKER =
@@ -1568,6 +1573,7 @@ class JbrSkiaSwingLayer(
         private val drawPointsRecordLengthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawVerticesVertexCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawVerticesRecordLengthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val drawVerticesVertexModeCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectDescriptorRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -2288,6 +2294,17 @@ class JbrSkiaSwingLayer(
                 deltaBytes = -Int.SIZE_BYTES,
                 marker = DRAW_VERTICES_RECORD_LENGTH_CORRUPTED_MARKER,
                 once = drawVerticesRecordLengthCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptDrawVerticesVertexModeForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_DRAW_VERTICES_VERTEX_MODE_PROPERTY)) return this
+            return corruptFirstCommandArgumentForTesting(
+                command = COMMAND_DRAW_VERTICES,
+                argsOffset = 0,
+                value = 3,
+                marker = DRAW_VERTICES_VERTEX_MODE_CORRUPTED_MARKER,
+                once = drawVerticesVertexModeCorruptedForTesting,
             )
         }
 
