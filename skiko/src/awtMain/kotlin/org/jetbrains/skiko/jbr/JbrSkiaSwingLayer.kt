@@ -375,6 +375,7 @@ class JbrSkiaSwingLayer(
                 .corruptShaderDescriptorRecordFlagsForTestingIfRequested()
                 .corruptImageDefineRecordFlagsForTestingIfRequested()
                 .corruptFontDataRecordFlagsForTestingIfRequested()
+                .corruptImageCacheClearRecordFlagsForTestingIfRequested()
                 .corruptImageEvictRecordFlagsForTestingIfRequested()
                 .corruptColorFilterEvictRecordFlagsForTestingIfRequested()
                 .corruptShaderEvictRecordFlagsForTestingIfRequested()
@@ -509,6 +510,8 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptImageDefineRecordFlagsForTesting"
         const val CORRUPT_FONT_DATA_RECORD_FLAGS_PROPERTY =
             "skiko.jbr.interop.corruptFontDataRecordFlagsForTesting"
+        const val CORRUPT_IMAGE_CACHE_CLEAR_RECORD_FLAGS_PROPERTY =
+            "skiko.jbr.interop.corruptImageCacheClearRecordFlagsForTesting"
         const val CORRUPT_IMAGE_EVICT_RECORD_FLAGS_PROPERTY =
             "skiko.jbr.interop.corruptImageEvictRecordFlagsForTesting"
         const val CORRUPT_COLOR_FILTER_EVICT_RECORD_FLAGS_PROPERTY =
@@ -1005,6 +1008,8 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_IMAGE_DEFINE_RECORD_FLAGS_CORRUPTED"
         private const val FONT_DATA_RECORD_FLAGS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_FONT_DATA_RECORD_FLAGS_CORRUPTED"
+        private const val IMAGE_CACHE_CLEAR_RECORD_FLAGS_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_IMAGE_CACHE_CLEAR_RECORD_FLAGS_CORRUPTED"
         private const val IMAGE_EVICT_RECORD_FLAGS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_EVICT_RECORD_FLAGS_CORRUPTED"
         private const val COLOR_FILTER_EVICT_RECORD_FLAGS_CORRUPTED_MARKER =
@@ -1456,6 +1461,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_DEFINE_IMAGE_ARGB = 15
         private const val COMMAND_DRAW_IMAGE_REF = 16
         private const val COMMAND_DRAW_TEXT_UTF16 = 17
+        private const val COMMAND_CLEAR_IMAGE_CACHE = 18
         private const val COMMAND_DRAW_PARAGRAPH_UTF16 = 19
         private const val COMMAND_CLIP_PATH = 20
         private const val COMMAND_DRAW_PATH = 21
@@ -1541,6 +1547,7 @@ class JbrSkiaSwingLayer(
         private val shaderDescriptorRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageDefineRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val fontDataRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageCacheClearRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageEvictRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val colorFilterEvictRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderEvictRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -2263,6 +2270,16 @@ class JbrSkiaSwingLayer(
                 value = COMMAND_RECORD_FLAG_ANTIALIAS,
                 marker = FONT_DATA_RECORD_FLAGS_CORRUPTED_MARKER,
                 once = fontDataRecordFlagsCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptImageCacheClearRecordFlagsForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_CACHE_CLEAR_RECORD_FLAGS_PROPERTY)) return this
+            return corruptFirstCommandRecordFlagsForTesting(
+                command = COMMAND_CLEAR_IMAGE_CACHE,
+                value = COMMAND_RECORD_FLAG_ANTIALIAS,
+                marker = IMAGE_CACHE_CLEAR_RECORD_FLAGS_CORRUPTED_MARKER,
+                once = imageCacheClearRecordFlagsCorruptedForTesting,
             )
         }
 
