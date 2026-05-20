@@ -370,6 +370,7 @@ class JbrSkiaSwingLayer(
                 .corruptStrokeCapForTestingIfRequested()
                 .corruptTransformRecordFlagsForTestingIfRequested()
                 .corruptClipOperationForTestingIfRequested()
+                .corruptDrawPointsPointCountForTestingIfRequested()
                 .corruptSaveLayerRecordFlagsForTestingIfRequested()
                 .corruptEffectDescriptorRecordFlagsForTestingIfRequested()
                 .corruptShaderDescriptorRecordFlagsForTestingIfRequested()
@@ -500,6 +501,8 @@ class JbrSkiaSwingLayer(
         const val CORRUPT_TRANSFORM_RECORD_FLAGS_PROPERTY =
             "skiko.jbr.interop.corruptTransformRecordFlagsForTesting"
         const val CORRUPT_CLIP_OPERATION_PROPERTY = "skiko.jbr.interop.corruptClipOperationForTesting"
+        const val CORRUPT_DRAW_POINTS_POINT_COUNT_PROPERTY =
+            "skiko.jbr.interop.corruptDrawPointsPointCountForTesting"
         const val CORRUPT_SAVE_LAYER_RECORD_FLAGS_PROPERTY =
             "skiko.jbr.interop.corruptSaveLayerRecordFlagsForTesting"
         const val CORRUPT_EFFECT_DESCRIPTOR_RECORD_FLAGS_PROPERTY =
@@ -998,6 +1001,8 @@ class JbrSkiaSwingLayer(
         private const val TRANSFORM_RECORD_FLAGS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_TRANSFORM_RECORD_FLAGS_CORRUPTED"
         private const val CLIP_OPERATION_CORRUPTED_MARKER = "SKIKO_JBR_INTEROP_CLIP_OPERATION_CORRUPTED"
+        private const val DRAW_POINTS_POINT_COUNT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_DRAW_POINTS_POINT_COUNT_CORRUPTED"
         private const val SAVE_LAYER_RECORD_FLAGS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SAVE_LAYER_RECORD_FLAGS_CORRUPTED"
         private const val EFFECT_DESCRIPTOR_RECORD_FLAGS_CORRUPTED_MARKER =
@@ -1468,6 +1473,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_STROKE_PATH_DASH_PATH_EFFECT = 61
         private const val COMMAND_DRAW_PATH_PATH_EFFECT_REF = 62
         private const val COMMAND_DRAW_SHADOW_PATH = 64
+        private const val COMMAND_DRAW_POINTS = 65
         private const val COMMAND_FILL_RECT_LINEAR_GRADIENT = 24
         private const val COMMAND_FILL_ROUND_RECT_LINEAR_GRADIENT = 25
         private const val COMMAND_FILL_RECT_RADIAL_GRADIENT = 26
@@ -1542,6 +1548,7 @@ class JbrSkiaSwingLayer(
         private val strokeCapCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val transformRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val clipOperationCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val drawPointsPointCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectDescriptorRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -2220,6 +2227,17 @@ class JbrSkiaSwingLayer(
                 value = 3,
                 marker = CLIP_OPERATION_CORRUPTED_MARKER,
                 once = clipOperationCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptDrawPointsPointCountForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_DRAW_POINTS_POINT_COUNT_PROPERTY)) return this
+            return corruptFirstCommandArgumentForTesting(
+                command = COMMAND_DRAW_POINTS,
+                argsOffset = 5,
+                value = 0,
+                marker = DRAW_POINTS_POINT_COUNT_CORRUPTED_MARKER,
+                once = drawPointsPointCountCorruptedForTesting,
             )
         }
 
