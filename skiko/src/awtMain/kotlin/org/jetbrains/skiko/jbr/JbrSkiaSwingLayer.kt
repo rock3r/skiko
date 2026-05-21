@@ -199,6 +199,8 @@ class JbrSkiaSwingLayer(
                 .corruptDrawPathPathEffectVerbForTestingIfRequested()
                 .corruptStrokeLineDashPathEffectIntervalCountForTestingIfRequested()
                 .corruptStrokeRectDashPathEffectIntervalCountForTestingIfRequested()
+                .corruptStrokeRectDashPathEffectWidthForTestingIfRequested()
+                .corruptStrokeRectDashPathEffectHeightForTestingIfRequested()
                 .corruptStrokeRoundRectDashPathEffectIntervalCountForTestingIfRequested()
                 .corruptStrokePathDashPathEffectVerbForTestingIfRequested()
                 .corruptStrokePathDashPathEffectIntervalCountForTestingIfRequested()
@@ -627,6 +629,10 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptStrokeLineDashPathEffectIntervalCountForTesting"
         const val CORRUPT_STROKE_RECT_DASH_PATH_EFFECT_INTERVAL_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptStrokeRectDashPathEffectIntervalCountForTesting"
+        const val CORRUPT_STROKE_RECT_DASH_PATH_EFFECT_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptStrokeRectDashPathEffectWidthForTesting"
+        const val CORRUPT_STROKE_RECT_DASH_PATH_EFFECT_HEIGHT_PROPERTY =
+            "skiko.jbr.interop.corruptStrokeRectDashPathEffectHeightForTesting"
         const val CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_INTERVAL_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptStrokeRoundRectDashPathEffectIntervalCountForTesting"
         const val CORRUPT_STROKE_PATH_DASH_PATH_EFFECT_VERB_PROPERTY =
@@ -1207,6 +1213,10 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_STROKE_LINE_DASH_PATH_EFFECT_INTERVAL_COUNT_CORRUPTED"
         private const val STROKE_RECT_DASH_PATH_EFFECT_INTERVAL_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_STROKE_RECT_DASH_PATH_EFFECT_INTERVAL_COUNT_CORRUPTED"
+        private const val STROKE_RECT_DASH_PATH_EFFECT_WIDTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_STROKE_RECT_DASH_PATH_EFFECT_WIDTH_CORRUPTED"
+        private const val STROKE_RECT_DASH_PATH_EFFECT_HEIGHT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_STROKE_RECT_DASH_PATH_EFFECT_HEIGHT_CORRUPTED"
         private const val STROKE_ROUND_RECT_DASH_PATH_EFFECT_INTERVAL_COUNT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_STROKE_ROUND_RECT_DASH_PATH_EFFECT_INTERVAL_COUNT_CORRUPTED"
         private const val STROKE_PATH_DASH_PATH_EFFECT_VERB_CORRUPTED_MARKER =
@@ -1813,6 +1823,10 @@ class JbrSkiaSwingLayer(
         private val strokeLineDashPathEffectIntervalCountCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val strokeRectDashPathEffectIntervalCountCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val strokeRectDashPathEffectWidthCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val strokeRectDashPathEffectHeightCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val strokeRoundRectDashPathEffectIntervalCountCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3163,6 +3177,26 @@ class JbrSkiaSwingLayer(
                 argIndex = 10,
                 value = 1,
                 marker = STROKE_RECT_DASH_PATH_EFFECT_INTERVAL_COUNT_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptStrokeRectDashPathEffectWidthForTestingIfRequested(): IntArray =
+            corruptDashPathEffectFieldForTestingIfRequested(
+                property = CORRUPT_STROKE_RECT_DASH_PATH_EFFECT_WIDTH_PROPERTY,
+                once = strokeRectDashPathEffectWidthCorruptedForTesting,
+                command = COMMAND_STROKE_RECT_DASH_PATH_EFFECT,
+                argIndex = 3,
+                value = -1,
+                marker = STROKE_RECT_DASH_PATH_EFFECT_WIDTH_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptStrokeRectDashPathEffectHeightForTestingIfRequested(): IntArray =
+            corruptDashPathEffectFieldForTestingIfRequested(
+                property = CORRUPT_STROKE_RECT_DASH_PATH_EFFECT_HEIGHT_PROPERTY,
+                once = strokeRectDashPathEffectHeightCorruptedForTesting,
+                command = COMMAND_STROKE_RECT_DASH_PATH_EFFECT,
+                argIndex = 4,
+                value = -1,
+                marker = STROKE_RECT_DASH_PATH_EFFECT_HEIGHT_CORRUPTED_MARKER,
             )
 
         private fun IntArray.corruptStrokeRoundRectDashPathEffectIntervalCountForTestingIfRequested(): IntArray =
