@@ -206,6 +206,8 @@ class JbrSkiaSwingLayer(
                 .corruptStrokeRoundRectDashPathEffectBottomForTestingIfRequested()
                 .corruptStrokeRoundRectDashPathEffectRadiusXForTestingIfRequested()
                 .corruptStrokeRoundRectDashPathEffectRadiusYForTestingIfRequested()
+                .corruptStrokeRoundRectDashPathEffectPhaseForTestingIfRequested()
+                .corruptStrokeRoundRectDashPathEffectIntervalForTestingIfRequested()
                 .corruptStrokePathDashPathEffectVerbForTestingIfRequested()
                 .corruptStrokePathDashPathEffectIntervalCountForTestingIfRequested()
                 .corruptStrokePathDashPathEffectIntervalForTestingIfRequested()
@@ -647,6 +649,10 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptStrokeRoundRectDashPathEffectRadiusXForTesting"
         const val CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_RADIUS_Y_PROPERTY =
             "skiko.jbr.interop.corruptStrokeRoundRectDashPathEffectRadiusYForTesting"
+        const val CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_PHASE_PROPERTY =
+            "skiko.jbr.interop.corruptStrokeRoundRectDashPathEffectPhaseForTesting"
+        const val CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_INTERVAL_PROPERTY =
+            "skiko.jbr.interop.corruptStrokeRoundRectDashPathEffectIntervalForTesting"
         const val CORRUPT_STROKE_PATH_DASH_PATH_EFFECT_VERB_PROPERTY =
             "skiko.jbr.interop.corruptStrokePathDashPathEffectVerbForTesting"
         const val CORRUPT_STROKE_PATH_DASH_PATH_EFFECT_INTERVAL_COUNT_PROPERTY =
@@ -1239,6 +1245,10 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_STROKE_ROUND_RECT_DASH_PATH_EFFECT_RADIUS_X_CORRUPTED"
         private const val STROKE_ROUND_RECT_DASH_PATH_EFFECT_RADIUS_Y_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_STROKE_ROUND_RECT_DASH_PATH_EFFECT_RADIUS_Y_CORRUPTED"
+        private const val STROKE_ROUND_RECT_DASH_PATH_EFFECT_PHASE_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_STROKE_ROUND_RECT_DASH_PATH_EFFECT_PHASE_CORRUPTED"
+        private const val STROKE_ROUND_RECT_DASH_PATH_EFFECT_INTERVAL_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_STROKE_ROUND_RECT_DASH_PATH_EFFECT_INTERVAL_CORRUPTED"
         private const val STROKE_PATH_DASH_PATH_EFFECT_VERB_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_STROKE_PATH_DASH_PATH_EFFECT_VERB_CORRUPTED"
         private const val STROKE_PATH_DASH_PATH_EFFECT_INTERVAL_COUNT_CORRUPTED_MARKER =
@@ -1857,6 +1867,10 @@ class JbrSkiaSwingLayer(
         private val strokeRoundRectDashPathEffectRadiusXCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val strokeRoundRectDashPathEffectRadiusYCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val strokeRoundRectDashPathEffectPhaseCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val strokeRoundRectDashPathEffectIntervalCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val strokePathDashPathEffectVerbCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3275,6 +3289,26 @@ class JbrSkiaSwingLayer(
                 argIndex = 6,
                 value = -1,
                 marker = STROKE_ROUND_RECT_DASH_PATH_EFFECT_RADIUS_Y_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptStrokeRoundRectDashPathEffectPhaseForTestingIfRequested(): IntArray =
+            corruptDashPathEffectFieldForTestingIfRequested(
+                property = CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_PHASE_PROPERTY,
+                once = strokeRoundRectDashPathEffectPhaseCorruptedForTesting,
+                command = COMMAND_STROKE_ROUND_RECT_DASH_PATH_EFFECT,
+                argIndex = 11,
+                value = -1,
+                marker = STROKE_ROUND_RECT_DASH_PATH_EFFECT_PHASE_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptStrokeRoundRectDashPathEffectIntervalForTestingIfRequested(): IntArray =
+            corruptDashPathEffectFieldForTestingIfRequested(
+                property = CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_INTERVAL_PROPERTY,
+                once = strokeRoundRectDashPathEffectIntervalCorruptedForTesting,
+                command = COMMAND_STROKE_ROUND_RECT_DASH_PATH_EFFECT,
+                argIndex = 13,
+                value = 0,
+                marker = STROKE_ROUND_RECT_DASH_PATH_EFFECT_INTERVAL_CORRUPTED_MARKER,
             )
 
         private fun IntArray.corruptDashPathEffectFieldForTestingIfRequested(
