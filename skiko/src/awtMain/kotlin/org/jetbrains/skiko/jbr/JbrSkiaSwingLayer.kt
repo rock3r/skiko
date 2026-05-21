@@ -206,6 +206,10 @@ class JbrSkiaSwingLayer(
                 .corruptStrokeRoundRectDashPathEffectBottomForTestingIfRequested()
                 .corruptStrokeRoundRectDashPathEffectRadiusXForTestingIfRequested()
                 .corruptStrokeRoundRectDashPathEffectRadiusYForTestingIfRequested()
+                .corruptStrokeRoundRectDashPathEffectStrokeWidthForTestingIfRequested()
+                .corruptStrokeRoundRectDashPathEffectStrokeCapForTestingIfRequested()
+                .corruptStrokeRoundRectDashPathEffectStrokeJoinForTestingIfRequested()
+                .corruptStrokeRoundRectDashPathEffectStrokeMiterForTestingIfRequested()
                 .corruptStrokeRoundRectDashPathEffectPhaseForTestingIfRequested()
                 .corruptStrokeRoundRectDashPathEffectIntervalForTestingIfRequested()
                 .corruptStrokePathDashPathEffectVerbForTestingIfRequested()
@@ -649,6 +653,14 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptStrokeRoundRectDashPathEffectRadiusXForTesting"
         const val CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_RADIUS_Y_PROPERTY =
             "skiko.jbr.interop.corruptStrokeRoundRectDashPathEffectRadiusYForTesting"
+        const val CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptStrokeRoundRectDashPathEffectStrokeWidthForTesting"
+        const val CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_CAP_PROPERTY =
+            "skiko.jbr.interop.corruptStrokeRoundRectDashPathEffectStrokeCapForTesting"
+        const val CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_JOIN_PROPERTY =
+            "skiko.jbr.interop.corruptStrokeRoundRectDashPathEffectStrokeJoinForTesting"
+        const val CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_MITER_PROPERTY =
+            "skiko.jbr.interop.corruptStrokeRoundRectDashPathEffectStrokeMiterForTesting"
         const val CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_PHASE_PROPERTY =
             "skiko.jbr.interop.corruptStrokeRoundRectDashPathEffectPhaseForTesting"
         const val CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_INTERVAL_PROPERTY =
@@ -1245,6 +1257,14 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_STROKE_ROUND_RECT_DASH_PATH_EFFECT_RADIUS_X_CORRUPTED"
         private const val STROKE_ROUND_RECT_DASH_PATH_EFFECT_RADIUS_Y_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_STROKE_ROUND_RECT_DASH_PATH_EFFECT_RADIUS_Y_CORRUPTED"
+        private const val STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_WIDTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_WIDTH_CORRUPTED"
+        private const val STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_CAP_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_CAP_CORRUPTED"
+        private const val STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_JOIN_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_JOIN_CORRUPTED"
+        private const val STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_MITER_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_MITER_CORRUPTED"
         private const val STROKE_ROUND_RECT_DASH_PATH_EFFECT_PHASE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_STROKE_ROUND_RECT_DASH_PATH_EFFECT_PHASE_CORRUPTED"
         private const val STROKE_ROUND_RECT_DASH_PATH_EFFECT_INTERVAL_CORRUPTED_MARKER =
@@ -1867,6 +1887,14 @@ class JbrSkiaSwingLayer(
         private val strokeRoundRectDashPathEffectRadiusXCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val strokeRoundRectDashPathEffectRadiusYCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val strokeRoundRectDashPathEffectStrokeWidthCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val strokeRoundRectDashPathEffectStrokeCapCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val strokeRoundRectDashPathEffectStrokeJoinCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val strokeRoundRectDashPathEffectStrokeMiterCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val strokeRoundRectDashPathEffectPhaseCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
@@ -3289,6 +3317,46 @@ class JbrSkiaSwingLayer(
                 argIndex = 6,
                 value = -1,
                 marker = STROKE_ROUND_RECT_DASH_PATH_EFFECT_RADIUS_Y_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptStrokeRoundRectDashPathEffectStrokeWidthForTestingIfRequested(): IntArray =
+            corruptDashPathEffectFieldForTestingIfRequested(
+                property = CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_WIDTH_PROPERTY,
+                once = strokeRoundRectDashPathEffectStrokeWidthCorruptedForTesting,
+                command = COMMAND_STROKE_ROUND_RECT_DASH_PATH_EFFECT,
+                argIndex = 7,
+                value = 0,
+                marker = STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_WIDTH_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptStrokeRoundRectDashPathEffectStrokeCapForTestingIfRequested(): IntArray =
+            corruptDashPathEffectFieldForTestingIfRequested(
+                property = CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_CAP_PROPERTY,
+                once = strokeRoundRectDashPathEffectStrokeCapCorruptedForTesting,
+                command = COMMAND_STROKE_ROUND_RECT_DASH_PATH_EFFECT,
+                argIndex = 8,
+                value = 3,
+                marker = STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_CAP_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptStrokeRoundRectDashPathEffectStrokeJoinForTestingIfRequested(): IntArray =
+            corruptDashPathEffectFieldForTestingIfRequested(
+                property = CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_JOIN_PROPERTY,
+                once = strokeRoundRectDashPathEffectStrokeJoinCorruptedForTesting,
+                command = COMMAND_STROKE_ROUND_RECT_DASH_PATH_EFFECT,
+                argIndex = 9,
+                value = 3,
+                marker = STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_JOIN_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptStrokeRoundRectDashPathEffectStrokeMiterForTestingIfRequested(): IntArray =
+            corruptDashPathEffectFieldForTestingIfRequested(
+                property = CORRUPT_STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_MITER_PROPERTY,
+                once = strokeRoundRectDashPathEffectStrokeMiterCorruptedForTesting,
+                command = COMMAND_STROKE_ROUND_RECT_DASH_PATH_EFFECT,
+                argIndex = 10,
+                value = -1,
+                marker = STROKE_ROUND_RECT_DASH_PATH_EFFECT_STROKE_MITER_CORRUPTED_MARKER,
             )
 
         private fun IntArray.corruptStrokeRoundRectDashPathEffectPhaseForTestingIfRequested(): IntArray =
