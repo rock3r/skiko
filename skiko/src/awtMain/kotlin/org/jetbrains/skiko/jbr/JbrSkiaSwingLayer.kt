@@ -256,6 +256,8 @@ class JbrSkiaSwingLayer(
                 .corruptSaveLayerAlphaForTestingIfRequested()
                 .corruptSaveLayerColorFilterWidthForTestingIfRequested()
                 .corruptSaveLayerColorFilterHeightForTestingIfRequested()
+                .corruptSaveLayerBlendModeWidthForTestingIfRequested()
+                .corruptSaveLayerBlendModeHeightForTestingIfRequested()
                 .corruptSaveLayerImageFilterWidthForTestingIfRequested()
                 .corruptSaveLayerImageFilterHeightForTestingIfRequested()
                 .corruptSaveLayerColorFilterRefWidthForTestingIfRequested()
@@ -796,6 +798,10 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptSaveLayerColorFilterWidthForTesting"
         const val CORRUPT_SAVE_LAYER_COLOR_FILTER_HEIGHT_PROPERTY =
             "skiko.jbr.interop.corruptSaveLayerColorFilterHeightForTesting"
+        const val CORRUPT_SAVE_LAYER_BLEND_MODE_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptSaveLayerBlendModeWidthForTesting"
+        const val CORRUPT_SAVE_LAYER_BLEND_MODE_HEIGHT_PROPERTY =
+            "skiko.jbr.interop.corruptSaveLayerBlendModeHeightForTesting"
         const val CORRUPT_SAVE_LAYER_IMAGE_FILTER_WIDTH_PROPERTY =
             "skiko.jbr.interop.corruptSaveLayerImageFilterWidthForTesting"
         const val CORRUPT_SAVE_LAYER_IMAGE_FILTER_HEIGHT_PROPERTY =
@@ -1318,6 +1324,10 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_SAVE_LAYER_COLOR_FILTER_WIDTH_CORRUPTED"
         private const val SAVE_LAYER_COLOR_FILTER_HEIGHT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SAVE_LAYER_COLOR_FILTER_HEIGHT_CORRUPTED"
+        private const val SAVE_LAYER_BLEND_MODE_WIDTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SAVE_LAYER_BLEND_MODE_WIDTH_CORRUPTED"
+        private const val SAVE_LAYER_BLEND_MODE_HEIGHT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SAVE_LAYER_BLEND_MODE_HEIGHT_CORRUPTED"
         private const val SAVE_LAYER_IMAGE_FILTER_WIDTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SAVE_LAYER_IMAGE_FILTER_WIDTH_CORRUPTED"
         private const val SAVE_LAYER_IMAGE_FILTER_HEIGHT_CORRUPTED_MARKER =
@@ -1864,6 +1874,8 @@ class JbrSkiaSwingLayer(
         private val saveLayerAlphaCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerColorFilterWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerColorFilterHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val saveLayerBlendModeWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val saveLayerBlendModeHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerImageFilterWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerImageFilterHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerColorFilterRefAlphaCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -4637,6 +4649,28 @@ class JbrSkiaSwingLayer(
                 value = -1,
                 marker = SAVE_LAYER_COLOR_FILTER_HEIGHT_CORRUPTED_MARKER,
                 once = saveLayerColorFilterHeightCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptSaveLayerBlendModeWidthForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_BLEND_MODE_WIDTH_PROPERTY)) return this
+            return corruptFirstCommandArgumentForTesting(
+                command = COMMAND_SAVE_LAYER_BLEND_MODE,
+                argsOffset = 2,
+                value = -1,
+                marker = SAVE_LAYER_BLEND_MODE_WIDTH_CORRUPTED_MARKER,
+                once = saveLayerBlendModeWidthCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptSaveLayerBlendModeHeightForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_BLEND_MODE_HEIGHT_PROPERTY)) return this
+            return corruptFirstCommandArgumentForTesting(
+                command = COMMAND_SAVE_LAYER_BLEND_MODE,
+                argsOffset = 3,
+                value = -1,
+                marker = SAVE_LAYER_BLEND_MODE_HEIGHT_CORRUPTED_MARKER,
+                once = saveLayerBlendModeHeightCorruptedForTesting,
             )
         }
 
