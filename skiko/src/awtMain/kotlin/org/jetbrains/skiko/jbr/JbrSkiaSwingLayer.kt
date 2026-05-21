@@ -243,6 +243,8 @@ class JbrSkiaSwingLayer(
                 .corruptFillRectColorFilterBlendModeForTestingIfRequested()
                 .corruptFillRectColorFilterWidthForTestingIfRequested()
                 .corruptFillRectColorFilterHeightForTestingIfRequested()
+                .corruptFillRectColorFilterRefWidthForTestingIfRequested()
+                .corruptFillRectColorFilterRefHeightForTestingIfRequested()
                 .corruptFillRectShaderRefHorizontalBoundsForTestingIfRequested()
                 .corruptFillRectShaderRefVerticalBoundsForTestingIfRequested()
                 .corruptFillRectShaderRefAlphaForTestingIfRequested()
@@ -744,6 +746,10 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptFillRectColorFilterWidthForTesting"
         const val CORRUPT_FILL_RECT_COLOR_FILTER_HEIGHT_PROPERTY =
             "skiko.jbr.interop.corruptFillRectColorFilterHeightForTesting"
+        const val CORRUPT_FILL_RECT_COLOR_FILTER_REF_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptFillRectColorFilterRefWidthForTesting"
+        const val CORRUPT_FILL_RECT_COLOR_FILTER_REF_HEIGHT_PROPERTY =
+            "skiko.jbr.interop.corruptFillRectColorFilterRefHeightForTesting"
         const val CORRUPT_FILL_RECT_SHADER_REF_HORIZONTAL_BOUNDS_PROPERTY =
             "skiko.jbr.interop.corruptFillRectShaderRefHorizontalBoundsForTesting"
         const val CORRUPT_FILL_RECT_SHADER_REF_VERTICAL_BOUNDS_PROPERTY =
@@ -1238,6 +1244,10 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_FILL_RECT_COLOR_FILTER_WIDTH_CORRUPTED"
         private const val FILL_RECT_COLOR_FILTER_HEIGHT_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_FILL_RECT_COLOR_FILTER_HEIGHT_CORRUPTED"
+        private const val FILL_RECT_COLOR_FILTER_REF_WIDTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_FILL_RECT_COLOR_FILTER_REF_WIDTH_CORRUPTED"
+        private const val FILL_RECT_COLOR_FILTER_REF_HEIGHT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_FILL_RECT_COLOR_FILTER_REF_HEIGHT_CORRUPTED"
         private const val FILL_RECT_SHADER_REF_HORIZONTAL_BOUNDS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_FILL_RECT_SHADER_REF_HORIZONTAL_BOUNDS_CORRUPTED"
         private const val FILL_RECT_SHADER_REF_VERTICAL_BOUNDS_CORRUPTED_MARKER =
@@ -1767,6 +1777,8 @@ class JbrSkiaSwingLayer(
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val fillRectColorFilterWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val fillRectColorFilterHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val fillRectColorFilterRefWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val fillRectColorFilterRefHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val fillRectShaderRefHorizontalBoundsCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val fillRectShaderRefVerticalBoundsCorruptedForTesting =
@@ -4252,6 +4264,28 @@ class JbrSkiaSwingLayer(
                 value = -1,
                 marker = FILL_RECT_COLOR_FILTER_HEIGHT_CORRUPTED_MARKER,
             )
+
+        private fun IntArray.corruptFillRectColorFilterRefWidthForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_FILL_RECT_COLOR_FILTER_REF_WIDTH_PROPERTY)) return this
+            return corruptFirstCommandArgumentForTesting(
+                command = COMMAND_FILL_RECT_COLOR_FILTER_REF,
+                argsOffset = 5,
+                value = -1,
+                marker = FILL_RECT_COLOR_FILTER_REF_WIDTH_CORRUPTED_MARKER,
+                once = fillRectColorFilterRefWidthCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptFillRectColorFilterRefHeightForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_FILL_RECT_COLOR_FILTER_REF_HEIGHT_PROPERTY)) return this
+            return corruptFirstCommandArgumentForTesting(
+                command = COMMAND_FILL_RECT_COLOR_FILTER_REF,
+                argsOffset = 6,
+                value = -1,
+                marker = FILL_RECT_COLOR_FILTER_REF_HEIGHT_CORRUPTED_MARKER,
+                once = fillRectColorFilterRefHeightCorruptedForTesting,
+            )
+        }
 
         private fun IntArray.corruptFillRectColorFilterFieldForTestingIfRequested(
             property: String,
