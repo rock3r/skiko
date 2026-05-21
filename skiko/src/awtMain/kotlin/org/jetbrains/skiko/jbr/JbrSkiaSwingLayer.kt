@@ -254,6 +254,8 @@ class JbrSkiaSwingLayer(
                 .corruptImageDefineMaxHeightForTestingIfRequested()
                 .corruptImageDefinePixelCountForTestingIfRequested()
                 .corruptSaveLayerAlphaForTestingIfRequested()
+                .corruptSaveLayerColorFilterWidthForTestingIfRequested()
+                .corruptSaveLayerColorFilterHeightForTestingIfRequested()
                 .corruptSaveLayerImageFilterWidthForTestingIfRequested()
                 .corruptSaveLayerImageFilterHeightForTestingIfRequested()
                 .corruptSaveLayerColorFilterRefWidthForTestingIfRequested()
@@ -790,6 +792,10 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptImageDefinePixelCountForTesting"
         const val CORRUPT_SAVE_LAYER_ALPHA_PROPERTY =
             "skiko.jbr.interop.corruptSaveLayerAlphaForTesting"
+        const val CORRUPT_SAVE_LAYER_COLOR_FILTER_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptSaveLayerColorFilterWidthForTesting"
+        const val CORRUPT_SAVE_LAYER_COLOR_FILTER_HEIGHT_PROPERTY =
+            "skiko.jbr.interop.corruptSaveLayerColorFilterHeightForTesting"
         const val CORRUPT_SAVE_LAYER_IMAGE_FILTER_WIDTH_PROPERTY =
             "skiko.jbr.interop.corruptSaveLayerImageFilterWidthForTesting"
         const val CORRUPT_SAVE_LAYER_IMAGE_FILTER_HEIGHT_PROPERTY =
@@ -1308,6 +1314,10 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_IMAGE_DEFINE_PIXEL_COUNT_CORRUPTED"
         private const val SAVE_LAYER_ALPHA_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SAVE_LAYER_ALPHA_CORRUPTED"
+        private const val SAVE_LAYER_COLOR_FILTER_WIDTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SAVE_LAYER_COLOR_FILTER_WIDTH_CORRUPTED"
+        private const val SAVE_LAYER_COLOR_FILTER_HEIGHT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SAVE_LAYER_COLOR_FILTER_HEIGHT_CORRUPTED"
         private const val SAVE_LAYER_IMAGE_FILTER_WIDTH_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SAVE_LAYER_IMAGE_FILTER_WIDTH_CORRUPTED"
         private const val SAVE_LAYER_IMAGE_FILTER_HEIGHT_CORRUPTED_MARKER =
@@ -1852,6 +1862,8 @@ class JbrSkiaSwingLayer(
         private val imageDefineMaxHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageDefinePixelCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerAlphaCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val saveLayerColorFilterWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val saveLayerColorFilterHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerImageFilterWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerImageFilterHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerColorFilterRefAlphaCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -4605,6 +4617,28 @@ class JbrSkiaSwingLayer(
                 argsOffset = 2,
                 marker = SAVE_LAYER_IMAGE_FILTER_WIDTH_CORRUPTED_MARKER,
             )
+
+        private fun IntArray.corruptSaveLayerColorFilterWidthForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_COLOR_FILTER_WIDTH_PROPERTY)) return this
+            return corruptFirstCommandArgumentForTesting(
+                command = COMMAND_SAVE_LAYER_COLOR_FILTER,
+                argsOffset = 2,
+                value = -1,
+                marker = SAVE_LAYER_COLOR_FILTER_WIDTH_CORRUPTED_MARKER,
+                once = saveLayerColorFilterWidthCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptSaveLayerColorFilterHeightForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_COLOR_FILTER_HEIGHT_PROPERTY)) return this
+            return corruptFirstCommandArgumentForTesting(
+                command = COMMAND_SAVE_LAYER_COLOR_FILTER,
+                argsOffset = 3,
+                value = -1,
+                marker = SAVE_LAYER_COLOR_FILTER_HEIGHT_CORRUPTED_MARKER,
+                once = saveLayerColorFilterHeightCorruptedForTesting,
+            )
+        }
 
         private fun IntArray.corruptSaveLayerImageFilterHeightForTestingIfRequested(): IntArray =
             corruptSaveLayerImageFilterDimensionForTestingIfRequested(
