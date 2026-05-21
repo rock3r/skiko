@@ -387,6 +387,12 @@ class JbrSkiaSwingLayer(
                 .corruptDrawVerticesIndexCountForTestingIfRequested()
                 .corruptDrawVerticesMaxIndexCountForTestingIfRequested()
                 .corruptSaveLayerRecordFlagsForTestingIfRequested()
+                .corruptSaveLayerColorFilterRecordFlagsForTestingIfRequested()
+                .corruptSaveLayerBlendModeRecordFlagsForTestingIfRequested()
+                .corruptSaveLayerBlendColorFilterRecordFlagsForTestingIfRequested()
+                .corruptSaveLayerColorFilterRefRecordFlagsForTestingIfRequested()
+                .corruptSaveLayerBlendColorFilterRefRecordFlagsForTestingIfRequested()
+                .corruptSaveLayerImageFilterRefRecordFlagsForTestingIfRequested()
                 .corruptEffectDescriptorRecordFlagsForTestingIfRequested()
                 .corruptShaderDescriptorRecordFlagsForTestingIfRequested()
                 .corruptImageDefineRecordFlagsForTestingIfRequested()
@@ -538,6 +544,18 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptDrawVerticesMaxIndexCountForTesting"
         const val CORRUPT_SAVE_LAYER_RECORD_FLAGS_PROPERTY =
             "skiko.jbr.interop.corruptSaveLayerRecordFlagsForTesting"
+        const val CORRUPT_SAVE_LAYER_COLOR_FILTER_RECORD_FLAGS_PROPERTY =
+            "skiko.jbr.interop.corruptSaveLayerColorFilterRecordFlagsForTesting"
+        const val CORRUPT_SAVE_LAYER_BLEND_MODE_RECORD_FLAGS_PROPERTY =
+            "skiko.jbr.interop.corruptSaveLayerBlendModeRecordFlagsForTesting"
+        const val CORRUPT_SAVE_LAYER_BLEND_COLOR_FILTER_RECORD_FLAGS_PROPERTY =
+            "skiko.jbr.interop.corruptSaveLayerBlendColorFilterRecordFlagsForTesting"
+        const val CORRUPT_SAVE_LAYER_COLOR_FILTER_REF_RECORD_FLAGS_PROPERTY =
+            "skiko.jbr.interop.corruptSaveLayerColorFilterRefRecordFlagsForTesting"
+        const val CORRUPT_SAVE_LAYER_BLEND_COLOR_FILTER_REF_RECORD_FLAGS_PROPERTY =
+            "skiko.jbr.interop.corruptSaveLayerBlendColorFilterRefRecordFlagsForTesting"
+        const val CORRUPT_SAVE_LAYER_IMAGE_FILTER_REF_RECORD_FLAGS_PROPERTY =
+            "skiko.jbr.interop.corruptSaveLayerImageFilterRefRecordFlagsForTesting"
         const val CORRUPT_EFFECT_DESCRIPTOR_RECORD_FLAGS_PROPERTY =
             "skiko.jbr.interop.corruptEffectDescriptorRecordFlagsForTesting"
         const val CORRUPT_SHADER_DESCRIPTOR_RECORD_FLAGS_PROPERTY =
@@ -1068,6 +1086,18 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_DRAW_VERTICES_MAX_INDEX_COUNT_CORRUPTED"
         private const val SAVE_LAYER_RECORD_FLAGS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_SAVE_LAYER_RECORD_FLAGS_CORRUPTED"
+        private const val SAVE_LAYER_COLOR_FILTER_RECORD_FLAGS_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SAVE_LAYER_COLOR_FILTER_RECORD_FLAGS_CORRUPTED"
+        private const val SAVE_LAYER_BLEND_MODE_RECORD_FLAGS_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SAVE_LAYER_BLEND_MODE_RECORD_FLAGS_CORRUPTED"
+        private const val SAVE_LAYER_BLEND_COLOR_FILTER_RECORD_FLAGS_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SAVE_LAYER_BLEND_COLOR_FILTER_RECORD_FLAGS_CORRUPTED"
+        private const val SAVE_LAYER_COLOR_FILTER_REF_RECORD_FLAGS_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SAVE_LAYER_COLOR_FILTER_REF_RECORD_FLAGS_CORRUPTED"
+        private const val SAVE_LAYER_BLEND_COLOR_FILTER_REF_RECORD_FLAGS_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SAVE_LAYER_BLEND_COLOR_FILTER_REF_RECORD_FLAGS_CORRUPTED"
+        private const val SAVE_LAYER_IMAGE_FILTER_REF_RECORD_FLAGS_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_SAVE_LAYER_IMAGE_FILTER_REF_RECORD_FLAGS_CORRUPTED"
         private const val EFFECT_DESCRIPTOR_RECORD_FLAGS_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_EFFECT_DESCRIPTOR_RECORD_FLAGS_CORRUPTED"
         private const val SHADER_DESCRIPTOR_RECORD_FLAGS_CORRUPTED_MARKER =
@@ -1635,6 +1665,18 @@ class JbrSkiaSwingLayer(
         private val drawVerticesIndexCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val drawVerticesMaxIndexCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val saveLayerColorFilterRecordFlagsCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val saveLayerBlendModeRecordFlagsCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val saveLayerBlendColorFilterRecordFlagsCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val saveLayerColorFilterRefRecordFlagsCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val saveLayerBlendColorFilterRefRecordFlagsCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
+        private val saveLayerImageFilterRefRecordFlagsCorruptedForTesting =
+            java.util.concurrent.atomic.AtomicBoolean(false)
         private val effectDescriptorRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val shaderDescriptorRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageDefineRecordFlagsCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -2436,6 +2478,68 @@ class JbrSkiaSwingLayer(
                 value = COMMAND_RECORD_FLAG_ANTIALIAS,
                 marker = SAVE_LAYER_RECORD_FLAGS_CORRUPTED_MARKER,
                 once = saveLayerRecordFlagsCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptSaveLayerColorFilterRecordFlagsForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_COLOR_FILTER_RECORD_FLAGS_PROPERTY)) return this
+            return corruptFirstCommandRecordFlagsForTesting(
+                command = COMMAND_SAVE_LAYER_COLOR_FILTER,
+                value = COMMAND_RECORD_FLAG_ANTIALIAS,
+                marker = SAVE_LAYER_COLOR_FILTER_RECORD_FLAGS_CORRUPTED_MARKER,
+                once = saveLayerColorFilterRecordFlagsCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptSaveLayerBlendModeRecordFlagsForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_BLEND_MODE_RECORD_FLAGS_PROPERTY)) return this
+            return corruptFirstCommandRecordFlagsForTesting(
+                command = COMMAND_SAVE_LAYER_BLEND_MODE,
+                value = COMMAND_RECORD_FLAG_ANTIALIAS,
+                marker = SAVE_LAYER_BLEND_MODE_RECORD_FLAGS_CORRUPTED_MARKER,
+                once = saveLayerBlendModeRecordFlagsCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptSaveLayerBlendColorFilterRecordFlagsForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_BLEND_COLOR_FILTER_RECORD_FLAGS_PROPERTY)) return this
+            return corruptFirstCommandRecordFlagsForTesting(
+                command = COMMAND_SAVE_LAYER_BLEND_COLOR_FILTER,
+                value = COMMAND_RECORD_FLAG_ANTIALIAS,
+                marker = SAVE_LAYER_BLEND_COLOR_FILTER_RECORD_FLAGS_CORRUPTED_MARKER,
+                once = saveLayerBlendColorFilterRecordFlagsCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptSaveLayerColorFilterRefRecordFlagsForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_COLOR_FILTER_REF_RECORD_FLAGS_PROPERTY)) return this
+            return corruptFirstCommandRecordFlagsForTesting(
+                command = COMMAND_SAVE_LAYER_COLOR_FILTER_REF,
+                value = COMMAND_RECORD_FLAG_ANTIALIAS,
+                marker = SAVE_LAYER_COLOR_FILTER_REF_RECORD_FLAGS_CORRUPTED_MARKER,
+                once = saveLayerColorFilterRefRecordFlagsCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptSaveLayerBlendColorFilterRefRecordFlagsForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_BLEND_COLOR_FILTER_REF_RECORD_FLAGS_PROPERTY)) {
+                return this
+            }
+            return corruptFirstCommandRecordFlagsForTesting(
+                command = COMMAND_SAVE_LAYER_BLEND_COLOR_FILTER_REF,
+                value = COMMAND_RECORD_FLAG_ANTIALIAS,
+                marker = SAVE_LAYER_BLEND_COLOR_FILTER_REF_RECORD_FLAGS_CORRUPTED_MARKER,
+                once = saveLayerBlendColorFilterRefRecordFlagsCorruptedForTesting,
+            )
+        }
+
+        private fun IntArray.corruptSaveLayerImageFilterRefRecordFlagsForTestingIfRequested(): IntArray {
+            if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_IMAGE_FILTER_REF_RECORD_FLAGS_PROPERTY)) return this
+            return corruptFirstCommandRecordFlagsForTesting(
+                command = COMMAND_SAVE_LAYER_IMAGE_FILTER_REF,
+                value = COMMAND_RECORD_FLAG_ANTIALIAS,
+                marker = SAVE_LAYER_IMAGE_FILTER_REF_RECORD_FLAGS_CORRUPTED_MARKER,
+                once = saveLayerImageFilterRefRecordFlagsCorruptedForTesting,
             )
         }
 
