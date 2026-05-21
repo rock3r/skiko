@@ -248,6 +248,10 @@ class JbrSkiaSwingLayer(
                 .corruptFillRectShaderRefHorizontalBoundsForTestingIfRequested()
                 .corruptFillRectShaderRefVerticalBoundsForTestingIfRequested()
                 .corruptFillRectShaderRefAlphaForTestingIfRequested()
+                .corruptImageDefineWidthForTestingIfRequested()
+                .corruptImageDefineMaxWidthForTestingIfRequested()
+                .corruptImageDefineHeightForTestingIfRequested()
+                .corruptImageDefineMaxHeightForTestingIfRequested()
                 .corruptImageDefinePixelCountForTestingIfRequested()
                 .corruptSaveLayerAlphaForTestingIfRequested()
                 .corruptSaveLayerImageFilterWidthForTestingIfRequested()
@@ -756,6 +760,14 @@ class JbrSkiaSwingLayer(
             "skiko.jbr.interop.corruptFillRectShaderRefVerticalBoundsForTesting"
         const val CORRUPT_FILL_RECT_SHADER_REF_ALPHA_PROPERTY =
             "skiko.jbr.interop.corruptFillRectShaderRefAlphaForTesting"
+        const val CORRUPT_IMAGE_DEFINE_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptImageDefineWidthForTesting"
+        const val CORRUPT_IMAGE_DEFINE_MAX_WIDTH_PROPERTY =
+            "skiko.jbr.interop.corruptImageDefineMaxWidthForTesting"
+        const val CORRUPT_IMAGE_DEFINE_HEIGHT_PROPERTY =
+            "skiko.jbr.interop.corruptImageDefineHeightForTesting"
+        const val CORRUPT_IMAGE_DEFINE_MAX_HEIGHT_PROPERTY =
+            "skiko.jbr.interop.corruptImageDefineMaxHeightForTesting"
         const val CORRUPT_IMAGE_DEFINE_PIXEL_COUNT_PROPERTY =
             "skiko.jbr.interop.corruptImageDefinePixelCountForTesting"
         const val CORRUPT_SAVE_LAYER_ALPHA_PROPERTY =
@@ -1232,6 +1244,14 @@ class JbrSkiaSwingLayer(
             "SKIKO_JBR_INTEROP_IMAGE_REF_ALPHA_CORRUPTED"
         private const val IMAGE_REF_FILTER_QUALITY_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_REF_FILTER_QUALITY_CORRUPTED"
+        private const val IMAGE_DEFINE_WIDTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_IMAGE_DEFINE_WIDTH_CORRUPTED"
+        private const val IMAGE_DEFINE_MAX_WIDTH_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_IMAGE_DEFINE_MAX_WIDTH_CORRUPTED"
+        private const val IMAGE_DEFINE_HEIGHT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_IMAGE_DEFINE_HEIGHT_CORRUPTED"
+        private const val IMAGE_DEFINE_MAX_HEIGHT_CORRUPTED_MARKER =
+            "SKIKO_JBR_INTEROP_IMAGE_DEFINE_MAX_HEIGHT_CORRUPTED"
         private const val IMAGE_COLOR_FILTER_BLEND_MODE_CORRUPTED_MARKER =
             "SKIKO_JBR_INTEROP_IMAGE_COLOR_FILTER_BLEND_MODE_CORRUPTED"
         private const val FILL_RECT_BLEND_MODE_WIDTH_CORRUPTED_MARKER =
@@ -1784,6 +1804,10 @@ class JbrSkiaSwingLayer(
         private val fillRectShaderRefVerticalBoundsCorruptedForTesting =
             java.util.concurrent.atomic.AtomicBoolean(false)
         private val fillRectShaderRefAlphaCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageDefineWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageDefineMaxWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageDefineHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
+        private val imageDefineMaxHeightCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val imageDefinePixelCountCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerAlphaCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
         private val saveLayerImageFilterWidthCorruptedForTesting = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -4372,9 +4396,61 @@ class JbrSkiaSwingLayer(
             return this
         }
 
-        private fun IntArray.corruptImageDefinePixelCountForTestingIfRequested(): IntArray {
-            if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_DEFINE_PIXEL_COUNT_PROPERTY)) return this
-            if (!imageDefinePixelCountCorruptedForTesting.compareAndSet(false, true)) return this
+        private fun IntArray.corruptImageDefineWidthForTestingIfRequested(): IntArray =
+            corruptImageDefineFieldForTestingIfRequested(
+                property = CORRUPT_IMAGE_DEFINE_WIDTH_PROPERTY,
+                once = imageDefineWidthCorruptedForTesting,
+                argIndex = 2,
+                value = 0,
+                marker = IMAGE_DEFINE_WIDTH_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptImageDefineMaxWidthForTestingIfRequested(): IntArray =
+            corruptImageDefineFieldForTestingIfRequested(
+                property = CORRUPT_IMAGE_DEFINE_MAX_WIDTH_PROPERTY,
+                once = imageDefineMaxWidthCorruptedForTesting,
+                argIndex = 2,
+                value = 4097,
+                marker = IMAGE_DEFINE_MAX_WIDTH_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptImageDefineHeightForTestingIfRequested(): IntArray =
+            corruptImageDefineFieldForTestingIfRequested(
+                property = CORRUPT_IMAGE_DEFINE_HEIGHT_PROPERTY,
+                once = imageDefineHeightCorruptedForTesting,
+                argIndex = 3,
+                value = 0,
+                marker = IMAGE_DEFINE_HEIGHT_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptImageDefineMaxHeightForTestingIfRequested(): IntArray =
+            corruptImageDefineFieldForTestingIfRequested(
+                property = CORRUPT_IMAGE_DEFINE_MAX_HEIGHT_PROPERTY,
+                once = imageDefineMaxHeightCorruptedForTesting,
+                argIndex = 3,
+                value = 4097,
+                marker = IMAGE_DEFINE_MAX_HEIGHT_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptImageDefinePixelCountForTestingIfRequested(): IntArray =
+            corruptImageDefineFieldForTestingIfRequested(
+                property = CORRUPT_IMAGE_DEFINE_PIXEL_COUNT_PROPERTY,
+                once = imageDefinePixelCountCorruptedForTesting,
+                argIndex = 4,
+                valueDelta = 1,
+                marker = IMAGE_DEFINE_PIXEL_COUNT_CORRUPTED_MARKER,
+            )
+
+        private fun IntArray.corruptImageDefineFieldForTestingIfRequested(
+            property: String,
+            once: java.util.concurrent.atomic.AtomicBoolean,
+            argIndex: Int,
+            value: Int? = null,
+            valueDelta: Int = 0,
+            marker: String,
+        ): IntArray {
+            if (!java.lang.Boolean.getBoolean(property)) return this
+            if (!once.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -4384,10 +4460,10 @@ class JbrSkiaSwingLayer(
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
-                if (op == COMMAND_DEFINE_IMAGE_ARGB && argsStart + 4 < recordEnd) {
+                if (op == COMMAND_DEFINE_IMAGE_ARGB && argsStart + argIndex < recordEnd) {
                     return copyOf().also { stream ->
-                        stream[argsStart + 4] = stream[argsStart + 4] + 1
-                        Logger.info { "$IMAGE_DEFINE_PIXEL_COUNT_CORRUPTED_MARKER op=$op" }
+                        stream[argsStart + argIndex] = value ?: (stream[argsStart + argIndex] + valueDelta)
+                        Logger.info { "$marker op=$op" }
                     }
                 }
                 offset = recordEnd
