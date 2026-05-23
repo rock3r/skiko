@@ -6952,8 +6952,7 @@ class JbrSkiaSwingLayer(
                     val descriptorType = this[argsStart + 2]
                     val payloadIntCount = this[argsStart + 4]
                     if (descriptorType == COMMAND_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER &&
-                        payloadIntCount >= 9 &&
-                        !corruptToPathEffect
+                        payloadIntCount >= 9
                     ) {
                         val payloadStart = argsStart + 5
                         val childCount = this[payloadStart + 2]
@@ -6961,8 +6960,13 @@ class JbrSkiaSwingLayer(
                             return copyOf().also { stream ->
                                 stream[payloadStart + 7] = wrongTypeHandle.first
                                 stream[payloadStart + 8] = wrongTypeHandle.second
+                                val target = if (corruptToPathEffect) {
+                                    "runtimeEffectColorFilterChildPathEffect"
+                                } else {
+                                    "runtimeEffectColorFilterChild"
+                                }
                                 Logger.info {
-                                    "$COLOR_FILTER_HANDLE_TYPE_CORRUPTED_MARKER target=runtimeEffectColorFilterChild"
+                                    "$COLOR_FILTER_HANDLE_TYPE_CORRUPTED_MARKER target=$target"
                                 }
                             }
                         }
