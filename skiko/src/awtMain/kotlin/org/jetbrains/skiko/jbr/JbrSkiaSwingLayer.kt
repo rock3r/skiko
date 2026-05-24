@@ -6985,6 +6985,10 @@ class JbrSkiaSwingLayer(
                         }
                     }
                 } else if (op == COMMAND_FILL_RECT_COLOR_FILTER_REF && argsStart + 7 <= recordEnd) {
+                    if (corruptToPathEffect && hasRuntimeColorFilterChildDescriptorForTesting(commandEnd)) {
+                        offset = recordEnd
+                        continue
+                    }
                     return copyOf().also { stream ->
                         stream[argsStart + 1] = wrongTypeHandle.first
                         stream[argsStart + 2] = wrongTypeHandle.second
@@ -6995,6 +6999,30 @@ class JbrSkiaSwingLayer(
                 offset = recordEnd
             }
             return this
+        }
+
+        private fun IntArray.hasRuntimeColorFilterChildDescriptorForTesting(commandEnd: Int): Boolean {
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return false
+                val argsStart = offset + 3
+                if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 7 <= recordEnd) {
+                    val descriptorType = this[argsStart + 2]
+                    val payloadIntCount = this[argsStart + 4]
+                    if (descriptorType == COMMAND_EFFECT_DESCRIPTOR_RUNTIME_COLOR_FILTER &&
+                        payloadIntCount >= 9
+                    ) {
+                        val payloadStart = argsStart + 5
+                        val childCount = this[payloadStart + 2]
+                        if (childCount > 0 && payloadStart + 8 <= recordEnd) return true
+                    }
+                }
+                offset = recordEnd
+            }
+            return false
         }
 
         private fun IntArray.corruptImageFilterHandleTypeForTestingIfRequested(): IntArray {
