@@ -5,8 +5,8 @@ This worktree contains an experimental Swing path where Skiko renders Compose co
 ## Compatibility Gate
 
 Skiko reflectively reads the public JBR API `ABI_ID`/`BUILD_ID`, then acquires `com.jetbrains.JBR.getJBRSkia()`.
-The current command stream gate is ABI 101 and requires both low-word and high-word command capability masks through
-`COMMAND_CAP64_HIGH_DRAW_POINTS`. If either the ABI/build id, native ABI/build metadata, or required capability bits do not match, Skiko emits
+The current command stream gate is ABI 106 and requires both low-word and high-word command capability masks through
+`COMMAND_CAP64_HIGH_DRAW_VERTICES`. If either the ABI/build id, native ABI/build metadata, or required capability bits do not match, Skiko emits
 `SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch`, `native-abi-mismatch`, or `command-capability-mismatch` and uses the
 old Swing path for that paint.
 
