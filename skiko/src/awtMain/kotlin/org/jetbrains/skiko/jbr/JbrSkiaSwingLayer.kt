@@ -36,9 +36,10 @@ private const val COMMAND_STREAM_ABI_ID = 106
 /**
  * Swing layer entry point for the experimental JBR-owned Skia interop path.
  *
- * The first implementation slice only exposes the feature-gated routing and
- * ABI discovery surface. Rendering intentionally falls back to [SkiaSwingLayer]
- * until the native direct-canvas redrawer is wired.
+ * When no diagnostic render mode is requested, painting records a strict command
+ * stream and asks JBR to replay it into the current Java2D Metal destination.
+ * Unsupported command streams and incompatible JBR/Skiko pairs fall back through
+ * the regular [SkiaSwingLayer] path.
  */
 @ExperimentalSkikoApi
 class JbrSkiaSwingLayer(
@@ -59,14 +60,14 @@ class JbrSkiaSwingLayer(
     override fun paint(g: Graphics) {
         logRenderModeOnce(renderDelegate)
         var renderedWithJbrTexture = false
-        if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_COMMANDS_PROPERTY)) {
-            renderedWithJbrTexture = renderJbrCommandFrame(g)
-        } else if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_PICTURE_PROPERTY)) {
+        if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_PICTURE_PROPERTY)) {
             renderedWithJbrTexture = renderJbrPictureFrame(g)
         } else if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_DIAGNOSTIC_PROPERTY)) {
             renderedWithJbrTexture = renderJbrDiagnosticFrame(g)
         } else if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_TO_TEXTURE_PROPERTY)) {
             renderedWithJbrTexture = renderIntoJbrTexture(g)
+        } else if (g is Graphics2D && shouldRenderCommandFramesEffective()) {
+            renderedWithJbrTexture = renderJbrCommandFrame(g)
         } else if (g is Graphics2D) {
             JbrSkiaInterop.acquireCanvas(g)?.close()
         }
@@ -2393,12 +2394,22 @@ class JbrSkiaSwingLayer(
             val marker: String,
         )
 
+        private fun shouldRenderCommandFramesEffective(): Boolean =
+            !java.lang.Boolean.getBoolean(RENDER_PICTURE_PROPERTY) &&
+                !java.lang.Boolean.getBoolean(RENDER_DIAGNOSTIC_PROPERTY) &&
+                !java.lang.Boolean.getBoolean(RENDER_TO_TEXTURE_PROPERTY) &&
+                shouldRenderCommandFramesProperty()
+
+        private fun shouldRenderCommandFramesProperty(): Boolean =
+            System.getProperty(RENDER_COMMANDS_PROPERTY)?.toBoolean() ?: true
+
         private fun logRenderModeOnce(renderDelegate: SkikoRenderDelegate) {
             if (loggedRenderMode.compareAndSet(false, true)) {
                 Logger.info {
-                    "SKIKO_JBR_INTEROP_RENDER_MODE commands=${java.lang.Boolean.getBoolean(RENDER_COMMANDS_PROPERTY)} " +
+                    "SKIKO_JBR_INTEROP_RENDER_MODE commands=${shouldRenderCommandFramesEffective()} " +
                         "picture=${java.lang.Boolean.getBoolean(RENDER_PICTURE_PROPERTY)} " +
                         "diagnostic=${java.lang.Boolean.getBoolean(RENDER_DIAGNOSTIC_PROPERTY)} " +
+                        "texture=${java.lang.Boolean.getBoolean(RENDER_TO_TEXTURE_PROPERTY)} " +
                         "delegateCommands=${renderDelegate is JbrSkiaCommandRenderDelegate}"
                 }
             }
