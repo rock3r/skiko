@@ -165,7 +165,7 @@ class JbrSkiaInteropTest {
 
     @Test
     fun requiredHighCommandCapabilitiesOverrideForTestingForcesMismatch() {
-        withSystemProperty("skiko.jbr.interop.requiredCommandCapabilitiesHighForTest", "262144") {
+        withSystemProperty("skiko.jbr.interop.requiredCommandCapabilitiesHighForTest", "4194304") {
             val discovery = JbrSkiaInterop.discover(resolver(
                 publicJbrSkiaClass = CompatibleJbrSkia::class.java,
                 jbrAccessorClass = CompatibleJbr::class.java,
@@ -200,6 +200,9 @@ class JbrSkiaInteropTest {
             "shader descriptor color" to COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_COLOR,
             "shader descriptor Perlin noise" to COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_PERLIN_NOISE,
             "draw vertices" to COMMAND_CAP64_HIGH_DRAW_VERTICES,
+            "linear-gradient path stroke" to COMMAND_CAP64_HIGH_STROKE_PATH_LINEAR_GRADIENT,
+            "radial-gradient path stroke" to COMMAND_CAP64_HIGH_STROKE_PATH_RADIAL_GRADIENT,
+            "sweep-gradient path stroke" to COMMAND_CAP64_HIGH_STROKE_PATH_SWEEP_GRADIENT,
         )
 
         capabilities.forEach { (label, capability) ->
@@ -937,7 +940,7 @@ class JbrSkiaInteropTest {
         private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND_COLOR_FILTER_REF = Long.MAX_VALUE
         private const val REQUIRED_COMMAND_CAPABILITIES =
             -1L
-        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 262143L
+        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 2097151L
         private const val COMMAND_CAP64_HIGH_SAVE_LAYER_IMAGE_FILTER_REF = 1L
         private const val COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER = 2L
         private const val COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_CHAIN_IMAGE_FILTER = 4L
@@ -956,6 +959,9 @@ class JbrSkiaInteropTest {
         private const val COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_COLOR = 32768L
         private const val COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_PERLIN_NOISE = 65536L
         private const val COMMAND_CAP64_HIGH_DRAW_VERTICES = 131072L
+        private const val COMMAND_CAP64_HIGH_STROKE_PATH_LINEAR_GRADIENT = 262144L
+        private const val COMMAND_CAP64_HIGH_STROKE_PATH_RADIAL_GRADIENT = 524288L
+        private const val COMMAND_CAP64_HIGH_STROKE_PATH_SWEEP_GRADIENT = 1048576L
         private const val REQUIRED_COMMAND_CAPABILITIES_HIGH_WITHOUT_SHADER_DESCRIPTOR_COLOR_FILTER =
             REQUIRED_COMMAND_CAPABILITIES_HIGH and COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_COLOR_FILTER.inv()
         private const val REQUIRED_COMMAND_CAPABILITIES_HIGH_WITHOUT_DRAW_POINTS =
