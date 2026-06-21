@@ -56,6 +56,7 @@ class JbrSkiaSwingLayer(
     private var meaningfulFullSceneFramesForTesting = 0
     private var tinyFullSceneInjectedForTesting = false
     private var forcedContextChangeInjectedForTesting = false
+    private var commandDirectBuffer: ByteBuffer? = null
 
     override fun paint(g: Graphics) {
         logRenderModeOnce(renderDelegate)
@@ -451,7 +452,14 @@ class JbrSkiaSwingLayer(
                 JbrSkiaInterop.logFallback(reason)
                 return renderJbrPictureFrame(g)
             }
-            val commandBuffer = commandStream.toDirectLittleEndianByteBuffer()
+            if (skipNativeCommandDirectFrameForTesting) {
+                Logger.info {
+                    commandFrameMarker(renderWidth, renderHeight, commandStream.size, rendered = true)
+                }
+                scope.flush()
+                return true
+            }
+            val commandBuffer = commandStream.toReusableDirectLittleEndianByteBuffer()
             scope.renderCommandDirectFrame(renderWidth, renderHeight, frameTime, commandBuffer).also { rendered ->
                 if (rendered || logFallbackOnFalse) {
                     Logger.info {
@@ -459,6 +467,9 @@ class JbrSkiaSwingLayer(
                     }
                 }
                 if (rendered) {
+                    JbrSkiaCommandRecorderCacheBridge.markImageDefinitionsRendered(
+                        commandStream.fullImageDefinitionKeys()
+                    )
                     scope.flush()
                 } else if (logFallbackOnFalse) {
                     Logger.info {
@@ -549,11 +560,31 @@ class JbrSkiaSwingLayer(
         return identity.copy(contextId = identity.contextId xor FORCED_CONTEXT_ID_MASK)
     }
 
+    private fun IntArray.toReusableDirectLittleEndianByteBuffer(): ByteBuffer {
+        val requiredBytes = size * Int.SIZE_BYTES
+        val reusable = commandDirectBuffer
+        val encoded =
+            if (reusable == null || reusable.capacity() < requiredBytes) {
+                ByteBuffer.allocateDirect(requiredBytes)
+                    .order(ByteOrder.LITTLE_ENDIAN)
+                    .also { commandDirectBuffer = it }
+            } else {
+                reusable
+            }
+        encoded.clear()
+        encoded.limit(requiredBytes)
+        forEach(encoded::putInt)
+        encoded.flip()
+        return encoded
+    }
+
     private companion object {
         const val RENDER_DIAGNOSTIC_PROPERTY = "skiko.jbr.interop.renderDiagnostic"
         const val RENDER_COMMANDS_PROPERTY = "skiko.jbr.interop.renderCommands"
         const val RENDER_PICTURE_PROPERTY = "skiko.jbr.interop.renderPicture"
         const val RENDER_TO_TEXTURE_PROPERTY = "skiko.jbr.interop.renderToTexture"
+        val skipNativeCommandDirectFrameForTesting: Boolean =
+            System.getProperty("skiko.jbr.interop.skipNativeCommandDirectFrameForTesting") == "true"
         const val CORRUPT_COMMAND_STREAM_PROPERTY = "skiko.jbr.interop.corruptCommandStream"
         const val CORRUPT_COMMAND_RECORD_FLAGS_PROPERTY = "skiko.jbr.interop.corruptCommandRecordFlagsForTesting"
         const val CORRUPT_COMMAND_COORDINATE_SPACE_PROPERTY =
@@ -1740,6 +1771,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_CLIP_RECT = 9
         private const val COMMAND_TRANSLATE = 10
         private const val COMMAND_DEFINE_IMAGE_ARGB = 15
+        private const val COMMAND_DEFINE_IMAGE_BITMAP = 73
         private const val COMMAND_DRAW_IMAGE_REF = 16
         private const val COMMAND_DRAW_TEXT_UTF16 = 17
         private const val COMMAND_CLEAR_IMAGE_CACHE = 18
@@ -2468,6 +2500,35 @@ class JbrSkiaSwingLayer(
             }
             commands.addCommand(COMMAND_STROKE_OVAL, COMMAND_RECORD_FLAG_ANTIALIAS, 0x8cffffff.toInt(), centerX - 380, centerY - 380, 760, 760, 10, STROKE_CAP_BUTT, STROKE_JOIN_ROUND, 4000)
             return commands.toIntArray()
+        }
+
+        private fun IntArray.fullImageDefinitionKeys(): LongArray {
+            val commandBytes = getOrNull(3) ?: return LongArray(0)
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + commandBytes / Int.SIZE_BYTES
+            if (size < COMMAND_STREAM_HEADER_SIZE || commandEnd > size) return LongArray(0)
+            val keys = ArrayList<Long>()
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthBytes = this[offset + 1]
+                val recordFlags = this[offset + 2]
+                if (recordLengthBytes < 3 * Int.SIZE_BYTES || recordLengthBytes % Int.SIZE_BYTES != 0) break
+                val recordWords = recordLengthBytes / Int.SIZE_BYTES
+                val recordEnd = offset + recordWords
+                if (recordEnd > commandEnd) break
+                if (op == COMMAND_DEFINE_IMAGE_ARGB &&
+                    recordFlags == COMMAND_RECORD_FLAGS_NONE &&
+                    offset + 8 <= recordEnd
+                ) {
+                    val key = (this[offset + 3].toLong() shl 32) or (this[offset + 4].toLong() and 0xffffffffL)
+                    val pixelCount = this[offset + 7]
+                    if (pixelCount > 0) {
+                        keys += key
+                    }
+                }
+                offset = recordEnd
+            }
+            return keys.toLongArray()
         }
 
         private fun emptyCommandFrame(): IntArray =
@@ -9621,6 +9682,7 @@ internal class SurfaceIdentityTracker {
 internal object JbrSkiaCommandRecorderCacheBridge {
     private const val RECORDER_CLASS = "androidx.compose.ui.graphics.JbrSkiaCommandRecorder"
     private const val CLEAR_METHOD = "clearInteropCachesForSurfaceChange"
+    private const val MARK_IMAGE_DEFINITIONS_RENDERED_METHOD = "markInteropImageDefinitionsRendered"
 
     fun clearForSurfaceChange(reason: String): Boolean =
         runCatching {
@@ -9635,6 +9697,20 @@ internal object JbrSkiaCommandRecorderCacheBridge {
                     "error=${it.javaClass.simpleName}"
             }
         }.getOrDefault(false)
+
+    fun markImageDefinitionsRendered(keys: LongArray) {
+        if (keys.isEmpty()) return
+        runCatching {
+            Class.forName(RECORDER_CLASS)
+                .getMethod(MARK_IMAGE_DEFINITIONS_RENDERED_METHOD, LongArray::class.java)
+                .invoke(null, keys)
+        }.onFailure {
+            Logger.info {
+                "SKIKO_JBR_INTEROP_IMAGE_DEFINITION_CONFIRM_UNAVAILABLE " +
+                    "error=${it.javaClass.simpleName}"
+            }
+        }
+    }
 }
 
 internal class CommandFrameCache(
