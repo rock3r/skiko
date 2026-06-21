@@ -163,6 +163,15 @@ class JbrSkiaSwingLayer(
     }
 
     private fun renderJbrCommandFrame(g: Graphics2D): Boolean {
+        if (renderJbrCommandFrameOnce(g, logFallbackOnFalse = false)) return true
+
+        Logger.info { "SKIKO_JBR_INTEROP_COMMAND_RETRY reason=render-false" }
+        JbrSkiaCommandRecorderCacheBridge.clearForSurfaceChange("command-render-false")
+        commandFrameCache.clear()
+        return renderJbrCommandFrameOnce(g, logFallbackOnFalse = true)
+    }
+
+    private fun renderJbrCommandFrameOnce(g: Graphics2D, logFallbackOnFalse: Boolean): Boolean {
         val frameTime = System.nanoTime()
         val frameSize = deviceFrameSize(
             width = width,
@@ -444,12 +453,18 @@ class JbrSkiaSwingLayer(
             }
             val commandBuffer = commandStream.toDirectLittleEndianByteBuffer()
             scope.renderCommandDirectFrame(renderWidth, renderHeight, frameTime, commandBuffer).also { rendered ->
-                Logger.info {
-                    commandFrameMarker(renderWidth, renderHeight, commandStream.size, rendered)
+                if (rendered || logFallbackOnFalse) {
+                    Logger.info {
+                        commandFrameMarker(renderWidth, renderHeight, commandStream.size, rendered)
+                    }
                 }
                 if (rendered) {
                     scope.flush()
-                } else {
+                } else if (logFallbackOnFalse) {
+                    Logger.info {
+                        "SKIKO_JBR_INTEROP_COMMAND_RENDER_FALSE " +
+                            commandStreamDebugSummary(commandStream)
+                    }
                     JbrSkiaInterop.logFallback(JbrSkiaInterop.FallbackReason.COMMAND_STREAM_INVALID)
                 }
             }
@@ -9678,6 +9693,52 @@ internal fun commandStreamFallbackReason(commands: IntArray): JbrSkiaInterop.Fal
         return JbrSkiaInterop.FallbackReason.ABI_MISMATCH
     }
     return null
+}
+
+private fun commandStreamDebugSummary(commands: IntArray): String {
+    val headerSize = 6
+    if (commands.size < headerSize) return "size=${commands.size} malformed=short"
+    val payloadLength = commands[3]
+    val commandEnd = headerSize + payloadLength
+    if (payloadLength < 0 || commandEnd > commands.size) {
+        return "size=${commands.size} payload=$payloadLength malformed=payload"
+    }
+
+    val opCounts = linkedMapOf<Int, Int>()
+    val firstRecords = mutableListOf<String>()
+    var offset = headerSize
+    var records = 0
+    while (offset < commandEnd) {
+        val recordStart = offset
+        if (offset + 3 > commandEnd) {
+            firstRecords += "offset=$recordStart malformed=header"
+            break
+        }
+        val op = commands[offset++]
+        val recordByteLength = commands[offset++]
+        val recordFlags = commands[offset++]
+        val recordLength =
+            if (recordByteLength >= 12 && recordByteLength % Int.SIZE_BYTES == 0) {
+                recordByteLength / Int.SIZE_BYTES
+            } else {
+                -1
+            }
+        val recordEnd = recordStart + recordLength
+        opCounts[op] = (opCounts[op] ?: 0) + 1
+        if (firstRecords.size < 12) {
+            firstRecords +=
+                "offset=$recordStart,op=$op,bytes=$recordByteLength,flags=$recordFlags,words=$recordLength"
+        }
+        records += 1
+        if (recordLength < 3 || recordEnd > commandEnd) {
+            firstRecords += "offset=$recordStart malformed=length"
+            break
+        }
+        offset = recordEnd
+    }
+    val opSummary = opCounts.entries.joinToString(",") { "${it.key}:${it.value}" }
+    val recordsSummary = firstRecords.joinToString(";")
+    return "size=${commands.size} payload=$payloadLength records=$records ops=$opSummary firstRecords=$recordsSummary"
 }
 
 internal object JbrSkiaDebugOverlay {
