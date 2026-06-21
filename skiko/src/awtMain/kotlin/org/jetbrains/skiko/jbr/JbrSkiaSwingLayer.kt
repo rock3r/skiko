@@ -31,7 +31,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val COMMAND_STREAM_ABI_ID = 108
+private const val COMMAND_STREAM_ABI_ID = 109
 
 /**
  * Swing layer entry point for the experimental JBR-owned Skia interop path.
@@ -1775,6 +1775,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_TRANSLATE = 10
         private const val COMMAND_SAVE_TRANSLATE = 74
         private const val COMMAND_RESTORE_N = 75
+        private const val COMMAND_SAVE_TRANSLATE_LAYER = 76
         private const val COMMAND_DEFINE_IMAGE_ARGB = 15
         private const val COMMAND_DEFINE_IMAGE_BITMAP = 73
         private const val COMMAND_DRAW_IMAGE_REF = 16
