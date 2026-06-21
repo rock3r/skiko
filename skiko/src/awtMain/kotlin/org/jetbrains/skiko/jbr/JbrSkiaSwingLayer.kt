@@ -9733,7 +9733,7 @@ internal class CommandFrameCache(
         if ((frame.kind == JbrSkiaCommandFrameKind.FullScene || frame.kind == JbrSkiaCommandFrameKind.Unknown) &&
             isMeaningfulFrame
         ) {
-            lastMeaningfulFrame = commands.copyOf()
+            lastMeaningfulFrame = commands
             return commands
         }
         if (frame.kind == JbrSkiaCommandFrameKind.InteropOnly && cached != null ||

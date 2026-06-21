@@ -575,7 +575,7 @@ class JbrSkiaInteropTest {
             meaningful,
             cache.frameForRendering(JbrSkiaCommandFrame(meaningful, JbrSkiaCommandFrameKind.FullScene)),
         )
-        assertContentEquals(
+        assertSame(
             meaningful,
             cache.frameForRendering(JbrSkiaCommandFrame(minimal, JbrSkiaCommandFrameKind.InteropOnly)),
         )
@@ -589,11 +589,11 @@ class JbrSkiaInteropTest {
 
         cache.frameForRendering(JbrSkiaCommandFrame(meaningful, JbrSkiaCommandFrameKind.FullScene))
 
-        assertContentEquals(
+        assertSame(
             meaningful,
             cache.frameForRendering(JbrSkiaCommandFrame(minimal, JbrSkiaCommandFrameKind.FullScene)),
         )
-        assertContentEquals(
+        assertSame(
             meaningful,
             cache.frameForRendering(JbrSkiaCommandFrame(minimal, JbrSkiaCommandFrameKind.InteropOnly)),
         )
