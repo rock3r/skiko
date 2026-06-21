@@ -20,7 +20,7 @@ class JbrSkiaInteropTest {
 
         assertTrue(discovery.isAvailable)
         assertSame(CompatibleJbr.service, discovery.service)
-        assertEquals(110, discovery.abiId)
+        assertEquals(111, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES, discovery.commandCapabilities)
         assertEquals(REQUIRED_COMMAND_CAPABILITIES_HIGH, discovery.commandCapabilitiesHigh)
@@ -48,7 +48,7 @@ class JbrSkiaInteropTest {
 
             assertFalse(discovery.isAvailable)
             assertEquals(JbrSkiaInterop.FallbackReason.ABI_MISMATCH, discovery.fallbackReason)
-            assertEquals(110, discovery.abiId)
+            assertEquals(111, discovery.abiId)
             assertEquals("SKIKO_JBR_INTEROP_FALLBACK reason=abi-mismatch", discovery.fallbackMarker)
         }
     }
@@ -83,7 +83,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(110, discovery.abiId)
+        assertEquals(111, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -122,7 +122,7 @@ class JbrSkiaInteropTest {
 
         assertFalse(discovery.isAvailable)
         assertEquals(JbrSkiaInterop.FallbackReason.NATIVE_ABI_MISMATCH, discovery.fallbackReason)
-        assertEquals(110, discovery.abiId)
+        assertEquals(111, discovery.abiId)
     }
 
     @Test
@@ -165,7 +165,7 @@ class JbrSkiaInteropTest {
 
     @Test
     fun requiredHighCommandCapabilitiesOverrideForTestingForcesMismatch() {
-        withSystemProperty("skiko.jbr.interop.requiredCommandCapabilitiesHighForTest", "134217728") {
+        withSystemProperty("skiko.jbr.interop.requiredCommandCapabilitiesHighForTest", "268435456") {
             val discovery = JbrSkiaInterop.discover(resolver(
                 publicJbrSkiaClass = CompatibleJbrSkia::class.java,
                 jbrAccessorClass = CompatibleJbr::class.java,
@@ -209,6 +209,7 @@ class JbrSkiaInteropTest {
             "restore n" to COMMAND_CAP64_HIGH_RESTORE_N,
             "save translate layer" to COMMAND_CAP64_HIGH_SAVE_TRANSLATE_LAYER,
             "full image ref" to COMMAND_CAP64_HIGH_DRAW_IMAGE_REF_FULL,
+            "fill round rect" to COMMAND_CAP64_HIGH_FILL_ROUND_RECT,
         )
 
         capabilities.forEach { (label, capability) ->
@@ -439,7 +440,7 @@ class JbrSkiaInteropTest {
         ))
 
         assertTrue(discovery.isAvailable)
-        assertEquals(110, discovery.abiId)
+        assertEquals(111, discovery.abiId)
         assertEquals("test-build", discovery.buildId)
     }
 
@@ -507,7 +508,7 @@ class JbrSkiaInteropTest {
     fun commandStreamPreflightAcceptsCurrentAbi() {
         assertEquals(
             null,
-            commandStreamFallbackReason(intArrayOf(1246972723, 110, 0, 0, 1, 1))
+            commandStreamFallbackReason(intArrayOf(1246972723, 111, 0, 0, 1, 1))
         )
     }
 
@@ -688,7 +689,7 @@ class JbrSkiaInteropTest {
     class CompatibleJbrSkia {
         companion object {
             @JvmField
-            val ABI_ID: Int = "110".toInt()
+            val ABI_ID: Int = "111".toInt()
 
             @JvmField
             val BUILD_ID: String = buildString { append("test-build") }
@@ -840,7 +841,7 @@ class JbrSkiaInteropTest {
         private val commandCapabilities: Long = REQUIRED_COMMAND_CAPABILITIES,
         private val commandCapabilitiesHigh: Long = REQUIRED_COMMAND_CAPABILITIES_HIGH,
         private val nativeAbiVersion: Int = 3,
-        private val nativeCommandStreamAbiId: Int = 110,
+        private val nativeCommandStreamAbiId: Int = 111,
         private val nativeBuildId: String = "test-build",
     ) {
         val scope = FakeScopedCanvas()
@@ -946,7 +947,7 @@ class JbrSkiaInteropTest {
         private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND_COLOR_FILTER_REF = Long.MAX_VALUE
         private const val REQUIRED_COMMAND_CAPABILITIES =
             -1L
-        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 134217727L
+        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 268435455L
         private const val COMMAND_CAP64_HIGH_SAVE_LAYER_IMAGE_FILTER_REF = 1L
         private const val COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER = 2L
         private const val COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_CHAIN_IMAGE_FILTER = 4L
@@ -974,6 +975,7 @@ class JbrSkiaInteropTest {
         private const val COMMAND_CAP64_HIGH_RESTORE_N = 16777216L
         private const val COMMAND_CAP64_HIGH_SAVE_TRANSLATE_LAYER = 33554432L
         private const val COMMAND_CAP64_HIGH_DRAW_IMAGE_REF_FULL = 67108864L
+        private const val COMMAND_CAP64_HIGH_FILL_ROUND_RECT = 134217728L
         private const val REQUIRED_COMMAND_CAPABILITIES_HIGH_WITHOUT_SHADER_DESCRIPTOR_COLOR_FILTER =
             REQUIRED_COMMAND_CAPABILITIES_HIGH and COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_COLOR_FILTER.inv()
         private const val REQUIRED_COMMAND_CAPABILITIES_HIGH_WITHOUT_DRAW_POINTS =
