@@ -2503,8 +2503,8 @@ class JbrSkiaSwingLayer(
         }
 
         private fun IntArray.fullImageDefinitionKeys(): LongArray {
-            val commandBytes = getOrNull(3) ?: return LongArray(0)
-            val commandEnd = COMMAND_STREAM_HEADER_SIZE + commandBytes / Int.SIZE_BYTES
+            val commandWords = getOrNull(3) ?: return LongArray(0)
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + commandWords
             if (size < COMMAND_STREAM_HEADER_SIZE || commandEnd > size) return LongArray(0)
             val keys = ArrayList<Long>()
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -2516,14 +2516,15 @@ class JbrSkiaSwingLayer(
                 val recordWords = recordLengthBytes / Int.SIZE_BYTES
                 val recordEnd = offset + recordWords
                 if (recordEnd > commandEnd) break
-                if (op == COMMAND_DEFINE_IMAGE_ARGB &&
-                    recordFlags == COMMAND_RECORD_FLAGS_NONE &&
-                    offset + 8 <= recordEnd
-                ) {
-                    val key = (this[offset + 3].toLong() shl 32) or (this[offset + 4].toLong() and 0xffffffffL)
-                    val pixelCount = this[offset + 7]
-                    if (pixelCount > 0) {
-                        keys += key
+                if (recordFlags == COMMAND_RECORD_FLAGS_NONE) {
+                    if (op == COMMAND_DEFINE_IMAGE_ARGB && offset + 8 <= recordEnd) {
+                        val key = (this[offset + 3].toLong() shl 32) or (this[offset + 4].toLong() and 0xffffffffL)
+                        val pixelCount = this[offset + 7]
+                        if (pixelCount > 0) {
+                            keys += key
+                        }
+                    } else if (op == COMMAND_DEFINE_IMAGE_BITMAP && offset + 10 == recordEnd) {
+                        keys += (this[offset + 3].toLong() shl 32) or (this[offset + 4].toLong() and 0xffffffffL)
                     }
                 }
                 offset = recordEnd
@@ -9683,6 +9684,7 @@ internal object JbrSkiaCommandRecorderCacheBridge {
     private const val RECORDER_CLASS = "androidx.compose.ui.graphics.JbrSkiaCommandRecorder"
     private const val CLEAR_METHOD = "clearInteropCachesForSurfaceChange"
     private const val MARK_IMAGE_DEFINITIONS_RENDERED_METHOD = "markInteropImageDefinitionsRendered"
+    private const val LOG_IMAGE_DEFINITION_CONFIRM_PROPERTY = "skiko.jbr.interop.logImageDefinitionConfirm"
 
     fun clearForSurfaceChange(reason: String): Boolean =
         runCatching {
@@ -9700,6 +9702,12 @@ internal object JbrSkiaCommandRecorderCacheBridge {
 
     fun markImageDefinitionsRendered(keys: LongArray) {
         if (keys.isEmpty()) return
+        if (java.lang.Boolean.getBoolean(LOG_IMAGE_DEFINITION_CONFIRM_PROPERTY)) {
+            Logger.info {
+                "SKIKO_JBR_INTEROP_IMAGE_DEFINITION_CONFIRM keys=${keys.size} " +
+                    "sample=${keys.take(8).joinToString(separator = ",") { it.toString(16) }}"
+            }
+        }
         runCatching {
             Class.forName(RECORDER_CLASS)
                 .getMethod(MARK_IMAGE_DEFINITIONS_RENDERED_METHOD, LongArray::class.java)
