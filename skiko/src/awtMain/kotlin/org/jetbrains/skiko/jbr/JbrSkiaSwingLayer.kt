@@ -470,6 +470,9 @@ class JbrSkiaSwingLayer(
                     JbrSkiaCommandRecorderCacheBridge.markImageDefinitionsRendered(
                         commandStream.fullImageDefinitionKeys()
                     )
+                    JbrSkiaCommandRecorderCacheBridge.markEffectDefinitionsRendered(
+                        commandStream.effectDefinitionHandles()
+                    )
                     scope.flush()
                 } else if (logFallbackOnFalse) {
                     Logger.info {
@@ -2530,6 +2533,31 @@ class JbrSkiaSwingLayer(
                 offset = recordEnd
             }
             return keys.toLongArray()
+        }
+
+        private fun IntArray.effectDefinitionHandles(): LongArray {
+            val commandWords = getOrNull(3) ?: return LongArray(0)
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + commandWords
+            if (size < COMMAND_STREAM_HEADER_SIZE || commandEnd > size) return LongArray(0)
+            val handles = ArrayList<Long>()
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthBytes = this[offset + 1]
+                val recordFlags = this[offset + 2]
+                if (recordLengthBytes < 3 * Int.SIZE_BYTES || recordLengthBytes % Int.SIZE_BYTES != 0) break
+                val recordWords = recordLengthBytes / Int.SIZE_BYTES
+                val recordEnd = offset + recordWords
+                if (recordEnd > commandEnd) break
+                if (recordFlags == COMMAND_RECORD_FLAGS_NONE &&
+                    op == COMMAND_DEFINE_EFFECT_DESCRIPTOR &&
+                    offset + 8 <= recordEnd
+                ) {
+                    handles += (this[offset + 3].toLong() shl 32) or (this[offset + 4].toLong() and 0xffffffffL)
+                }
+                offset = recordEnd
+            }
+            return handles.toLongArray()
         }
 
         private fun emptyCommandFrame(): IntArray =
@@ -9684,6 +9712,7 @@ internal object JbrSkiaCommandRecorderCacheBridge {
     private const val RECORDER_CLASS = "androidx.compose.ui.graphics.JbrSkiaCommandRecorder"
     private const val CLEAR_METHOD = "clearInteropCachesForSurfaceChange"
     private const val MARK_IMAGE_DEFINITIONS_RENDERED_METHOD = "markInteropImageDefinitionsRendered"
+    private const val MARK_EFFECT_DEFINITIONS_RENDERED_METHOD = "markInteropEffectDefinitionsRendered"
     private const val LOG_IMAGE_DEFINITION_CONFIRM_PROPERTY = "skiko.jbr.interop.logImageDefinitionConfirm"
 
     fun clearForSurfaceChange(reason: String): Boolean =
@@ -9715,6 +9744,20 @@ internal object JbrSkiaCommandRecorderCacheBridge {
         }.onFailure {
             Logger.info {
                 "SKIKO_JBR_INTEROP_IMAGE_DEFINITION_CONFIRM_UNAVAILABLE " +
+                    "error=${it.javaClass.simpleName}"
+            }
+        }
+    }
+
+    fun markEffectDefinitionsRendered(handles: LongArray) {
+        if (handles.isEmpty()) return
+        runCatching {
+            Class.forName(RECORDER_CLASS)
+                .getMethod(MARK_EFFECT_DEFINITIONS_RENDERED_METHOD, LongArray::class.java)
+                .invoke(null, handles)
+        }.onFailure {
+            Logger.info {
+                "SKIKO_JBR_INTEROP_EFFECT_DEFINITION_CONFIRM_UNAVAILABLE " +
                     "error=${it.javaClass.simpleName}"
             }
         }
