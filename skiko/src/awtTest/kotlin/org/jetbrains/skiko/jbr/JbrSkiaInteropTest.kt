@@ -224,6 +224,7 @@ class JbrSkiaInteropTest {
             "save fill rect and save" to COMMAND_CAP64_HIGH_SAVE_FILL_RECT_SAVE,
             "save layer and save translate" to COMMAND_CAP64_HIGH_SAVE_LAYER_SAVE_TRANSLATE,
             "save and save layer and save translate" to COMMAND_CAP64_HIGH_SAVE_SAVE_LAYER_SAVE_TRANSLATE,
+            "fill rect and save layer clip rect" to COMMAND_CAP64_HIGH_FILL_RECT_SAVE_LAYER_CLIP_RECT,
         )
 
         capabilities.forEach { (label, capability) ->
@@ -961,7 +962,7 @@ class JbrSkiaInteropTest {
         private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND_COLOR_FILTER_REF = Long.MAX_VALUE
         private const val REQUIRED_COMMAND_CAPABILITIES =
             -1L
-        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 17584938287103L
+        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 35177124331519L
         private const val COMMAND_CAP64_HIGH_SAVE_LAYER_IMAGE_FILTER_REF = 1L
         private const val COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER = 2L
         private const val COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_CHAIN_IMAGE_FILTER = 4L
@@ -1003,6 +1004,7 @@ class JbrSkiaInteropTest {
         private const val COMMAND_CAP64_HIGH_SAVE_FILL_RECT_SAVE = 2199023255552L
         private const val COMMAND_CAP64_HIGH_SAVE_LAYER_SAVE_TRANSLATE = 4398046511104L
         private const val COMMAND_CAP64_HIGH_SAVE_SAVE_LAYER_SAVE_TRANSLATE = 8796093022208L
+        private const val COMMAND_CAP64_HIGH_FILL_RECT_SAVE_LAYER_CLIP_RECT = 17592186044416L
         private const val REQUIRED_COMMAND_CAPABILITIES_HIGH_WITHOUT_SHADER_DESCRIPTOR_COLOR_FILTER =
             REQUIRED_COMMAND_CAPABILITIES_HIGH and COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_COLOR_FILTER.inv()
         private const val REQUIRED_COMMAND_CAPABILITIES_HIGH_WITHOUT_DRAW_POINTS =
