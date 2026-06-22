@@ -175,6 +175,7 @@ object JbrSkiaInterop {
     private const val COMMAND_CAP64_HIGH_SAVE_TRANSLATE_LAYER = 33554432L
     private const val COMMAND_CAP64_HIGH_DRAW_IMAGE_REF_FULL = 67108864L
     private const val COMMAND_CAP64_HIGH_FILL_ROUND_RECT = 134217728L
+    private const val COMMAND_CAP64_HIGH_DRAW_IMAGE_REF_FULL_RUN = 1073741824L
     private const val REQUIRED_COMMAND_CAPABILITIES_HIGH =
         COMMAND_CAP64_HIGH_SAVE_LAYER_IMAGE_FILTER_REF or
             COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER or
@@ -203,7 +204,8 @@ object JbrSkiaInterop {
             COMMAND_CAP64_HIGH_RESTORE_N or
             COMMAND_CAP64_HIGH_SAVE_TRANSLATE_LAYER or
             COMMAND_CAP64_HIGH_DRAW_IMAGE_REF_FULL or
-            COMMAND_CAP64_HIGH_FILL_ROUND_RECT
+            COMMAND_CAP64_HIGH_FILL_ROUND_RECT or
+            COMMAND_CAP64_HIGH_DRAW_IMAGE_REF_FULL_RUN
     private val JBR_SKIA_CLASSES = arrayOf("com.jetbrains.JBRSkia", "com.jetbrains.desktop.JBRSkia")
     private const val JBR_INTERNAL_SERVICE_CLASS = "com.jetbrains.desktop.JBRSkiaService"
     private const val JBR_ACCESSOR_CLASS = "com.jetbrains.JBR"
