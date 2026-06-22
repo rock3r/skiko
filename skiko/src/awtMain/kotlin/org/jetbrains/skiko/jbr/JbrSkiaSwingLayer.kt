@@ -2531,7 +2531,7 @@ class JbrSkiaSwingLayer(
                         if (pixelCount > 0) {
                             keys += key
                         }
-                    } else if (op == COMMAND_DEFINE_IMAGE_BITMAP && offset + 10 == recordEnd) {
+                    } else if (op == COMMAND_DEFINE_IMAGE_BITMAP && offset + 11 == recordEnd) {
                         keys += (this[offset + 3].toLong() shl 32) or (this[offset + 4].toLong() and 0xffffffffL)
                     }
                 }
