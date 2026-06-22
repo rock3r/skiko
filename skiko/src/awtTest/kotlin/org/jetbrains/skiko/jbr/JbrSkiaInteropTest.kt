@@ -216,6 +216,8 @@ class JbrSkiaInteropTest {
             "full image ref and restore" to COMMAND_CAP64_HIGH_DRAW_IMAGE_REF_FULL_RESTORE,
             "full image ref and restore n" to COMMAND_CAP64_HIGH_DRAW_IMAGE_REF_FULL_RESTORE_N,
             "round rect and restore n" to COMMAND_CAP64_HIGH_DRAW_ROUND_RECT_RESTORE_N,
+            "stroke line full image ref run and restore n" to
+                COMMAND_CAP64_HIGH_STROKE_LINE_DRAW_IMAGE_REF_FULL_RUN_RESTORE_N,
         )
 
         capabilities.forEach { (label, capability) ->
@@ -953,7 +955,7 @@ class JbrSkiaInteropTest {
         private const val REQUIRED_COMMAND_CAPABILITIES_WITHOUT_SAVE_LAYER_BLEND_COLOR_FILTER_REF = Long.MAX_VALUE
         private const val REQUIRED_COMMAND_CAPABILITIES =
             -1L
-        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 267630149631L
+        private const val REQUIRED_COMMAND_CAPABILITIES_HIGH = 542508056575L
         private const val COMMAND_CAP64_HIGH_SAVE_LAYER_IMAGE_FILTER_REF = 1L
         private const val COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_OFFSET_IMAGE_FILTER = 2L
         private const val COMMAND_CAP64_HIGH_EFFECT_DESCRIPTOR_CHAIN_IMAGE_FILTER = 4L
@@ -988,6 +990,7 @@ class JbrSkiaInteropTest {
         private const val COMMAND_CAP64_HIGH_DRAW_IMAGE_REF_FULL_RESTORE = 34359738368L
         private const val COMMAND_CAP64_HIGH_DRAW_IMAGE_REF_FULL_RESTORE_N = 68719476736L
         private const val COMMAND_CAP64_HIGH_DRAW_ROUND_RECT_RESTORE_N = 137438953472L
+        private const val COMMAND_CAP64_HIGH_STROKE_LINE_DRAW_IMAGE_REF_FULL_RUN_RESTORE_N = 274877906944L
         private const val REQUIRED_COMMAND_CAPABILITIES_HIGH_WITHOUT_SHADER_DESCRIPTOR_COLOR_FILTER =
             REQUIRED_COMMAND_CAPABILITIES_HIGH and COMMAND_CAP64_HIGH_SHADER_DESCRIPTOR_COLOR_FILTER.inv()
         private const val REQUIRED_COMMAND_CAPABILITIES_HIGH_WITHOUT_DRAW_POINTS =
