@@ -76,7 +76,7 @@ class JbrSkiaSwingLayer(
             super.paint(g)
         }
         if (g is Graphics2D) {
-            JbrSkiaDebugOverlay.paint(g, renderedWithJbrTexture)
+            JbrSkiaDebugOverlay.paint(g, renderedWithJbrTexture, width, height)
         }
     }
 
@@ -9876,7 +9876,7 @@ private fun commandStreamDebugSummary(commands: IntArray): String {
 internal object JbrSkiaDebugOverlay {
     private const val DEBUG_OVERLAY_PROPERTY = "skiko.jbr.interop.debugOverlay"
 
-    fun paint(g: Graphics2D, acquiredJbrScope: Boolean = false) {
+    fun paint(g: Graphics2D, acquiredJbrScope: Boolean = false, layerWidth: Int = 0, layerHeight: Int = 0) {
         if (!java.lang.Boolean.getBoolean(DEBUG_OVERLAY_PROPERTY)) return
 
         val previousColor = g.color
@@ -9887,8 +9887,17 @@ internal object JbrSkiaDebugOverlay {
             val metrics = g.fontMetrics
             val width = metrics.stringWidth(text) + 12
             val height = metrics.height + 6
-            val x = 8
-            val y = 8
+            val margin = 8
+            val x = if (layerWidth > 0) {
+                (layerWidth - width - margin).coerceAtLeast(margin)
+            } else {
+                margin
+            }
+            val y = if (layerHeight > 0) {
+                (layerHeight - height - margin).coerceAtLeast(margin)
+            } else {
+                margin
+            }
             g.color = if (acquiredJbrScope) AwtColor(255, 192, 0, 235) else AwtColor(0, 96, 72, 210)
             g.fillRoundRect(x, y, width, height, 8, 8)
             g.color = if (acquiredJbrScope) AwtColor(32, 24, 0) else AwtColor(216, 255, 239)
