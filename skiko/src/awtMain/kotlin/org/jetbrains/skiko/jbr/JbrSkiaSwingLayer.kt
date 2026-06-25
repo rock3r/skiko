@@ -57,6 +57,7 @@ class JbrSkiaSwingLayer(
     private var tinyFullSceneInjectedForTesting = false
     private var forcedContextChangeInjectedForTesting = false
     private var commandDirectBuffer: ByteBuffer? = null
+    private val encodedCommandBufferCache = EncodedCommandBufferCache(MAX_CACHED_ENCODED_COMMAND_WORDS)
 
     override fun paint(g: Graphics) {
         logRenderModeOnce(renderDelegate)
@@ -576,6 +577,8 @@ class JbrSkiaSwingLayer(
     }
 
     private fun IntArray.toReusableDirectLittleEndianByteBuffer(): ByteBuffer {
+        encodedCommandBufferCache.bufferFor(this)?.let { return it }
+
         val requiredBytes = size * Int.SIZE_BYTES
         val reusable = commandDirectBuffer
         val encoded =
@@ -598,6 +601,7 @@ class JbrSkiaSwingLayer(
         const val RENDER_COMMANDS_PROPERTY = "skiko.jbr.interop.renderCommands"
         const val RENDER_PICTURE_PROPERTY = "skiko.jbr.interop.renderPicture"
         const val RENDER_TO_TEXTURE_PROPERTY = "skiko.jbr.interop.renderToTexture"
+        private const val MAX_CACHED_ENCODED_COMMAND_WORDS = 512
         val skipNativeCommandDirectFrameForTesting: Boolean =
             System.getProperty("skiko.jbr.interop.skipNativeCommandDirectFrameForTesting") == "true"
         const val CORRUPT_COMMAND_STREAM_PROPERTY = "skiko.jbr.interop.corruptCommandStream"
@@ -9810,6 +9814,64 @@ internal class CommandFrameCache(
 
     fun clear() {
         lastMeaningfulFrame = null
+    }
+}
+
+internal class EncodedCommandBufferCache(
+    private val maxCachedCommandWords: Int,
+) {
+    private var cachedCommands: IntArray? = null
+    private var cachedBuffer: ByteBuffer? = null
+    private var hits = 0
+    private var misses = 0
+    private var skipped = 0
+
+    fun bufferFor(commands: IntArray): ByteBuffer? {
+        if (commands.size > maxCachedCommandWords) {
+            skipped++
+            logStatsIfRequested()
+            return null
+        }
+
+        val previousCommands = cachedCommands
+        val previousBuffer = cachedBuffer
+        if (previousCommands != null && previousBuffer != null && commands.contentEquals(previousCommands)) {
+            hits++
+            logStatsIfRequested()
+            return previousBuffer.duplicate().order(ByteOrder.LITTLE_ENDIAN)
+        }
+
+        misses++
+        val requiredBytes = commands.size * Int.SIZE_BYTES
+        val encoded =
+            if (previousBuffer == null || previousBuffer.capacity() < requiredBytes) {
+                ByteBuffer.allocateDirect(requiredBytes).order(ByteOrder.LITTLE_ENDIAN)
+            } else {
+                previousBuffer
+            }
+        encoded.clear()
+        encoded.limit(requiredBytes)
+        commands.forEach(encoded::putInt)
+        encoded.flip()
+        cachedCommands = commands.copyOf()
+        cachedBuffer = encoded
+        logStatsIfRequested()
+        return encoded.duplicate().order(ByteOrder.LITTLE_ENDIAN)
+    }
+
+    private fun logStatsIfRequested() {
+        if (!java.lang.Boolean.getBoolean(LOG_COMMAND_BUFFER_CACHE_PROPERTY)) return
+        val total = hits + misses + skipped
+        if (total == 1 || total % LOG_COMMAND_BUFFER_CACHE_INTERVAL == 0) {
+            Logger.info {
+                "SKIKO_JBR_INTEROP_COMMAND_BUFFER_CACHE hits=$hits misses=$misses skipped=$skipped"
+            }
+        }
+    }
+
+    private companion object {
+        private const val LOG_COMMAND_BUFFER_CACHE_PROPERTY = "skiko.jbr.interop.logCommandBufferCache"
+        private const val LOG_COMMAND_BUFFER_CACHE_INTERVAL = 120
     }
 }
 

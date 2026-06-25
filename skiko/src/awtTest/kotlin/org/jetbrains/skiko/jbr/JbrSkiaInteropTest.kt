@@ -9,6 +9,7 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import java.awt.image.BufferedImage
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 class JbrSkiaInteropTest {
     @Test
@@ -671,7 +672,35 @@ class JbrSkiaInteropTest {
         )
     }
 
+    @Test
+    fun encodedCommandBufferCacheReusesDuplicateForStableSmallStreams() {
+        val cache = EncodedCommandBufferCache(maxCachedCommandWords = 4)
+        val commands = intArrayOf(1, 2, 3, 4)
+
+        val first = assertNotNull(cache.bufferFor(commands))
+        val second = assertNotNull(cache.bufferFor(commands.copyOf()))
+
+        assertTrue(first.isDirect)
+        assertTrue(second.isDirect)
+        assertFalse(first === second)
+        assertContentEquals(commands, first.duplicate().asIntArray())
+        assertContentEquals(commands, second.duplicate().asIntArray())
+    }
+
+    @Test
+    fun encodedCommandBufferCacheSkipsStreamsAboveThreshold() {
+        val cache = EncodedCommandBufferCache(maxCachedCommandWords = 2)
+
+        assertEquals(null, cache.bufferFor(intArrayOf(1, 2, 3)))
+    }
+
     private fun testGraphics() = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics()
+
+    private fun ByteBuffer.asIntArray(): IntArray {
+        order(ByteOrder.LITTLE_ENDIAN)
+        rewind()
+        return IntArray(remaining() / Int.SIZE_BYTES) { int }
+    }
 
     private fun discoverWithCapabilities(
         commandCapabilities: Long = REQUIRED_COMMAND_CAPABILITIES,
