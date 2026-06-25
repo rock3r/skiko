@@ -9879,12 +9879,11 @@ internal object JbrSkiaDebugOverlay {
     fun paint(g: Graphics2D, acquiredJbrScope: Boolean = false, layerWidth: Int = 0, layerHeight: Int = 0) {
         if (!java.lang.Boolean.getBoolean(DEBUG_OVERLAY_PROPERTY)) return
 
-        val previousColor = g.color
-        val previousFont = g.font
+        val overlayGraphics = g.create() as Graphics2D
         try {
             val text = if (acquiredJbrScope) "JBR Skia scope" else "JBR Skia path"
-            g.font = Font(Font.SANS_SERIF, Font.BOLD, 11)
-            val metrics = g.fontMetrics
+            overlayGraphics.font = Font(Font.SANS_SERIF, Font.BOLD, 11)
+            val metrics = overlayGraphics.fontMetrics
             val width = metrics.stringWidth(text) + 12
             val height = metrics.height + 6
             val margin = 8
@@ -9898,13 +9897,12 @@ internal object JbrSkiaDebugOverlay {
             } else {
                 margin
             }
-            g.color = if (acquiredJbrScope) AwtColor(255, 192, 0, 235) else AwtColor(0, 96, 72, 210)
-            g.fillRoundRect(x, y, width, height, 8, 8)
-            g.color = if (acquiredJbrScope) AwtColor(32, 24, 0) else AwtColor(216, 255, 239)
-            g.drawString(text, x + 6, y + metrics.ascent + 3)
+            overlayGraphics.color = if (acquiredJbrScope) AwtColor(255, 192, 0, 235) else AwtColor(0, 96, 72, 210)
+            overlayGraphics.fillRoundRect(x, y, width, height, 8, 8)
+            overlayGraphics.color = if (acquiredJbrScope) AwtColor(32, 24, 0) else AwtColor(216, 255, 239)
+            overlayGraphics.drawString(text, x + 6, y + metrics.ascent + 3)
         } finally {
-            g.color = previousColor
-            g.font = previousFont
+            overlayGraphics.dispose()
         }
     }
 }
