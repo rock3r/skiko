@@ -61,22 +61,34 @@ class JbrSkiaSwingLayer(
     override fun paint(g: Graphics) {
         logRenderModeOnce(renderDelegate)
         var renderedWithJbrTexture = false
-        if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_PICTURE_PROPERTY)) {
-            renderedWithJbrTexture = renderJbrPictureFrame(g)
-        } else if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_DIAGNOSTIC_PROPERTY)) {
-            renderedWithJbrTexture = renderJbrDiagnosticFrame(g)
-        } else if (g is Graphics2D && java.lang.Boolean.getBoolean(RENDER_TO_TEXTURE_PROPERTY)) {
-            renderedWithJbrTexture = renderIntoJbrTexture(g)
-        } else if (g is Graphics2D && shouldRenderCommandFramesEffective()) {
-            renderedWithJbrTexture = renderJbrCommandFrame(g)
-        } else if (g is Graphics2D) {
-            JbrSkiaInterop.acquireCanvas(g)?.close()
+        if (g is Graphics2D) {
+            renderedWithJbrTexture = paintJbrFrame(g)
         }
         if (!renderedWithJbrTexture) {
             super.paint(g)
         }
         if (g is Graphics2D) {
             JbrSkiaDebugOverlay.paint(g, renderedWithJbrTexture, width, height)
+        }
+    }
+
+    private fun paintJbrFrame(g: Graphics2D): Boolean {
+        val renderGraphics = g.create() as Graphics2D
+        return try {
+            if (java.lang.Boolean.getBoolean(RENDER_PICTURE_PROPERTY)) {
+                renderJbrPictureFrame(renderGraphics)
+            } else if (java.lang.Boolean.getBoolean(RENDER_DIAGNOSTIC_PROPERTY)) {
+                renderJbrDiagnosticFrame(renderGraphics)
+            } else if (java.lang.Boolean.getBoolean(RENDER_TO_TEXTURE_PROPERTY)) {
+                renderIntoJbrTexture(renderGraphics)
+            } else if (shouldRenderCommandFramesEffective()) {
+                renderJbrCommandFrame(renderGraphics)
+            } else {
+                JbrSkiaInterop.acquireCanvas(renderGraphics)?.close()
+                false
+            }
+        } finally {
+            renderGraphics.dispose()
         }
     }
 
