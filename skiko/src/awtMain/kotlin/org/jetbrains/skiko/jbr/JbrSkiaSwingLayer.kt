@@ -57,7 +57,10 @@ class JbrSkiaSwingLayer(
     private var tinyFullSceneInjectedForTesting = false
     private var forcedContextChangeInjectedForTesting = false
     private var commandDirectBuffer: ByteBuffer? = null
-    private val encodedCommandBufferCache = EncodedCommandBufferCache(MAX_CACHED_ENCODED_COMMAND_WORDS)
+    private val encodedCommandBufferCache = EncodedCommandBufferCache(
+        maxCachedCommandWords = MAX_CACHED_ENCODED_COMMAND_WORDS,
+        maxAdaptiveCommandWords = MAX_ADAPTIVE_CACHED_ENCODED_COMMAND_WORDS,
+    )
 
     override fun paint(g: Graphics) {
         logRenderModeOnce(renderDelegate)
@@ -602,6 +605,7 @@ class JbrSkiaSwingLayer(
         const val RENDER_PICTURE_PROPERTY = "skiko.jbr.interop.renderPicture"
         const val RENDER_TO_TEXTURE_PROPERTY = "skiko.jbr.interop.renderToTexture"
         private const val MAX_CACHED_ENCODED_COMMAND_WORDS = 512
+        private const val MAX_ADAPTIVE_CACHED_ENCODED_COMMAND_WORDS = 2048
         val skipNativeCommandDirectFrameForTesting: Boolean =
             System.getProperty("skiko.jbr.interop.skipNativeCommandDirectFrameForTesting") == "true"
         const val CORRUPT_COMMAND_STREAM_PROPERTY = "skiko.jbr.interop.corruptCommandStream"
@@ -9819,15 +9823,18 @@ internal class CommandFrameCache(
 
 internal class EncodedCommandBufferCache(
     private val maxCachedCommandWords: Int,
+    private val maxAdaptiveCommandWords: Int = maxCachedCommandWords,
 ) {
     private var cachedCommands: IntArray? = null
     private var cachedBuffer: ByteBuffer? = null
+    private var pendingFingerprint: CommandStreamFingerprint? = null
     private var hits = 0
     private var misses = 0
     private var skipped = 0
+    private var deferred = 0
 
     fun bufferFor(commands: IntArray): ByteBuffer? {
-        if (commands.size > maxCachedCommandWords) {
+        if (commands.size > maxAdaptiveCommandWords) {
             skipped++
             logStatsIfRequested()
             return null
@@ -9839,6 +9846,10 @@ internal class EncodedCommandBufferCache(
             hits++
             logStatsIfRequested()
             return previousBuffer.duplicate().order(ByteOrder.LITTLE_ENDIAN)
+        }
+        if (commands.size > maxCachedCommandWords && !shouldCacheAdaptive(commands)) {
+            logStatsIfRequested()
+            return null
         }
 
         misses++
@@ -9855,16 +9866,25 @@ internal class EncodedCommandBufferCache(
         encoded.flip()
         cachedCommands = commands.copyOf()
         cachedBuffer = encoded
+        pendingFingerprint = null
         logStatsIfRequested()
         return encoded.duplicate().order(ByteOrder.LITTLE_ENDIAN)
     }
 
+    private fun shouldCacheAdaptive(commands: IntArray): Boolean {
+        val fingerprint = CommandStreamFingerprint.of(commands)
+        if (pendingFingerprint == fingerprint) return true
+        pendingFingerprint = fingerprint
+        deferred++
+        return false
+    }
+
     private fun logStatsIfRequested() {
         if (!java.lang.Boolean.getBoolean(LOG_COMMAND_BUFFER_CACHE_PROPERTY)) return
-        val total = hits + misses + skipped
+        val total = hits + misses + skipped + deferred
         if (total == 1 || total % LOG_COMMAND_BUFFER_CACHE_INTERVAL == 0) {
             Logger.info {
-                "SKIKO_JBR_INTEROP_COMMAND_BUFFER_CACHE hits=$hits misses=$misses skipped=$skipped"
+                "SKIKO_JBR_INTEROP_COMMAND_BUFFER_CACHE hits=$hits misses=$misses skipped=$skipped deferred=$deferred"
             }
         }
     }
@@ -9872,6 +9892,29 @@ internal class EncodedCommandBufferCache(
     private companion object {
         private const val LOG_COMMAND_BUFFER_CACHE_PROPERTY = "skiko.jbr.interop.logCommandBufferCache"
         private const val LOG_COMMAND_BUFFER_CACHE_INTERVAL = 120
+    }
+}
+
+internal data class CommandStreamFingerprint(
+    private val size: Int,
+    private val first: Int,
+    private val quarter: Int,
+    private val middle: Int,
+    private val threeQuarter: Int,
+    private val last: Int,
+) {
+    companion object {
+        fun of(commands: IntArray): CommandStreamFingerprint {
+            val lastIndex = commands.lastIndex
+            return CommandStreamFingerprint(
+                size = commands.size,
+                first = commands[0],
+                quarter = commands[lastIndex / 4],
+                middle = commands[lastIndex / 2],
+                threeQuarter = commands[(lastIndex * 3) / 4],
+                last = commands[lastIndex],
+            )
+        }
     }
 }
 

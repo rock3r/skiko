@@ -694,6 +694,35 @@ class JbrSkiaInteropTest {
         assertEquals(null, cache.bufferFor(intArrayOf(1, 2, 3)))
     }
 
+    @Test
+    fun encodedCommandBufferCacheDefersMediumStreamsUntilFingerprintRepeats() {
+        val cache = EncodedCommandBufferCache(maxCachedCommandWords = 2, maxAdaptiveCommandWords = 4)
+        val commands = intArrayOf(1, 2, 3)
+
+        assertEquals(null, cache.bufferFor(commands))
+        val cached = assertNotNull(cache.bufferFor(commands.copyOf()))
+        val hit = assertNotNull(cache.bufferFor(commands.copyOf()))
+
+        assertFalse(cached === hit)
+        assertContentEquals(commands, cached.duplicate().asIntArray())
+        assertContentEquals(commands, hit.duplicate().asIntArray())
+    }
+
+    @Test
+    fun encodedCommandBufferCacheKeepsChangingMediumStreamsOnReusablePath() {
+        val cache = EncodedCommandBufferCache(maxCachedCommandWords = 2, maxAdaptiveCommandWords = 4)
+
+        assertEquals(null, cache.bufferFor(intArrayOf(1, 2, 3)))
+        assertEquals(null, cache.bufferFor(intArrayOf(1, 2, 4)))
+    }
+
+    @Test
+    fun encodedCommandBufferCacheSkipsStreamsAboveAdaptiveThreshold() {
+        val cache = EncodedCommandBufferCache(maxCachedCommandWords = 2, maxAdaptiveCommandWords = 3)
+
+        assertEquals(null, cache.bufferFor(intArrayOf(1, 2, 3, 4)))
+    }
+
     private fun testGraphics() = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics()
 
     private fun ByteBuffer.asIntArray(): IntArray {
