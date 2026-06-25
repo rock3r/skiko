@@ -22,16 +22,33 @@ class JbrSkiaDebugOverlayTest {
         withDebugOverlay("true") {
             val image = BufferedImage(128, 40, BufferedImage.TYPE_INT_ARGB)
 
-            JbrSkiaDebugOverlay.paint(image.createGraphics())
+            JbrSkiaDebugOverlay.paint(image.createGraphics(), layerWidth = image.width, layerHeight = image.height)
 
             assertNotEquals(0, image.nonTransparentPixelCount())
         }
     }
 
-    private fun BufferedImage.nonTransparentPixelCount(): Int {
+    @Test
+    fun overlayAnchorsAwayFromTopLeftWhenLayerBoundsAreKnown() {
+        withDebugOverlay("true") {
+            val image = BufferedImage(320, 160, BufferedImage.TYPE_INT_ARGB)
+
+            JbrSkiaDebugOverlay.paint(image.createGraphics(), acquiredJbrScope = true, image.width, image.height)
+
+            assertEquals(0, image.nonTransparentPixelCount(left = 0, top = 0, right = 160, bottom = 80))
+            assertNotEquals(0, image.nonTransparentPixelCount(left = 160, top = 80, right = image.width, bottom = image.height))
+        }
+    }
+
+    private fun BufferedImage.nonTransparentPixelCount(
+        left: Int = 0,
+        top: Int = 0,
+        right: Int = width,
+        bottom: Int = height,
+    ): Int {
         var count = 0
-        for (y in 0 until height) {
-            for (x in 0 until width) {
+        for (y in top until bottom) {
+            for (x in left until right) {
                 if ((getRGB(x, y) ushr 24) != 0) {
                     count++
                 }
