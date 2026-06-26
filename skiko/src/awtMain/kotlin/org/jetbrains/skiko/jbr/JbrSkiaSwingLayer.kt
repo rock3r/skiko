@@ -9851,6 +9851,8 @@ internal class EncodedCommandBufferCache(
     private var bypassed = 0
     private var consecutiveMisses = 0
     private var bypassedCommandSize = -1
+    private var consecutiveDeferrals = 0
+    private var adaptiveBypassRemaining = 0
 
     fun bufferFor(commands: IntArray): ByteBuffer? {
         if (commands.size > maxAdaptiveCommandWords) {
@@ -9872,12 +9874,19 @@ internal class EncodedCommandBufferCache(
             bypassedCommandSize = -1
             consecutiveMisses = 0
         }
+        if (commands.size > maxCachedCommandWords && adaptiveBypassRemaining > 0) {
+            bypassed++
+            adaptiveBypassRemaining--
+            logStatsIfRequested()
+            return null
+        }
 
         val previousCommands = cachedCommands
         val previousBuffer = cachedBuffer
         if (previousCommands != null && previousBuffer != null && commands.contentEquals(previousCommands)) {
             hits++
             consecutiveMisses = 0
+            consecutiveDeferrals = 0
             logStatsIfRequested()
             return previousBuffer.duplicate().order(ByteOrder.LITTLE_ENDIAN)
         }
@@ -9888,6 +9897,7 @@ internal class EncodedCommandBufferCache(
 
         misses++
         consecutiveMisses++
+        consecutiveDeferrals = 0
         val requiredBytes = commands.size * Int.SIZE_BYTES
         val encoded =
             if (previousBuffer == null || previousBuffer.capacity() < requiredBytes) {
@@ -9913,9 +9923,18 @@ internal class EncodedCommandBufferCache(
 
     private fun shouldCacheAdaptive(commands: IntArray): Boolean {
         val fingerprint = CommandStreamFingerprint.of(commands)
-        if (pendingFingerprint == fingerprint) return true
+        if (pendingFingerprint == fingerprint) {
+            consecutiveDeferrals = 0
+            return true
+        }
         pendingFingerprint = fingerprint
         deferred++
+        consecutiveDeferrals++
+        if (consecutiveDeferrals >= MAX_CONSECUTIVE_DEFERRALS_BEFORE_BYPASS) {
+            adaptiveBypassRemaining = BYPASS_PROBE_INTERVAL
+            consecutiveDeferrals = 0
+            pendingFingerprint = null
+        }
         return false
     }
 
@@ -9934,6 +9953,7 @@ internal class EncodedCommandBufferCache(
         private const val LOG_COMMAND_BUFFER_CACHE_PROPERTY = "skiko.jbr.interop.logCommandBufferCache"
         private const val LOG_COMMAND_BUFFER_CACHE_INTERVAL = 120
         private const val MAX_CONSECUTIVE_MISSES_BEFORE_BYPASS = 16
+        private const val MAX_CONSECUTIVE_DEFERRALS_BEFORE_BYPASS = 16
         private const val BYPASS_PROBE_INTERVAL = 120
     }
 }
