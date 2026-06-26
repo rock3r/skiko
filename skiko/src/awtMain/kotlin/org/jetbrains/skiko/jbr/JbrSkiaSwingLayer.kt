@@ -10008,6 +10008,7 @@ private fun commandStreamDebugSummary(commands: IntArray): String {
 
 internal object JbrSkiaDebugOverlay {
     private const val DEBUG_OVERLAY_PROPERTY = "skiko.jbr.interop.debugOverlay"
+    private const val DEBUG_OVERLAY_LABEL_PROPERTY = "skiko.jbr.interop.debugOverlayLabel"
 
     fun paint(g: Graphics2D, acquiredJbrScope: Boolean = false, layerWidth: Int = 0, layerHeight: Int = 0) {
         if (!java.lang.Boolean.getBoolean(DEBUG_OVERLAY_PROPERTY)) return
@@ -10015,10 +10016,13 @@ internal object JbrSkiaDebugOverlay {
         val overlayGraphics = g.create() as Graphics2D
         try {
             val text = if (acquiredJbrScope) "JBR Skia scope" else "JBR Skia path"
-            overlayGraphics.font = Font(Font.SANS_SERIF, Font.BOLD, 11)
-            val metrics = overlayGraphics.fontMetrics
-            val width = metrics.stringWidth(text) + 12
-            val height = metrics.height + 6
+            val showLabel = java.lang.Boolean.getBoolean(DEBUG_OVERLAY_LABEL_PROPERTY)
+            if (showLabel) {
+                overlayGraphics.font = Font(Font.SANS_SERIF, Font.BOLD, 11)
+            }
+            val metrics = if (showLabel) overlayGraphics.fontMetrics else null
+            val width = if (showLabel && metrics != null) metrics.stringWidth(text) + 12 else 14
+            val height = if (showLabel && metrics != null) metrics.height + 6 else 14
             val margin = 8
             val x = if (layerWidth > 0) {
                 (layerWidth - width - margin).coerceAtLeast(margin)
@@ -10032,8 +10036,10 @@ internal object JbrSkiaDebugOverlay {
             }
             overlayGraphics.color = if (acquiredJbrScope) AwtColor(255, 192, 0, 235) else AwtColor(0, 96, 72, 210)
             overlayGraphics.fillRoundRect(x, y, width, height, 8, 8)
-            overlayGraphics.color = if (acquiredJbrScope) AwtColor(32, 24, 0) else AwtColor(216, 255, 239)
-            overlayGraphics.drawString(text, x + 6, y + metrics.ascent + 3)
+            if (showLabel && metrics != null) {
+                overlayGraphics.color = if (acquiredJbrScope) AwtColor(32, 24, 0) else AwtColor(216, 255, 239)
+                overlayGraphics.drawString(text, x + 6, y + metrics.ascent + 3)
+            }
         } finally {
             overlayGraphics.dispose()
         }
