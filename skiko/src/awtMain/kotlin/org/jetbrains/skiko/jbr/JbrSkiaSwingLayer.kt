@@ -19,6 +19,7 @@ import org.jetbrains.skiko.SkikoRenderDelegate
 import org.jetbrains.skiko.autoCloseScope
 import org.jetbrains.skiko.makeMetalContext
 import org.jetbrains.skiko.swing.SkiaSwingLayer
+import java.awt.AlphaComposite
 import java.awt.Component
 import java.awt.Font
 import java.awt.Graphics
@@ -69,10 +70,25 @@ class JbrSkiaSwingLayer(
             renderedWithJbrTexture = paintJbrFrame(g)
         }
         if (!renderedWithJbrTexture) {
+            clearFallbackDestination(g)
             super.paint(g)
         }
         if (g is Graphics2D) {
             JbrSkiaDebugOverlay.paint(g, renderedWithJbrTexture, width, height)
+        }
+    }
+
+    private fun clearFallbackDestination(g: Graphics) {
+        if (g !is Graphics2D) {
+            g.clearRect(0, 0, width, height)
+            return
+        }
+        val clearGraphics = g.create() as Graphics2D
+        try {
+            clearGraphics.composite = AlphaComposite.Clear
+            clearGraphics.fillRect(0, 0, width, height)
+        } finally {
+            clearGraphics.dispose()
         }
     }
 
