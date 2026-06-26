@@ -234,9 +234,10 @@ class JbrSkiaSwingLayer(
             if (!noteSurfaceIdentity(scope, clearCommandCaches = true)) {
                 return false
             }
-            val commandStream = commandFrameCache
-                .frameForRendering(commandFrame.tinyFullSceneForTestingIfRequested())
-                .corruptTextFontSizeForTestingIfRequested()
+            val cachedCommandStream = commandFrameCache.frameForRendering(commandFrame.tinyFullSceneForTestingIfRequested())
+            val commandStream = if (shouldApplyCommandCorruptionForTesting()) {
+                cachedCommandStream
+                    .corruptTextFontSizeForTestingIfRequested()
                 .corruptClipPathVerbForTestingIfRequested()
                 .corruptDrawPathVerbForTestingIfRequested()
                 .corruptDrawPathPathEffectVerbForTestingIfRequested()
@@ -478,8 +479,11 @@ class JbrSkiaSwingLayer(
                 .corruptCommandCoordinateSpaceForTestingIfRequested()
                 .corruptCommandPaintFormatForTestingIfRequested()
                 .corruptCommandPayloadLengthForTestingIfRequested()
-                .corruptCommandRecordLengthForTestingIfRequested()
-                .corruptForTestingIfRequested()
+                    .corruptCommandRecordLengthForTestingIfRequested()
+                    .corruptForTestingIfRequested()
+            } else {
+                cachedCommandStream
+            }
             commandStreamFallbackReason(commandStream)?.let { reason ->
                 JbrSkiaInterop.logFallback(reason)
                 return renderJbrPictureFrame(g)
@@ -622,6 +626,13 @@ class JbrSkiaSwingLayer(
         const val RENDER_TO_TEXTURE_PROPERTY = "skiko.jbr.interop.renderToTexture"
         private const val MAX_CACHED_ENCODED_COMMAND_WORDS = 512
         private const val MAX_ADAPTIVE_CACHED_ENCODED_COMMAND_WORDS = 2048
+        private const val CORRUPT_PROPERTY_PREFIX = "skiko.jbr.interop.corrupt"
+        private val applyCommandCorruptionForTesting: Boolean =
+            System.getProperties().entries.any { (key, value) ->
+                key is String &&
+                    key.startsWith(CORRUPT_PROPERTY_PREFIX) &&
+                    value?.toString()?.equals("true", ignoreCase = true) == true
+            }
         val skipNativeCommandDirectFrameForTesting: Boolean =
             System.getProperty("skiko.jbr.interop.skipNativeCommandDirectFrameForTesting") == "true"
         const val CORRUPT_COMMAND_STREAM_PROPERTY = "skiko.jbr.interop.corruptCommandStream"
@@ -2493,6 +2504,9 @@ class JbrSkiaSwingLayer(
 
         private fun shouldRenderCommandFramesProperty(): Boolean =
             System.getProperty(RENDER_COMMANDS_PROPERTY)?.toBoolean() ?: true
+
+        private fun shouldApplyCommandCorruptionForTesting(): Boolean =
+            applyCommandCorruptionForTesting
 
         private fun logRenderModeOnce(renderDelegate: SkikoRenderDelegate) {
             if (loggedRenderMode.compareAndSet(false, true)) {
