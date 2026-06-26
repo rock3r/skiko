@@ -9848,6 +9848,9 @@ internal class EncodedCommandBufferCache(
     private var misses = 0
     private var skipped = 0
     private var deferred = 0
+    private var bypassed = 0
+    private var consecutiveMisses = 0
+    private var bypassedCommandSize = -1
 
     fun bufferFor(commands: IntArray): ByteBuffer? {
         if (commands.size > maxAdaptiveCommandWords) {
@@ -9856,10 +9859,25 @@ internal class EncodedCommandBufferCache(
             return null
         }
 
+        if (bypassedCommandSize == commands.size) {
+            bypassed++
+            if (bypassed % BYPASS_PROBE_INTERVAL != 0) {
+                logStatsIfRequested()
+                return null
+            }
+            bypassedCommandSize = -1
+            consecutiveMisses = 0
+        }
+        if (bypassedCommandSize >= 0) {
+            bypassedCommandSize = -1
+            consecutiveMisses = 0
+        }
+
         val previousCommands = cachedCommands
         val previousBuffer = cachedBuffer
         if (previousCommands != null && previousBuffer != null && commands.contentEquals(previousCommands)) {
             hits++
+            consecutiveMisses = 0
             logStatsIfRequested()
             return previousBuffer.duplicate().order(ByteOrder.LITTLE_ENDIAN)
         }
@@ -9869,6 +9887,7 @@ internal class EncodedCommandBufferCache(
         }
 
         misses++
+        consecutiveMisses++
         val requiredBytes = commands.size * Int.SIZE_BYTES
         val encoded =
             if (previousBuffer == null || previousBuffer.capacity() < requiredBytes) {
@@ -9883,6 +9902,11 @@ internal class EncodedCommandBufferCache(
         cachedCommands = commands.copyOf()
         cachedBuffer = encoded
         pendingFingerprint = null
+        if (consecutiveMisses >= MAX_CONSECUTIVE_MISSES_BEFORE_BYPASS) {
+            bypassedCommandSize = commands.size
+            cachedCommands = null
+            cachedBuffer = null
+        }
         logStatsIfRequested()
         return encoded.duplicate().order(ByteOrder.LITTLE_ENDIAN)
     }
@@ -9897,10 +9921,11 @@ internal class EncodedCommandBufferCache(
 
     private fun logStatsIfRequested() {
         if (!java.lang.Boolean.getBoolean(LOG_COMMAND_BUFFER_CACHE_PROPERTY)) return
-        val total = hits + misses + skipped + deferred
+        val total = hits + misses + skipped + deferred + bypassed
         if (total == 1 || total % LOG_COMMAND_BUFFER_CACHE_INTERVAL == 0) {
             Logger.info {
-                "SKIKO_JBR_INTEROP_COMMAND_BUFFER_CACHE hits=$hits misses=$misses skipped=$skipped deferred=$deferred"
+                "SKIKO_JBR_INTEROP_COMMAND_BUFFER_CACHE hits=$hits misses=$misses skipped=$skipped " +
+                    "deferred=$deferred bypassed=$bypassed"
             }
         }
     }
@@ -9908,6 +9933,8 @@ internal class EncodedCommandBufferCache(
     private companion object {
         private const val LOG_COMMAND_BUFFER_CACHE_PROPERTY = "skiko.jbr.interop.logCommandBufferCache"
         private const val LOG_COMMAND_BUFFER_CACHE_INTERVAL = 120
+        private const val MAX_CONSECUTIVE_MISSES_BEFORE_BYPASS = 16
+        private const val BYPASS_PROBE_INTERVAL = 120
     }
 }
 
