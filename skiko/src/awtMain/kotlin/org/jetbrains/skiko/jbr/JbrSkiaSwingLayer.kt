@@ -9968,7 +9968,7 @@ internal class EncodedCommandBufferCache(
         private const val LOG_COMMAND_BUFFER_CACHE_INTERVAL = 120
         private const val MAX_CONSECUTIVE_MISSES_BEFORE_BYPASS = 16
         private const val MAX_CONSECUTIVE_DEFERRALS_BEFORE_BYPASS = 2
-        private const val BYPASS_PROBE_INTERVAL = 240
+        private const val BYPASS_PROBE_INTERVAL = 480
     }
 }
 
