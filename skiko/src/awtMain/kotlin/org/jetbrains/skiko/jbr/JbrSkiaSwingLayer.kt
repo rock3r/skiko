@@ -495,8 +495,13 @@ class JbrSkiaSwingLayer(
                 scope.flush()
                 return true
             }
-            val commandBuffer = commandStream.toReusableDirectLittleEndianByteBuffer()
-            scope.renderCommandDirectFrame(renderWidth, renderHeight, frameTime, commandBuffer).also { rendered ->
+            val renderedCommandFrame = if (useCommandDirectBufferFrames) {
+                val commandBuffer = commandStream.toReusableDirectLittleEndianByteBuffer()
+                scope.renderCommandDirectFrame(renderWidth, renderHeight, frameTime, commandBuffer)
+            } else {
+                scope.renderCommandFrame(renderWidth, renderHeight, frameTime, commandStream)
+            }
+            renderedCommandFrame.also { rendered ->
                 if (rendered || logFallbackOnFalse) {
                     Logger.info {
                         commandFrameMarker(renderWidth, renderHeight, commandStream.size, rendered)
@@ -635,6 +640,8 @@ class JbrSkiaSwingLayer(
             }
         val skipNativeCommandDirectFrameForTesting: Boolean =
             System.getProperty("skiko.jbr.interop.skipNativeCommandDirectFrameForTesting") == "true"
+        val useCommandDirectBufferFrames: Boolean =
+            System.getProperty("skiko.jbr.interop.useCommandDirectBufferFrames") == "true"
         const val CORRUPT_COMMAND_STREAM_PROPERTY = "skiko.jbr.interop.corruptCommandStream"
         const val CORRUPT_COMMAND_RECORD_FLAGS_PROPERTY = "skiko.jbr.interop.corruptCommandRecordFlagsForTesting"
         const val CORRUPT_COMMAND_COORDINATE_SPACE_PROPERTY =
