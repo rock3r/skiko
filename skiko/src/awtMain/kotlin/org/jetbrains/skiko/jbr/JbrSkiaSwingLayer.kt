@@ -28,6 +28,7 @@ import java.awt.Color as AwtColor
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.accessibility.AccessibleContext
+import javax.swing.SwingUtilities
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -93,7 +94,7 @@ class JbrSkiaSwingLayer(
     }
 
     private fun paintJbrFrame(g: Graphics2D): Boolean {
-        val renderGraphics = g.create() as Graphics2D
+        val renderGraphics = createJbrInteropGraphics(g)
         return try {
             if (java.lang.Boolean.getBoolean(RENDER_PICTURE_PROPERTY)) {
                 renderJbrPictureFrame(renderGraphics)
@@ -110,6 +111,29 @@ class JbrSkiaSwingLayer(
         } finally {
             renderGraphics.dispose()
         }
+    }
+
+    private fun createJbrInteropGraphics(g: Graphics2D): Graphics2D {
+        val interopGraphics = g.create() as Graphics2D
+        val window = SwingUtilities.getWindowAncestor(this)
+        if (window != null && isShowing) {
+            val location = SwingUtilities.convertPoint(this, 0, 0, window)
+            val transform = interopGraphics.transform
+            val scaleX = transform.scaleX
+            val scaleY = transform.scaleY
+            if (scaleX > 0.0 && scaleY > 0.0) {
+                val currentX = transform.translateX / scaleX
+                val currentY = transform.translateY / scaleY
+                interopGraphics.translate(
+                    (location.x - currentX).toInt(),
+                    (location.y - currentY).toInt(),
+                )
+            } else {
+                interopGraphics.translate(location.x, location.y)
+            }
+            interopGraphics.setClip(0, 0, width, height)
+        }
+        return interopGraphics
     }
 
     override fun removeNotify() {
