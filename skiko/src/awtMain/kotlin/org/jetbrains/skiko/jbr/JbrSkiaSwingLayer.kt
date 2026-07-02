@@ -2742,7 +2742,7 @@ class JbrSkiaSwingLayer(
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size || COMMAND_STREAM_HEADER_SIZE + 1 >= commandEnd) return this
             return copyOf().also { stream ->
-                stream[COMMAND_STREAM_HEADER_SIZE + 1] = 12
+                stream[COMMAND_STREAM_HEADER_SIZE + 1] = 8
                 Logger.info { COMMAND_RECORD_LENGTH_CORRUPTED_MARKER }
             }
         }
