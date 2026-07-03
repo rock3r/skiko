@@ -3435,7 +3435,6 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptStrokePathDashPathEffectVerbForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_STROKE_PATH_DASH_PATH_EFFECT_VERB_PROPERTY)) return this
-            if (!strokePathDashPathEffectVerbCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -3451,6 +3450,7 @@ class JbrSkiaSwingLayer(
                     if (intervalCount >= 2 && pathHeaderOffset + 2 < recordEnd) {
                         val pathDataLength = this[pathHeaderOffset + 1]
                         if (pathDataLength > 0 && pathHeaderOffset + 2 + pathDataLength == recordEnd) {
+                            if (!strokePathDashPathEffectVerbCorruptedForTesting.compareAndSet(false, true)) return this
                             return copyOf().also { stream ->
                                 stream[pathHeaderOffset + 2] = 99
                                 Logger.info { STROKE_PATH_DASH_PATH_EFFECT_VERB_CORRUPTED_MARKER }
@@ -3642,7 +3642,6 @@ class JbrSkiaSwingLayer(
             marker: String,
         ): IntArray {
             if (!java.lang.Boolean.getBoolean(property)) return this
-            if (!once.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -3653,6 +3652,7 @@ class JbrSkiaSwingLayer(
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
                 if (op == command && argsStart + argIndex < recordEnd) {
+                    if (!once.compareAndSet(false, true)) return this
                     return copyOf().also { stream ->
                         stream[argsStart + argIndex] = value
                         Logger.info { marker }
@@ -3665,7 +3665,6 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptDrawShadowPathVerbForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_DRAW_SHADOW_PATH_VERB_PROPERTY)) return this
-            if (!drawShadowPathVerbCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -3678,6 +3677,7 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_DRAW_SHADOW_PATH && argsStart + 12 < recordEnd) {
                     val pathDataLength = this[argsStart + 11]
                     if (pathDataLength > 0 && argsStart + 12 + pathDataLength == recordEnd) {
+                        if (!drawShadowPathVerbCorruptedForTesting.compareAndSet(false, true)) return this
                         return copyOf().also { stream ->
                             stream[argsStart + 12] = 99
                             Logger.info { DRAW_SHADOW_PATH_VERB_CORRUPTED_MARKER }
