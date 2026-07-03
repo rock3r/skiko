@@ -5912,7 +5912,6 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptEffectDescriptorTypeForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_EFFECT_DESCRIPTOR_TYPE_PROPERTY)) return this
-            if (!effectDescriptorTypeCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -5923,6 +5922,7 @@ class JbrSkiaSwingLayer(
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
                 if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 2 < recordEnd) {
+                    if (!effectDescriptorTypeCorruptedForTesting.compareAndSet(false, true)) return this
                     return copyOf().also { stream ->
                         stream[argsStart + 2] = Int.MAX_VALUE
                         Logger.info { EFFECT_DESCRIPTOR_TYPE_CORRUPTED_MARKER }
@@ -5935,7 +5935,6 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptEffectDescriptorVersionForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_EFFECT_DESCRIPTOR_VERSION_PROPERTY)) return this
-            if (!effectDescriptorVersionCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -5946,6 +5945,7 @@ class JbrSkiaSwingLayer(
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
                 if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 3 < recordEnd) {
+                    if (!effectDescriptorVersionCorruptedForTesting.compareAndSet(false, true)) return this
                     return copyOf().also { stream ->
                         stream[argsStart + 3] = Int.MAX_VALUE
                         Logger.info { EFFECT_DESCRIPTOR_VERSION_CORRUPTED_MARKER }
@@ -5958,7 +5958,6 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptEffectDescriptorPayloadCountForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_EFFECT_DESCRIPTOR_PAYLOAD_COUNT_PROPERTY)) return this
-            if (!effectDescriptorPayloadCountCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -5969,6 +5968,7 @@ class JbrSkiaSwingLayer(
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
                 if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && argsStart + 4 < recordEnd) {
+                    if (!effectDescriptorPayloadCountCorruptedForTesting.compareAndSet(false, true)) return this
                     return copyOf().also { stream ->
                         stream[argsStart + 4] = Int.MAX_VALUE
                         Logger.info { EFFECT_DESCRIPTOR_PAYLOAD_COUNT_CORRUPTED_MARKER }
@@ -5981,7 +5981,6 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptEffectDescriptorRecordLengthForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_EFFECT_DESCRIPTOR_RECORD_LENGTH_PROPERTY)) return this
-            if (!effectDescriptorRecordLengthCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -5991,6 +5990,7 @@ class JbrSkiaSwingLayer(
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 if (op == COMMAND_DEFINE_EFFECT_DESCRIPTOR && recordLengthInts > 3) {
+                    if (!effectDescriptorRecordLengthCorruptedForTesting.compareAndSet(false, true)) return this
                     return copyOf().also { stream ->
                         stream[offset + 1] = (recordLengthInts - 1) * Int.SIZE_BYTES
                         Logger.info { EFFECT_DESCRIPTOR_RECORD_LENGTH_CORRUPTED_MARKER }
@@ -6049,7 +6049,7 @@ class JbrSkiaSwingLayer(
                     val payloadIntCount = this[argsStart + 4]
                     if (descriptorType == COMMAND_EFFECT_DESCRIPTOR_TINT_COLOR_FILTER && payloadIntCount == 2) {
                         return copyOf().also { stream ->
-                            stream[argsStart + 6] = COMMAND_BLEND_MODE_PLUS
+                            stream[argsStart + 6] = 9999
                             Logger.info { TINT_COLOR_FILTER_DESCRIPTOR_BLEND_MODE_CORRUPTED_MARKER }
                         }
                     }
