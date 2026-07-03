@@ -538,6 +538,9 @@ class JbrSkiaSwingLayer(
                     JbrSkiaCommandRecorderCacheBridge.markImageDefinitionsRendered(
                         commandStream.fullImageDefinitionKeys()
                     )
+                    JbrSkiaCommandRecorderCacheBridge.markShaderDefinitionsRendered(
+                        commandStream.shaderDefinitionHandles()
+                    )
                     JbrSkiaCommandRecorderCacheBridge.markEffectDefinitionsRendered(
                         commandStream.effectDefinitionHandles()
                     )
@@ -1860,6 +1863,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_RESTORE_N = 75
         private const val COMMAND_SAVE_TRANSLATE_LAYER = 76
         private const val COMMAND_DRAW_IMAGE_REF_FULL = 77
+        private const val COMMAND_DRAW_IMAGE_REF_FULL_FILL_RECT = 83
         private const val COMMAND_FILL_ROUND_RECT = 78
         private const val COMMAND_DEFINE_IMAGE_ARGB = 15
         private const val COMMAND_DEFINE_IMAGE_BITMAP = 73
@@ -2651,6 +2655,31 @@ class JbrSkiaSwingLayer(
             return handles.toLongArray()
         }
 
+        private fun IntArray.shaderDefinitionHandles(): LongArray {
+            val commandWords = getOrNull(3) ?: return LongArray(0)
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + commandWords
+            if (size < COMMAND_STREAM_HEADER_SIZE || commandEnd > size) return LongArray(0)
+            val handles = ArrayList<Long>()
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthBytes = this[offset + 1]
+                val recordFlags = this[offset + 2]
+                if (recordLengthBytes < 3 * Int.SIZE_BYTES || recordLengthBytes % Int.SIZE_BYTES != 0) break
+                val recordWords = recordLengthBytes / Int.SIZE_BYTES
+                val recordEnd = offset + recordWords
+                if (recordEnd > commandEnd) break
+                if (recordFlags == COMMAND_RECORD_FLAGS_NONE &&
+                    op == COMMAND_DEFINE_SHADER_DESCRIPTOR &&
+                    offset + 8 <= recordEnd
+                ) {
+                    handles += (this[offset + 3].toLong() shl 32) or (this[offset + 4].toLong() and 0xffffffffL)
+                }
+                offset = recordEnd
+            }
+            return handles.toLongArray()
+        }
+
         private fun emptyCommandFrame(): IntArray =
             IntArray(COMMAND_STREAM_HEADER_SIZE).also { stream ->
                 stream[0] = COMMAND_STREAM_MAGIC
@@ -3059,7 +3088,7 @@ class JbrSkiaSwingLayer(
         private fun IntArray.corruptImageDefineRecordFlagsForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_DEFINE_RECORD_FLAGS_PROPERTY)) return this
             return corruptFirstCommandRecordFlagsForTesting(
-                command = COMMAND_DEFINE_IMAGE_ARGB,
+                commands = intArrayOf(COMMAND_DEFINE_IMAGE_ARGB, COMMAND_DEFINE_IMAGE_BITMAP),
                 value = COMMAND_RECORD_FLAG_ANTIALIAS,
                 marker = IMAGE_DEFINE_RECORD_FLAGS_CORRUPTED_MARKER,
                 once = imageDefineRecordFlagsCorruptedForTesting,
@@ -3088,12 +3117,17 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptImageEvictRecordFlagsForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_EVICT_RECORD_FLAGS_PROPERTY)) return this
-            return corruptFirstCommandRecordFlagsForTesting(
+            val naturallyEvicted = corruptFirstCommandRecordFlagsForTesting(
                 command = COMMAND_EVICT_IMAGE_CACHE_KEY,
                 value = COMMAND_RECORD_FLAG_ANTIALIAS,
                 marker = IMAGE_EVICT_RECORD_FLAGS_CORRUPTED_MARKER,
                 once = imageEvictRecordFlagsCorruptedForTesting,
             )
+            return if (naturallyEvicted !== this) {
+                naturallyEvicted
+            } else {
+                injectInvalidImageEvictForTesting()
+            }
         }
 
         private fun IntArray.corruptColorFilterEvictRecordFlagsForTestingIfRequested(): IntArray {
@@ -3121,6 +3155,18 @@ class JbrSkiaSwingLayer(
             value: Int,
             marker: String,
             once: java.util.concurrent.atomic.AtomicBoolean,
+        ): IntArray = corruptFirstCommandRecordFlagsForTesting(
+            commands = intArrayOf(command),
+            value = value,
+            marker = marker,
+            once = once,
+        )
+
+        private fun IntArray.corruptFirstCommandRecordFlagsForTesting(
+            commands: IntArray,
+            value: Int,
+            marker: String,
+            once: java.util.concurrent.atomic.AtomicBoolean,
         ): IntArray {
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
@@ -3130,7 +3176,7 @@ class JbrSkiaSwingLayer(
                 val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
-                if (op == command) {
+                if (op in commands) {
                     return copyOf().also { stream ->
                         stream[offset + 2] = value
                         if (once.compareAndSet(false, true)) {
@@ -4853,6 +4899,37 @@ class JbrSkiaSwingLayer(
             return this
         }
 
+        private fun IntArray.injectInvalidImageEvictForTesting(): IntArray {
+            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
+            if (commandEnd > size) return this
+            var offset = COMMAND_STREAM_HEADER_SIZE
+            while (offset + 3 <= commandEnd) {
+                val op = this[offset]
+                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
+                val recordEnd = offset + recordLengthInts
+                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
+                val argsStart = offset + 3
+                if ((op == COMMAND_DRAW_IMAGE_REF_FULL || op == COMMAND_DRAW_IMAGE_REF_FULL_FILL_RECT) &&
+                    argsStart + 1 < recordEnd
+                ) {
+                    if (!imageEvictRecordFlagsCorruptedForTesting.compareAndSet(false, true)) return this
+                    val evict = intArrayOf(
+                        COMMAND_EVICT_IMAGE_CACHE_KEY,
+                        5 * Int.SIZE_BYTES,
+                        COMMAND_RECORD_FLAG_ANTIALIAS,
+                        this[argsStart],
+                        this[argsStart + 1],
+                    )
+                    val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
+                    corrupted[3] = corrupted[3] + evict.size
+                    Logger.info { "$IMAGE_EVICT_RECORD_FLAGS_CORRUPTED_MARKER injectedBeforeOp=$op" }
+                    return corrupted
+                }
+                offset = recordEnd
+            }
+            return this
+        }
+
         private fun IntArray.corruptImageRefWidthForTestingIfRequested(): IntArray {
             val targetOp = imageRefWidthTargetOpForTesting() ?: return this
             if (!imageRefWidthCorruptedForTesting.compareAndSet(false, true)) return this
@@ -5188,6 +5265,8 @@ class JbrSkiaSwingLayer(
                 once = imageDefinePixelCountCorruptedForTesting,
                 argIndex = 4,
                 valueDelta = 1,
+                bitmapArgIndex = 6,
+                bitmapValue = 0,
                 marker = IMAGE_DEFINE_PIXEL_COUNT_CORRUPTED_MARKER,
             )
 
@@ -5197,6 +5276,8 @@ class JbrSkiaSwingLayer(
             argIndex: Int,
             value: Int? = null,
             valueDelta: Int = 0,
+            bitmapArgIndex: Int? = argIndex.takeIf { it == 2 || it == 3 },
+            bitmapValue: Int? = value,
             marker: String,
         ): IntArray {
             if (!java.lang.Boolean.getBoolean(property)) return this
@@ -5213,6 +5294,16 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_DEFINE_IMAGE_ARGB && argsStart + argIndex < recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart + argIndex] = value ?: (stream[argsStart + argIndex] + valueDelta)
+                        Logger.info { "$marker op=$op" }
+                    }
+                }
+                if (op == COMMAND_DEFINE_IMAGE_BITMAP &&
+                    bitmapArgIndex != null &&
+                    argsStart + bitmapArgIndex < recordEnd
+                ) {
+                    return copyOf().also { stream ->
+                        stream[argsStart + bitmapArgIndex] =
+                            bitmapValue ?: (stream[argsStart + bitmapArgIndex] + valueDelta)
                         Logger.info { "$marker op=$op" }
                     }
                 }
@@ -9803,6 +9894,7 @@ internal object JbrSkiaCommandRecorderCacheBridge {
     private const val RECORDER_CLASS = "androidx.compose.ui.graphics.JbrSkiaCommandRecorder"
     private const val CLEAR_METHOD = "clearInteropCachesForSurfaceChange"
     private const val MARK_IMAGE_DEFINITIONS_RENDERED_METHOD = "markInteropImageDefinitionsRendered"
+    private const val MARK_SHADER_DEFINITIONS_RENDERED_METHOD = "markInteropShaderDefinitionsRendered"
     private const val MARK_EFFECT_DEFINITIONS_RENDERED_METHOD = "markInteropEffectDefinitionsRendered"
     private const val LOG_IMAGE_DEFINITION_CONFIRM_PROPERTY = "skiko.jbr.interop.logImageDefinitionConfirm"
 
@@ -9849,6 +9941,20 @@ internal object JbrSkiaCommandRecorderCacheBridge {
         }.onFailure {
             Logger.info {
                 "SKIKO_JBR_INTEROP_EFFECT_DEFINITION_CONFIRM_UNAVAILABLE " +
+                    "error=${it.javaClass.simpleName}"
+            }
+        }
+    }
+
+    fun markShaderDefinitionsRendered(handles: LongArray) {
+        if (handles.isEmpty()) return
+        runCatching {
+            Class.forName(RECORDER_CLASS)
+                .getMethod(MARK_SHADER_DEFINITIONS_RENDERED_METHOD, LongArray::class.java)
+                .invoke(null, handles)
+        }.onFailure {
+            Logger.info {
+                "SKIKO_JBR_INTEROP_SHADER_DEFINITION_CONFIRM_UNAVAILABLE " +
                     "error=${it.javaClass.simpleName}"
             }
         }
