@@ -237,26 +237,29 @@ class JbrSkiaSwingLayer(
         )
         val renderWidth = frameSize.width
         val renderHeight = frameSize.height
-        val commandDelegate = renderDelegate as? JbrSkiaCommandRenderDelegate
-        val commandFrame = if (commandDelegate != null) {
-            commandDelegate.renderJbrSkiaCommandFrameInfo(renderWidth, renderHeight, frameTime)
-                ?: run {
-                    Logger.info { "SKIKO_JBR_INTEROP_COMMAND_UNSUPPORTED fallback=picture" }
-                    return renderJbrPictureFrame(g)
-                }
-        } else {
-            JbrSkiaCommandFrame(
-                buildCommandFrame(renderWidth, renderHeight, frameTime),
-                JbrSkiaCommandFrameKind.FullScene,
-            )
-        }
         val scope = JbrSkiaInterop.acquireCanvas(g) ?: run {
             logCommandCanvasUnavailableOnce()
             return false
         }
+        var shouldCloseScope = true
+        val commandDelegate = renderDelegate as? JbrSkiaCommandRenderDelegate
         return try {
             if (!noteSurfaceIdentity(scope, clearCommandCaches = true)) {
                 return false
+            }
+            val commandFrame = if (commandDelegate != null) {
+                commandDelegate.renderJbrSkiaCommandFrameInfo(renderWidth, renderHeight, frameTime)
+                    ?: run {
+                        Logger.info { "SKIKO_JBR_INTEROP_COMMAND_UNSUPPORTED fallback=picture" }
+                        scope.close()
+                        shouldCloseScope = false
+                        return renderJbrPictureFrame(g)
+                    }
+            } else {
+                JbrSkiaCommandFrame(
+                    buildCommandFrame(renderWidth, renderHeight, frameTime),
+                    JbrSkiaCommandFrameKind.FullScene,
+                )
             }
             val cachedCommandStream = commandFrameCache.frameForRendering(commandFrame.tinyFullSceneForTestingIfRequested())
             val commandStream = if (shouldApplyCommandCorruptionForTesting()) {
@@ -551,7 +554,9 @@ class JbrSkiaSwingLayer(
             Logger.warn(e) { "JBR Skia command frame failed; falling back to Swing renderer" }
             false
         } finally {
-            scope.close()
+            if (shouldCloseScope) {
+                scope.close()
+            }
         }
     }
 
