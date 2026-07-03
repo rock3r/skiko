@@ -1863,6 +1863,7 @@ class JbrSkiaSwingLayer(
         private const val COMMAND_RESTORE_N = 75
         private const val COMMAND_SAVE_TRANSLATE_LAYER = 76
         private const val COMMAND_DRAW_IMAGE_REF_FULL = 77
+        private const val COMMAND_DRAW_IMAGE_REF_FULL_DRAW_ROUND_RECT = 80
         private const val COMMAND_DRAW_IMAGE_REF_FULL_FILL_RECT = 83
         private const val COMMAND_FILL_ROUND_RECT = 78
         private const val COMMAND_DEFINE_IMAGE_ARGB = 15
@@ -3356,7 +3357,6 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptClipPathVerbForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_CLIP_PATH_VERB_PROPERTY)) return this
-            if (!clipPathVerbCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -3369,6 +3369,7 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_CLIP_PATH && argsStart + 3 < recordEnd) {
                     val pathDataLength = this[argsStart + 2]
                     if (pathDataLength > 0 && argsStart + 3 + pathDataLength == recordEnd) {
+                        if (!clipPathVerbCorruptedForTesting.compareAndSet(false, true)) return this
                         return copyOf().also { stream ->
                             stream[argsStart + 3] = 99
                             Logger.info { CLIP_PATH_VERB_CORRUPTED_MARKER }
@@ -3382,7 +3383,6 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptDrawPathVerbForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_DRAW_PATH_VERB_PROPERTY)) return this
-            if (!drawPathVerbCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -3395,6 +3395,7 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_DRAW_PATH && argsStart + 8 < recordEnd) {
                     val pathDataLength = this[argsStart + 7]
                     if (pathDataLength > 0 && argsStart + 8 + pathDataLength == recordEnd) {
+                        if (!drawPathVerbCorruptedForTesting.compareAndSet(false, true)) return this
                         return copyOf().also { stream ->
                             stream[argsStart + 8] = 99
                             Logger.info { DRAW_PATH_VERB_CORRUPTED_MARKER }
@@ -3408,7 +3409,6 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptDrawPathPathEffectVerbForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_DRAW_PATH_PATH_EFFECT_VERB_PROPERTY)) return this
-            if (!drawPathPathEffectVerbCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -3421,6 +3421,7 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_DRAW_PATH_PATH_EFFECT_REF && argsStart + 10 < recordEnd) {
                     val pathDataLength = this[argsStart + 9]
                     if (pathDataLength > 0 && argsStart + 10 + pathDataLength == recordEnd) {
+                        if (!drawPathPathEffectVerbCorruptedForTesting.compareAndSet(false, true)) return this
                         return copyOf().also { stream ->
                             stream[argsStart + 10] = 99
                             Logger.info { DRAW_PATH_PATH_EFFECT_VERB_CORRUPTED_MARKER }
@@ -4847,7 +4848,6 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptImageUseForTestingIfRequested(): IntArray {
             val targetOp = imageUseTargetOpForTesting() ?: return this
-            if (!imageUseCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -4857,10 +4857,12 @@ class JbrSkiaSwingLayer(
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
-                if (op == targetOp && argsStart + 9 < recordEnd) {
+                val keyOffset = imageUseKeyOffsetForTesting(op, targetOp, argsStart, recordEnd)
+                if (keyOffset != null) {
+                    if (!imageUseCorruptedForTesting.compareAndSet(false, true)) return this
                     return copyOf().also { stream ->
-                        stream[argsStart + 8] = Int.MAX_VALUE
-                        stream[argsStart + 9] = Int.MAX_VALUE
+                        stream[keyOffset] = Int.MAX_VALUE
+                        stream[keyOffset + 1] = Int.MAX_VALUE
                         Logger.info { "$IMAGE_USE_CORRUPTED_MARKER op=$op" }
                     }
                 }
@@ -4871,7 +4873,6 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptImageUseAfterEvictForTestingIfRequested(): IntArray {
             val targetOp = imageUseAfterEvictTargetOpForTesting() ?: return this
-            if (!imageUseAfterEvictCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -4881,13 +4882,15 @@ class JbrSkiaSwingLayer(
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
-                if (op == targetOp && argsStart + 9 < recordEnd) {
+                val keyOffset = imageUseKeyOffsetForTesting(op, targetOp, argsStart, recordEnd)
+                if (keyOffset != null) {
+                    if (!imageUseAfterEvictCorruptedForTesting.compareAndSet(false, true)) return this
                     val evict = intArrayOf(
                         COMMAND_EVICT_IMAGE_CACHE_KEY,
                         5 * Int.SIZE_BYTES,
                         COMMAND_RECORD_FLAGS_NONE,
-                        this[argsStart + 8],
-                        this[argsStart + 9],
+                        this[keyOffset],
+                        this[keyOffset + 1],
                     )
                     val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
                     corrupted[3] = corrupted[3] + evict.size
@@ -4897,6 +4900,17 @@ class JbrSkiaSwingLayer(
                 offset = recordEnd
             }
             return this
+        }
+
+        private fun imageUseKeyOffsetForTesting(
+            op: Int,
+            targetOp: Int,
+            argsStart: Int,
+            recordEnd: Int,
+        ): Int? {
+            if (op == targetOp && argsStart + 9 < recordEnd) return argsStart + 8
+            if (targetOp != COMMAND_DRAW_IMAGE_REF) return null
+            return compactImageRefKeyOffsetForTesting(op, argsStart, recordEnd)
         }
 
         private fun IntArray.injectInvalidImageEvictForTesting(): IntArray {
@@ -4909,16 +4923,15 @@ class JbrSkiaSwingLayer(
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
-                if ((op == COMMAND_DRAW_IMAGE_REF_FULL || op == COMMAND_DRAW_IMAGE_REF_FULL_FILL_RECT) &&
-                    argsStart + 1 < recordEnd
-                ) {
+                val keyOffset = compactImageRefKeyOffsetForTesting(op, argsStart, recordEnd)
+                if (keyOffset != null) {
                     if (!imageEvictRecordFlagsCorruptedForTesting.compareAndSet(false, true)) return this
                     val evict = intArrayOf(
                         COMMAND_EVICT_IMAGE_CACHE_KEY,
                         5 * Int.SIZE_BYTES,
                         COMMAND_RECORD_FLAG_ANTIALIAS,
-                        this[argsStart],
-                        this[argsStart + 1],
+                        this[keyOffset],
+                        this[keyOffset + 1],
                     )
                     val corrupted = copyOfRange(0, offset) + evict + copyOfRange(offset, size)
                     corrupted[3] = corrupted[3] + evict.size
@@ -4932,53 +4945,59 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptImageRefWidthForTestingIfRequested(): IntArray {
             val targetOp = imageRefWidthTargetOpForTesting() ?: return this
-            if (!imageRefWidthCorruptedForTesting.compareAndSet(false, true)) return this
-            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
-            if (commandEnd > size) return this
-            var offset = COMMAND_STREAM_HEADER_SIZE
-            while (offset + 3 <= commandEnd) {
-                val op = this[offset]
-                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
-                val recordEnd = offset + recordLengthInts
-                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
-                val argsStart = offset + 3
-                if (op == targetOp && argsStart + 10 < recordEnd) {
-                    return copyOf().also { stream ->
-                        stream[argsStart + 10] = stream[argsStart + 10] + 1
-                        Logger.info { "$IMAGE_REF_WIDTH_CORRUPTED_MARKER op=$op" }
-                    }
-                }
-                offset = recordEnd
+            return corruptImageRefFieldForTesting(
+                targetOp = targetOp,
+                marker = IMAGE_REF_WIDTH_CORRUPTED_MARKER,
+                once = imageRefWidthCorruptedForTesting,
+                partialArgIndex = 10,
+            ) { stream, offset ->
+                stream[offset] = stream[offset] + 1
             }
-            return this
         }
 
         private fun IntArray.corruptImageRefHeightForTestingIfRequested(): IntArray {
             val targetOp = imageRefHeightTargetOpForTesting() ?: return this
-            if (!imageRefHeightCorruptedForTesting.compareAndSet(false, true)) return this
-            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
-            if (commandEnd > size) return this
-            var offset = COMMAND_STREAM_HEADER_SIZE
-            while (offset + 3 <= commandEnd) {
-                val op = this[offset]
-                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
-                val recordEnd = offset + recordLengthInts
-                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
-                val argsStart = offset + 3
-                if (op == targetOp && argsStart + 11 < recordEnd) {
-                    return copyOf().also { stream ->
-                        stream[argsStart + 11] = stream[argsStart + 11] + 1
-                        Logger.info { "$IMAGE_REF_HEIGHT_CORRUPTED_MARKER op=$op" }
-                    }
-                }
-                offset = recordEnd
+            return corruptImageRefFieldForTesting(
+                targetOp = targetOp,
+                marker = IMAGE_REF_HEIGHT_CORRUPTED_MARKER,
+                once = imageRefHeightCorruptedForTesting,
+                partialArgIndex = 11,
+            ) { stream, offset ->
+                stream[offset] = stream[offset] + 1
             }
-            return this
         }
 
         private fun IntArray.corruptImageRefAlphaForTestingIfRequested(): IntArray {
             val targetOp = imageRefAlphaTargetOpForTesting() ?: return this
-            if (!imageRefAlphaCorruptedForTesting.compareAndSet(false, true)) return this
+            return corruptImageRefFieldForTesting(
+                targetOp = targetOp,
+                marker = IMAGE_REF_ALPHA_CORRUPTED_MARKER,
+                once = imageRefAlphaCorruptedForTesting,
+                partialArgIndex = 12,
+            ) { stream, offset ->
+                stream[offset] = 1001
+            }
+        }
+
+        private fun IntArray.corruptImageRefFilterQualityForTestingIfRequested(): IntArray {
+            val targetOp = imageRefFilterQualityTargetOpForTesting() ?: return this
+            return corruptImageRefFieldForTesting(
+                targetOp = targetOp,
+                marker = IMAGE_REF_FILTER_QUALITY_CORRUPTED_MARKER,
+                once = imageRefFilterQualityCorruptedForTesting,
+                partialArgIndex = 13,
+            ) { stream, offset ->
+                stream[offset] = 4
+            }
+        }
+
+        private fun IntArray.corruptImageRefFieldForTesting(
+            targetOp: Int,
+            marker: String,
+            once: java.util.concurrent.atomic.AtomicBoolean,
+            partialArgIndex: Int,
+            corrupt: (IntArray, Int) -> Unit,
+        ): IntArray {
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -4988,10 +5007,42 @@ class JbrSkiaSwingLayer(
                 val recordEnd = offset + recordLengthInts
                 if (recordLengthInts < 3 || recordEnd > commandEnd) return this
                 val argsStart = offset + 3
-                if (op == targetOp && argsStart + 12 < recordEnd) {
+                if (op == targetOp && argsStart + partialArgIndex < recordEnd) {
+                    if (!once.compareAndSet(false, true)) return this
                     return copyOf().also { stream ->
-                        stream[argsStart + 12] = 1001
-                        Logger.info { "$IMAGE_REF_ALPHA_CORRUPTED_MARKER op=$op" }
+                        corrupt(stream, argsStart + partialArgIndex)
+                        Logger.info { "$marker op=$op" }
+                    }
+                }
+                if (targetOp == COMMAND_DRAW_IMAGE_REF) {
+                    val keyOffset = compactImageRefKeyOffsetForTesting(op, argsStart, recordEnd)
+                    val dstOffset = compactImageRefDstOffsetForTesting(op, argsStart, recordEnd)
+                    if (keyOffset != null && dstOffset != null) {
+                        if (!once.compareAndSet(false, true)) return this
+                        val replacement = intArrayOf(
+                            COMMAND_DRAW_IMAGE_REF,
+                            17 * Int.SIZE_BYTES,
+                            COMMAND_RECORD_FLAGS_NONE,
+                            0,
+                            0,
+                            1000,
+                            1000,
+                            this[dstOffset],
+                            this[dstOffset + 1],
+                            this[dstOffset + 2],
+                            this[dstOffset + 3],
+                            this[keyOffset],
+                            this[keyOffset + 1],
+                            1,
+                            1,
+                            1000,
+                            0,
+                        )
+                        corrupt(replacement, 3 + partialArgIndex)
+                        val corrupted = copyOfRange(0, offset) + replacement + copyOfRange(recordEnd, size)
+                        corrupted[3] = corrupted[3] + replacement.size - recordLengthInts
+                        Logger.info { "$marker op=$op injectedPartial=true" }
+                        return corrupted
                     }
                 }
                 offset = recordEnd
@@ -4999,28 +5050,25 @@ class JbrSkiaSwingLayer(
             return this
         }
 
-        private fun IntArray.corruptImageRefFilterQualityForTestingIfRequested(): IntArray {
-            val targetOp = imageRefFilterQualityTargetOpForTesting() ?: return this
-            if (!imageRefFilterQualityCorruptedForTesting.compareAndSet(false, true)) return this
-            val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
-            if (commandEnd > size) return this
-            var offset = COMMAND_STREAM_HEADER_SIZE
-            while (offset + 3 <= commandEnd) {
-                val op = this[offset]
-                val recordLengthInts = this[offset + 1] / Int.SIZE_BYTES
-                val recordEnd = offset + recordLengthInts
-                if (recordLengthInts < 3 || recordEnd > commandEnd) return this
-                val argsStart = offset + 3
-                if (op == targetOp && argsStart + 13 < recordEnd) {
-                    return copyOf().also { stream ->
-                        stream[argsStart + 13] = 4
-                        Logger.info { "$IMAGE_REF_FILTER_QUALITY_CORRUPTED_MARKER op=$op" }
-                    }
-                }
-                offset = recordEnd
+        private fun compactImageRefDstOffsetForTesting(op: Int, argsStart: Int, recordEnd: Int): Int? =
+            when (op) {
+                COMMAND_DRAW_IMAGE_REF_FULL ->
+                    if (argsStart + 5 < recordEnd) argsStart else null
+                COMMAND_DRAW_IMAGE_REF_FULL_DRAW_ROUND_RECT,
+                COMMAND_DRAW_IMAGE_REF_FULL_FILL_RECT ->
+                    if (argsStart + 6 < recordEnd) argsStart + 1 else null
+                else -> null
             }
-            return this
-        }
+
+        private fun compactImageRefKeyOffsetForTesting(op: Int, argsStart: Int, recordEnd: Int): Int? =
+            when (op) {
+                COMMAND_DRAW_IMAGE_REF_FULL ->
+                    if (argsStart + 5 < recordEnd) argsStart + 4 else null
+                COMMAND_DRAW_IMAGE_REF_FULL_DRAW_ROUND_RECT,
+                COMMAND_DRAW_IMAGE_REF_FULL_FILL_RECT ->
+                    if (argsStart + 6 < recordEnd) argsStart + 5 else null
+                else -> null
+            }
 
         private fun IntArray.corruptImageColorFilterBlendModeForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_IMAGE_COLOR_FILTER_BLEND_MODE_PROPERTY)) return this
