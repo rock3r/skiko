@@ -5362,7 +5362,6 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptSaveLayerAlphaForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_ALPHA_PROPERTY)) return this
-            if (!saveLayerAlphaCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -5375,7 +5374,9 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_SAVE_LAYER && argsStart + 4 < recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart + 4] = 1001
-                        Logger.info { SAVE_LAYER_ALPHA_CORRUPTED_MARKER }
+                        if (saveLayerAlphaCorruptedForTesting.compareAndSet(false, true)) {
+                            Logger.info { SAVE_LAYER_ALPHA_CORRUPTED_MARKER }
+                        }
                     }
                 }
                 offset = recordEnd
@@ -5505,7 +5506,6 @@ class JbrSkiaSwingLayer(
             marker: String,
         ): IntArray {
             if (!java.lang.Boolean.getBoolean(property)) return this
-            if (!once.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -5518,7 +5518,9 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_SAVE_LAYER_IMAGE_FILTER_REF && argsStart + argsOffset < recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart + argsOffset] = -1
-                        Logger.info { marker }
+                        if (once.compareAndSet(false, true)) {
+                            Logger.info { marker }
+                        }
                     }
                 }
                 offset = recordEnd
@@ -5582,7 +5584,6 @@ class JbrSkiaSwingLayer(
             if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_BLEND_COLOR_FILTER_REF_BLEND_MODE_PROPERTY)) {
                 return this
             }
-            if (!saveLayerBlendColorFilterRefBlendModeCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -5595,7 +5596,9 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_SAVE_LAYER_BLEND_COLOR_FILTER_REF && argsStart + 5 < recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart + 5] = Int.MAX_VALUE
-                        Logger.info { SAVE_LAYER_BLEND_COLOR_FILTER_REF_BLEND_MODE_CORRUPTED_MARKER }
+                        if (saveLayerBlendColorFilterRefBlendModeCorruptedForTesting.compareAndSet(false, true)) {
+                            Logger.info { SAVE_LAYER_BLEND_COLOR_FILTER_REF_BLEND_MODE_CORRUPTED_MARKER }
+                        }
                     }
                 }
                 offset = recordEnd
@@ -5611,7 +5614,6 @@ class JbrSkiaSwingLayer(
             marker: String,
         ): IntArray {
             if (!java.lang.Boolean.getBoolean(property)) return this
-            if (!once.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -5624,7 +5626,9 @@ class JbrSkiaSwingLayer(
                 if (op == targetOp && argsStart + argsOffset < recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart + argsOffset] = -1
-                        Logger.info { marker }
+                        if (once.compareAndSet(false, true)) {
+                            Logger.info { marker }
+                        }
                     }
                 }
                 offset = recordEnd
@@ -5639,7 +5643,6 @@ class JbrSkiaSwingLayer(
             marker: String,
         ): IntArray {
             if (!java.lang.Boolean.getBoolean(property)) return this
-            if (!once.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -5652,7 +5655,9 @@ class JbrSkiaSwingLayer(
                 if (op == targetOp && argsStart + 4 < recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart + 4] = 1001
-                        Logger.info { marker }
+                        if (once.compareAndSet(false, true)) {
+                            Logger.info { marker }
+                        }
                     }
                 }
                 offset = recordEnd
@@ -5662,7 +5667,6 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptSaveLayerColorFilterBlendModeForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_COLOR_FILTER_BLEND_MODE_PROPERTY)) return this
-            if (!saveLayerColorFilterBlendModeCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -5674,8 +5678,10 @@ class JbrSkiaSwingLayer(
                 val argsStart = offset + 3
                 if (op == COMMAND_SAVE_LAYER_COLOR_FILTER && argsStart + 6 < recordEnd) {
                     return copyOf().also { stream ->
-                        stream[argsStart + 6] = COMMAND_BLEND_MODE_PLUS
-                        Logger.info { SAVE_LAYER_COLOR_FILTER_BLEND_MODE_CORRUPTED_MARKER }
+                        stream[argsStart + 6] = 9999
+                        if (saveLayerColorFilterBlendModeCorruptedForTesting.compareAndSet(false, true)) {
+                            Logger.info { SAVE_LAYER_COLOR_FILTER_BLEND_MODE_CORRUPTED_MARKER }
+                        }
                     }
                 }
                 offset = recordEnd
@@ -5685,7 +5691,6 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptSaveLayerBlendModeForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_BLEND_MODE_PROPERTY)) return this
-            if (!saveLayerBlendModeCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -5698,7 +5703,9 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_SAVE_LAYER_BLEND_MODE && argsStart + 5 < recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart + 5] = 9999
-                        Logger.info { SAVE_LAYER_BLEND_MODE_CORRUPTED_MARKER }
+                        if (saveLayerBlendModeCorruptedForTesting.compareAndSet(false, true)) {
+                            Logger.info { SAVE_LAYER_BLEND_MODE_CORRUPTED_MARKER }
+                        }
                     }
                 }
                 offset = recordEnd
@@ -5708,7 +5715,6 @@ class JbrSkiaSwingLayer(
 
         private fun IntArray.corruptSaveLayerBlendColorFilterBlendModeForTestingIfRequested(): IntArray {
             if (!java.lang.Boolean.getBoolean(CORRUPT_SAVE_LAYER_BLEND_COLOR_FILTER_BLEND_MODE_PROPERTY)) return this
-            if (!saveLayerBlendColorFilterBlendModeCorruptedForTesting.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -5720,8 +5726,10 @@ class JbrSkiaSwingLayer(
                 val argsStart = offset + 3
                 if (op == COMMAND_SAVE_LAYER_BLEND_COLOR_FILTER && argsStart + 7 < recordEnd) {
                     return copyOf().also { stream ->
-                        stream[argsStart + 7] = COMMAND_BLEND_MODE_PLUS
-                        Logger.info { SAVE_LAYER_BLEND_COLOR_FILTER_BLEND_MODE_CORRUPTED_MARKER }
+                        stream[argsStart + 7] = 9999
+                        if (saveLayerBlendColorFilterBlendModeCorruptedForTesting.compareAndSet(false, true)) {
+                            Logger.info { SAVE_LAYER_BLEND_COLOR_FILTER_BLEND_MODE_CORRUPTED_MARKER }
+                        }
                     }
                 }
                 offset = recordEnd
