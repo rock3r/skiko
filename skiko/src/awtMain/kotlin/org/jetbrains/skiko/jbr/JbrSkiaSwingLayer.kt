@@ -5116,7 +5116,6 @@ class JbrSkiaSwingLayer(
             marker: String,
         ): IntArray {
             if (!java.lang.Boolean.getBoolean(property)) return this
-            if (!once.compareAndSet(false, true)) return this
             val commandEnd = COMMAND_STREAM_HEADER_SIZE + getOrNull(3).orZero()
             if (commandEnd > size) return this
             var offset = COMMAND_STREAM_HEADER_SIZE
@@ -5207,7 +5206,9 @@ class JbrSkiaSwingLayer(
                 if (op == COMMAND_FILL_RECT_COLOR_FILTER && argsStart + argIndex < recordEnd) {
                     return copyOf().also { stream ->
                         stream[argsStart + argIndex] = value
-                        Logger.info { marker }
+                        if (once.compareAndSet(false, true)) {
+                            Logger.info { marker }
+                        }
                     }
                 }
                 offset = recordEnd
