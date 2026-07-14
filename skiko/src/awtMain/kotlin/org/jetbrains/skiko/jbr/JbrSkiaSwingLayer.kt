@@ -117,20 +117,16 @@ class JbrSkiaSwingLayer(
         val interopGraphics = g.create() as Graphics2D
         val window = SwingUtilities.getWindowAncestor(this)
         if (window != null && isShowing) {
-            val location = SwingUtilities.convertPoint(this, 0, 0, window)
-            val transform = interopGraphics.transform
-            val scaleX = transform.scaleX
-            val scaleY = transform.scaleY
-            if (scaleX > 0.0 && scaleY > 0.0) {
-                val currentX = transform.translateX / scaleX
-                val currentY = transform.translateY / scaleY
-                interopGraphics.translate(
-                    (location.x - currentX).toInt(),
-                    (location.y - currentY).toInt(),
-                )
-            } else {
-                interopGraphics.translate(location.x, location.y)
-            }
+            // The recorded command streams are layer-local (the recorder's
+            // canvas origin is this component's top-left), and Swing already
+            // hands us a graphics whose user-space origin is the component
+            // origin. Rebasing to AWT window coordinates here (which include
+            // the frame insets) is only a no-op where the Java2D surface is
+            // window-anchored; on Windows the D3D window surface is
+            // client-anchored, so the rebase shifted the interop clip by the
+            // insets and the present blit never covered the layer's top/left
+            // strips. Keep the component-anchored transform and expose the
+            // full layer bounds as the interop clip.
             interopGraphics.setClip(0, 0, width, height)
         }
         return interopGraphics
@@ -604,6 +600,11 @@ class JbrSkiaSwingLayer(
             }
             if (change.contextChanged || change.surfaceChanged) {
                 commandFrameCache.clear()
+                // A new destination surface starts without the accumulated
+                // scene; incremental (clip-limited) frames would leave
+                // never-repainted regions stale. Schedule one full repaint
+                // so the next frame covers the whole layer.
+                SwingUtilities.invokeLater { repaint() }
                 if (clearCommandCaches && !JbrSkiaCommandRecorderCacheBridge.clearForSurfaceChange(
                         if (change.contextChanged) "contextChanged" else "surfaceChanged"
                     )
