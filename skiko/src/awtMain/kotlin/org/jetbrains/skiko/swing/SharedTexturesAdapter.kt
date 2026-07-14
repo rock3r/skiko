@@ -12,14 +12,24 @@ internal interface SharedTexturesAdapter {
     fun wrapTexture(gc: GraphicsConfiguration, texturePtr: Long): Image
 
     companion object {
+        /**
+         * Windows Direct3D 9Ex shared-handle texture type.
+         * Mirrors com.jetbrains.SharedTextures.D3D9EX_SHARED_HANDLE_TEXTURE_TYPE
+         * (kept local so an older jbr-api artifact on the compile classpath
+         * does not gate the Windows leg).
+         */
+        const val D3D9EX_SHARED_HANDLE_TEXTURE_TYPE: Int = 2
+
         fun createSharedTexturesAdapter(): SharedTexturesAdapter {
             if (!JBR.isSharedTexturesSupported()) {
                 throw RenderException("Shared textures are not supported")
             }
 
             val sharedTextures = JBR.getSharedTextures()
-            if (sharedTextures.textureType == SharedTextures.METAL_TEXTURE_TYPE) {
-                return JbrSharedTexturesAdapter(sharedTextures)
+            when (sharedTextures.textureType) {
+                SharedTextures.METAL_TEXTURE_TYPE,
+                D3D9EX_SHARED_HANDLE_TEXTURE_TYPE ->
+                    return JbrSharedTexturesAdapter(sharedTextures)
             }
             throw RenderException("Shared textures are not supported")
         }

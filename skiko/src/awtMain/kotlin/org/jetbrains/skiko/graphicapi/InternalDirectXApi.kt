@@ -49,4 +49,57 @@ internal object InternalDirectXApi {
     external fun makeDirectXRenderTargetOffScreen(texturePtr: NativePointer): NativePointer
 
     external fun disposeDevice(device: NativePointer)
+
+    // --- JBR SharedTextures interop bridge (see InternalDirectXApi.cc) ---
+
+    /**
+     * Creates the D3D11.1 bridge (same adapter as [device]) used to hand
+     * Skia's D3D12 output to the Java2D Direct3D 9Ex pipeline via a
+     * legacy-shared texture. Returns 0 on failure.
+     */
+    external fun createInteropBridge(device: NativePointer): NativePointer
+    external fun disposeInteropBridge(bridge: NativePointer)
+
+    /**
+     * Provides a shareable D3D12 render texture + its bridge resources,
+     * reusing [oldTexturePtr] when the size is unchanged.
+     */
+    external fun makeDirectXSharedTexture(
+        device: NativePointer,
+        bridge: NativePointer,
+        oldTexturePtr: NativePointer,
+        width: Int,
+        height: Int
+    ): NativePointer
+
+    external fun disposeDirectXSharedTexture(texturePtr: NativePointer)
+
+    external fun makeSharedTextureRenderTarget(texturePtr: NativePointer): NativePointer
+
+    /** The ID3D11Texture2D (legacy-shared) pointer passed to JBR's wrapTexture. */
+    external fun getLegacyD3D11TexturePtr(texturePtr: NativePointer): NativePointer
+
+    /**
+     * Orders GPU work (producer fence), copies into the legacy-shared texture
+     * and drains the copy (A-corr bounded CPU wait).
+     */
+    external fun bridgeCopyAndSync(
+        device: NativePointer,
+        bridge: NativePointer,
+        texturePtr: NativePointer
+    ): Boolean
+
+    /**
+     * A-perf: copies into the current slot without waiting and returns the
+     * previous slot's legacy texture for the blit (one frame of latency,
+     * no steady-state CPU wait). Returns 0 on failure.
+     */
+    external fun bridgeCopyPipelined(
+        device: NativePointer,
+        bridge: NativePointer,
+        texturePtr: NativePointer
+    ): NativePointer
+
+    /** Steady-state stall count of the pipelined path (gate: ~0). */
+    external fun getPipelineStalls(texturePtr: NativePointer): Long
 }

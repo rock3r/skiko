@@ -18,6 +18,7 @@ internal class SoftwareSwingPainter(
 ) : SwingPainter {
     private var bufferedImage = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB_PRE)
     private var bitmap = Bitmap()
+    private var identityReported = false
 
     override fun paint(g: Graphics2D, surface: Surface, texture: Long) {
         val width = surface.width
@@ -26,6 +27,12 @@ internal class SoftwareSwingPainter(
             bitmap.allocPixelsFlags(ImageInfo.makeS32(width, height, ColorAlphaType.PREMUL), false)
         }
 
+        if (!identityReported) {
+            identityReported = true
+            System.setProperty("skiko.swing.painterIdentity", "software-readPixels")
+            System.setProperty("skiko.swing.renderMode", "software")
+            System.err.println("SKIKO_SWING_PAINTER identity=software-readPixels surfaceWidth=$width surfaceHeight=$height")
+        }
         surface.readPixels(bitmap, 0, 0)
         val bufferPtr = bitmap.peekPixels()?.addr ?: throw RenderException("Can't get pixels address")
         bufferedImage = createImageFromBytes(bufferPtr, width, height)
